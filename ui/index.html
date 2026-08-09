@@ -2,13 +2,13 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>cys — CYSJavis Terminal</title>
+  <title>ezer — Ezer Terminal</title>
   <link rel="stylesheet" href="./xterm.css" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <header id="topbar">
-    <span id="brand">cys</span>
+    <span id="brand">ezer</span>
     <span id="daemon-info">daemon: connecting…</span>
     <span class="spacer"></span>
     <button id="btn-new" title="새 surface (⌘T)">+ New</button>
@@ -41,7 +41,7 @@
         <span id="cc-alertbadge" class="cc-alert-badge" hidden></span>
         <button id="btn-cc-density" title="한눈에 보기 / 상세 보기 전환 (⌘G)">👁 한눈에</button>
         <button id="btn-cc-glance-face" title="한눈에 면 전환: Live ↔ 작업">📋 작업</button>
-        <button id="btn-install-cli" title="외부 터미널에서 cys 명령 쓰기(1회 관리자 승인)">셸에 cys 설치</button>
+        <button id="btn-install-cli" title="외부 터미널에서 ezer 명령 쓰기(1회 관리자 승인)">셸에 ezer 설치</button>
         <span id="cc-clock"></span>
         <button id="btn-cc-close" title="닫기">×</button>
       </div>
@@ -133,7 +133,7 @@
         <div id="cc-view-board" hidden>
           <div class="cc-board-note">클릭 = 보이는 일회용 워커가 task-prompt 티켓(성공기준·4규칙) 경유로 실행합니다. 산출물은 "AI 보조 생성 · 오너 검수 전"입니다.</div>
           <div class="cc-section"><div class="cc-h">스킬 보드 (클릭 = 일회용 워커 실행)</div><div id="cc-board-domains"></div></div>
-          <div class="cc-section"><div class="cc-h">산출물 회수 (~/.cys/_round/skill-out)</div><div id="cc-board-out"></div></div>
+          <div class="cc-section"><div class="cc-h">산출물 회수 (~/.ezer/_round/skill-out)</div><div id="cc-board-out"></div></div>
         </div>
         <div id="cc-view-tasks" hidden>
           <div class="cc-board-note">모든 부서의 모든 노드가 지금 무슨 업무를 하는지 실시간 표시(관측 전용·입력 주입 없음). 📍자기보고 = 노드가 보고한 업무 · ⚙파생 = 활동 추론.</div>
@@ -145,8 +145,8 @@
         </div>
         <div id="cc-view-office" hidden>
           <div id="cc-office-hint" class="cc-board-note" hidden>메타버스 오피스 브리지가 꺼져 있습니다 —
-            cysd가 60초 내 자동 재기동합니다. 급하면 수동 기동:
-            <code>python3 ~/.cys/pack/bin/javis_hud_bridge.py</code> 후 이 탭을 다시 여세요.</div>
+            ezerd가 60초 내 자동 재기동합니다. 급하면 수동 기동:
+            <code>python3 ~/.ezer/pack/bin/ezer_hud_bridge.py</code> 후 이 탭을 다시 여세요.</div>
           <iframe id="cc-office-frame" title="Metaverse Office"></iframe>
         </div>
         <div id="cc-footer"></div>

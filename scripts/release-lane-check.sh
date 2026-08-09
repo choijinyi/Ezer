@@ -3,7 +3,7 @@
 # "이번 릴리스가 본체 범프인가, 팩-only인가"를 결정론으로 판정한다.
 #
 # 판정 규칙:
-#   PACK-ONLY  — 마지막 태그 이후 변경이 전부 cysjavis-pack/ 내부 (인테리어만 교체)
+#   PACK-ONLY  — 마지막 태그 이후 변경이 전부 ezer-pack/ 내부 (인테리어만 교체)
 #   BINARY     — 그 외 경로(src/·src-tauri/·ui/·build.rs·Cargo.* 등) 변경 존재 (건물 재시공)
 #   사람 판단 예외: 팩이 '새 바이너리 기능/RPC'를 요구하면 PACK-ONLY라도 본체 레인
 #                   (또는 PACK_MIN_BINARY 상향)으로 — 판별기는 경로만 본다.
@@ -24,7 +24,7 @@ if [ -z "$CHANGED" ]; then
   exit 0
 fi
 
-NONPACK=$(echo "$CHANGED" | grep -v "^cysjavis-pack/" || true)
+NONPACK=$(echo "$CHANGED" | grep -v "^ezer-pack/" || true)
 N_ALL=$(echo "$CHANGED" | wc -l | tr -d ' ')
 
 # 최신 버전들(양 레인) — 충돌 가드용
@@ -36,7 +36,7 @@ echo "── 최신 본체 태그: ${LATEST_BIN:-없음} · 최신 팩 태그: $
 echo
 
 if [ -z "$NONPACK" ]; then
-  echo "판정: ★PACK-ONLY 레인 (전 변경이 cysjavis-pack/ 내부 — 인테리어만 교체)"
+  echo "판정: ★PACK-ONLY 레인 (전 변경이 ezer-pack/ 내부 — 인테리어만 교체)"
   echo "  절차: ① 버전 6곳 범프 불요·version-check 불요"
   echo "        ② git tag pack-vX.Y.Z && git push origin pack-vX.Y.Z"
   echo "        ③ CI(pack-release.yml)가 서명 팩 3종+latest.json 캐리포워드 발행"

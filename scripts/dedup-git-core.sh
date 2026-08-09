@@ -10,7 +10,7 @@
 #   대조가 0건이 되기 때문(2026-07-04 공증 풀런 실측). 미서명 CI 빌드에선 셋 다 동일하나 같은 기준으로
 #   안전하게 동작한다. 링크 대상도 dugite 원본 타르볼과 동일한 same-dir `git`(=git-core/git)로 둔다.
 #
-# 사용: scripts/dedup-git-core.sh <path-to-cys.app>
+# 사용: scripts/dedup-git-core.sh <path-to-ezer.app>
 # 종료: 0=성공(dedup 후 중복 실복사본 제거됨) / 1=인자·경로 오류 또는 dedup 후에도 중복본 잔존(역참조 미해소)
 set -euo pipefail
 

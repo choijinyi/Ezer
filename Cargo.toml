@@ -4,23 +4,23 @@ members = ["src-tauri"]
 exclude = ["vendor/portable-pty"]
 
 [package]
-name = "cys-terminal"
+name = "ezer-agent"
 version = "0.12.64"
 edition = "2021"
-description = "cys — the CYSJavis terminal: bidirectional socket IPC, multi-agent OS (CYSJavis Pack), governance, heartbeat"
+description = "ezer — the Ezer terminal: bidirectional socket IPC, multi-agent OS (Ezer Pack), governance, heartbeat"
 license = "MIT"
 
 [lib]
-name = "cys"
+name = "ezer"
 path = "src/lib.rs"
 
 [[bin]]
-name = "cysd"
-path = "src/bin/cysd/main.rs"
+name = "ezerd"
+path = "src/bin/ezerd/main.rs"
 
 [[bin]]
-name = "cys"
-path = "src/bin/cys.rs"
+name = "ezer"
+path = "src/bin/ezer.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time", "signal", "process"] }

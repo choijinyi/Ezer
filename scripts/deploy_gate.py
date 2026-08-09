@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""deploy_gate.py — cys/cysd 게이트 배포 (정석복구 ④ · 영구 재발방지).
+"""deploy_gate.py — ezer/ezerd 게이트 배포 (정석복구 ④ · 영구 재발방지).
 
 ★실행 금지 — 오너 승인 후 master 감독 하에서만 `--execute`로 실행한다.
   scratch/deploy_*_swap.py(미서명 ad-hoc·빌드세대 스큐·Desktop SRC=iCloud 재발원)를 대체한다.
@@ -8,18 +8,18 @@
   1. 동시성 락(flock) 획득    — 다중 배포 스크립트 병렬 가동에 의한 파일 충돌 차단
   2. SRC=~/dev 강제          — Desktop(iCloud 동기화 경합·' 2' 충돌사본 재발원) 차단
   3. iCloud xattr 부재        — 빌드 dir·산출물에 com.apple.CloudDocs 있으면 중단
-  4. 동세대 검증              — cys·cysd mtime 근접 + size 존재(빌드세대 스큐 차단)
+  4. 동세대 검증              — ezer·ezerd mtime 근접 + size 존재(빌드세대 스큐 차단)
   5. ★현재상태 백업(run-id)   — 매 실행 새 backup_dir에: 앱 번들 전체 ditto 복사(서명·xattr·nested 보존)
                                 + 각 타깃 lstat/readlink/sha256 inventory + 개별 백업(symlink-aware)
   6. 원자 4경로 교체          — cp + existed 제거 → os.replace(rename·실행중 바이너리 안전)
   7. xattr 제거 → codesign    — ★xattr -c/-cr 를 서명 '前'에(신규 ad-hoc 봉인)
-  8. cys --version 스모크     — ★cysd 직접 실행 금지(부팅 부작용)·cysd는 codesign -v 만
+  8. ezer --version 스모크     — ★ezerd 직접 실행 금지(부팅 부작용)·ezerd는 codesign -v 만
   9. 최종 deep verify         — 실패 시 자동 롤백:
        ★staging rollback: 동일 FS(/Applications)의 .rollback-staging 공간에 ditto 복원 후 서명/해시를 사전 검증.
        성공 시에만 기존 타깃을 existed 제거 후 원자 교체.
   10. 데몬 재시작             — ★--execute 성공 시 자동 실행(2026-07-06 오너 지시 — 수동 kill·재가동 폐기):
        drain(저장 신호·best-effort) → system.identify 정확 PID로 종료 및 respawn 폴링. 실패 시 hard fail.
-       구 데몬 종료 후 launchd KeepAlive가 새 번들의 cysd를 respawn하고, 새 cysd의 auto-restore
+       구 데몬 종료 후 launchd KeepAlive가 새 번들의 ezerd를 respawn하고, 새 ezerd의 auto-restore
        (phoenix)가 노드를 복원한다. 단독 재시작은 기존대로 --restart.
 """
 import hashlib
@@ -33,22 +33,22 @@ import time
 import fcntl
 
 # ★SRC는 반드시 ~/dev(iCloud 밖). $HOME 기반(범용 배포 이식성).
-# CYS_DEPLOY_SRC로 오버라이드 가능 — 동시 빌드가 target/를 휘젓는 환경에서 검증된 격리 스냅샷
+# EZER_DEPLOY_SRC로 오버라이드 가능 — 동시 빌드가 target/를 휘젓는 환경에서 검증된 격리 스냅샷
 # 디렉토리에서 배포하기 위함(여전히 gate_src_path의 ~/dev 검증을 거친다).
-SRC = os.path.expanduser(os.environ.get("CYS_DEPLOY_SRC", "~/dev/cys-terminal/target/release"))
-APP_BUNDLE = "/Applications/cys.app"
-APP_MACOS = "/Applications/cys.app/Contents/MacOS"
+SRC = os.path.expanduser(os.environ.get("EZER_DEPLOY_SRC", "~/dev/ezer-agent/target/release"))
+APP_BUNDLE = "/Applications/ezer.app"
+APP_MACOS = "/Applications/ezer.app/Contents/MacOS"
 BREW = "/opt/homebrew/bin"
 BACKUP_BASE = os.path.join(SRC, "deploy_backups")
 
 TARGETS = [
-    ("cys", f"{APP_MACOS}/cys"),
-    ("cysd", f"{APP_MACOS}/cysd"),
-    # cys-app = Tauri GUI(웹뷰). ui/dist를 generate_context!로 컴파일타임 임베드하므로 UI 변경은
-    # cys-app 재빌드로만 반영된다(brew엔 없음 — GUI 전용). UI 변경 배포 시 cargo build -p cys-app 선행 필수.
-    ("cys-app", f"{APP_MACOS}/cys-app"),
-    ("cys", f"{BREW}/cys"),
-    ("cysd", f"{BREW}/cysd"),
+    ("ezer", f"{APP_MACOS}/ezer"),
+    ("ezerd", f"{APP_MACOS}/ezerd"),
+    # ezer-app = Tauri GUI(웹뷰). ui/dist를 generate_context!로 컴파일타임 임베드하므로 UI 변경은
+    # ezer-app 재빌드로만 반영된다(brew엔 없음 — GUI 전용). UI 변경 배포 시 cargo build -p ezer-app 선행 필수.
+    ("ezer-app", f"{APP_MACOS}/ezer-app"),
+    ("ezer", f"{BREW}/ezer"),
+    ("ezerd", f"{BREW}/ezerd"),
 ]
 
 # flock 핸들 전역 보유 (가비지 컬렉션 해제 방지)
@@ -71,12 +71,12 @@ def sha256(path):
 # ── 게이트 0: 동시성 락 (flock) ─────────────────────────────────────────
 def gate_concurrency_lock():
     global LOCK_FILE
-    lock_path = "/tmp/cys_deploy_gate.lock"
+    lock_path = "/tmp/ezer_deploy_gate.lock"
     try:
         LOCK_FILE = open(lock_path, "w")
         fcntl.flock(LOCK_FILE, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        die("이미 다른 cys 배포 게이트 프로세스가 실행 중입니다 (flock 락 획득 실패).")
+        die("이미 다른 ezer 배포 게이트 프로세스가 실행 중입니다 (flock 락 획득 실패).")
     print("  ✓ 동시성 락 획득(flock)")
 
 # ── 게이트 1: SRC=~/dev 강제 ──────────────────────────────────────────
@@ -93,16 +93,16 @@ def gate_no_icloud():
             die(f"iCloud 동기화 xattr 감지(빌드 경합 위험): {p}")
     print("  ✓ iCloud xattr 없음(빌드 dir·산출물)")
 
-# ── 게이트 3: 동세대(cys·cysd) ────────────────────────────────────────
+# ── 게이트 3: 동세대(ezer·ezerd) ────────────────────────────────────────
 def gate_same_generation():
-    cys, cysd = os.path.join(SRC, "cys"), os.path.join(SRC, "cysd")
-    for f in (cys, cysd):
+    ezer, ezerd = os.path.join(SRC, "ezer"), os.path.join(SRC, "ezerd")
+    for f in (ezer, ezerd):
         if not os.path.isfile(f):
             die(f"빌드 산출물 누락: {f} — 재빌드 필요")
-    dt = abs(os.path.getmtime(cys) - os.path.getmtime(cysd))
+    dt = abs(os.path.getmtime(ezer) - os.path.getmtime(ezerd))
     if dt > 300:
-        die(f"cys·cysd 빌드세대 스큐 {dt:.0f}s > 300s — 동시 빌드 필요(cargo build --bin cys --bin cysd)")
-    print(f"  ✓ 동세대 mtimeΔ={dt:.0f}s cys={os.path.getsize(cys):,}B cysd={os.path.getsize(cysd):,}B")
+        die(f"ezer·ezerd 빌드세대 스큐 {dt:.0f}s > 300s — 동시 빌드 필요(cargo build --bin ezer --bin ezerd)")
+    print(f"  ✓ 동세대 mtimeΔ={dt:.0f}s ezer={os.path.getsize(ezer):,}B ezerd={os.path.getsize(ezerd):,}B")
 
 # ── 타깃 inventory(symlink-aware) ────────────────────────────────────
 def inventory_target(dst):
@@ -133,7 +133,7 @@ def backup_current_state():
 
     # ★앱 번들 전체 ditto 복사(원본 서명·xattr·nested 보존 — BLOCKER2 가역성).
     # zip 아님이 디렉토리 복사(ditto --rsrc --extattr --acl)
-    bundle_bak = os.path.join(backup_dir, "cys.app")
+    bundle_bak = os.path.join(backup_dir, "ezer.app")
     r = run(["ditto", "--rsrc", "--extattr", "--acl", APP_BUNDLE, bundle_bak])
     if r.returncode != 0:
         die(f"앱 번들 ditto 백업 실패(가역성 미확보): {r.stderr.strip()}")
@@ -186,25 +186,25 @@ def resign():
         raise RuntimeError(f"codesign --deep 번들: {r.stderr.strip()}")
     print("  ✓ xattr 제거(서명 前) → codesign --force --deep")
 
-# ── 스모크: cys --version (★cysd 직접실행 금지) ──────────────────────
+# ── 스모크: ezer --version (★ezerd 직접실행 금지) ──────────────────────
 def smoke():
     for _, dst in TARGETS:
-        if os.path.basename(dst) == "cys":
+        if os.path.basename(dst) == "ezer":
             r = run([dst, "--version"])
             if r.returncode != 0:
-                raise RuntimeError(f"cys --version 스모크 실패 {dst}: {r.stderr.strip()}")
-            print(f"  ✓ cys --version: {r.stdout.strip()} ({dst})")
+                raise RuntimeError(f"ezer --version 스모크 실패 {dst}: {r.stderr.strip()}")
+            print(f"  ✓ ezer --version: {r.stdout.strip()} ({dst})")
         else:
             r = run(["codesign", "-v", dst])
             if r.returncode != 0:
-                raise RuntimeError(f"cysd codesign -v 실패 {dst}: {r.stderr.strip()}")
-            print(f"  ✓ cysd codesign -v PASS (직접 실행 안 함) {dst}")
+                raise RuntimeError(f"ezerd codesign -v 실패 {dst}: {r.stderr.strip()}")
+            print(f"  ✓ ezerd codesign -v PASS (직접 실행 안 함) {dst}")
 
 # ── 롤백: ★staging rollback (임시 디렉토리에서 사전 검증 후 existed 제거 교체) ──
 def rollback(inv):
     print("⏪ 롤백 — Staging Rollback 개시")
     # 백업을 APP_BUNDLE 동일FS(/Applications)의 .rollback-staging에 복원
-    staged_app = "/Applications/cys.app.rollback-staging"
+    staged_app = "/Applications/ezer.app.rollback-staging"
     if os.path.exists(staged_app):
         shutil.rmtree(staged_app)
 
@@ -221,7 +221,7 @@ def rollback(inv):
     
     # 통과 시에만 스왑 — 현재 번들을 먼저 .old로 rename(원자·빠름)해 비우고 staging 입주.
     # rmtree 先(느림)은 크래시 시 번들 소실 창이 크다 → rename-old로 gap 최소화(같은 FS).
-    old = "/Applications/cys.app.rollback-old"
+    old = "/Applications/ezer.app.rollback-old"
     if os.path.exists(old):
         shutil.rmtree(old)
     if os.path.exists(APP_BUNDLE):
@@ -284,7 +284,7 @@ def rollback(inv):
 
 # ── 데몬 self-pid: system.identify RPC ─────────────────────────────────
 def _socket_path():
-    return os.environ.get("CYS_SOCKET") or os.path.expanduser("~/.local/state/cys/cys.sock")
+    return os.environ.get("EZER_SOCKET") or os.path.expanduser("~/.local/state/ezer/ezer.sock")
 
 def daemon_identify(timeout=2.0):
     path = _socket_path()
@@ -308,10 +308,10 @@ def daemon_identify(timeout=2.0):
 
 # ── drain: 재시작 前 살아있는 노드에 저장 신호 (best-effort·자체 watchdog 12s) ──
 def drain_nodes():
-    cys_cli = f"{BREW}/cys"
-    if not os.path.isfile(cys_cli):
-        cys_cli = f"{APP_MACOS}/cys"
-    r = run([cys_cli, "drain"])
+    ezer_cli = f"{BREW}/ezer"
+    if not os.path.isfile(ezer_cli):
+        ezer_cli = f"{APP_MACOS}/ezer"
+    r = run([ezer_cli, "drain"])
     print(f"  ✓ drain(저장 신호·best-effort): rc={r.returncode} {r.stdout.strip()}")
 
 # ── 데몬 재시작 (실패 시 restart hard fail) ─────────────────────────────
@@ -362,8 +362,8 @@ def crash_recovery():
     그 사이 크래시 시 APP_BUNDLE이 비어 있을 수 있다(완전 원자 아님·HIGH codex).
     시작부에서 잔존 .rollback-old/.rollback-staging을 결정론으로 정리·복구한다
     (renamex_np ctypes RENAME_SWAP 복잡성 회피)."""
-    old = "/Applications/cys.app.rollback-old"
-    staging = "/Applications/cys.app.rollback-staging"
+    old = "/Applications/ezer.app.rollback-old"
+    staging = "/Applications/ezer.app.rollback-staging"
     if os.path.exists(old):
         if not os.path.exists(APP_BUNDLE):
             os.rename(old, APP_BUNDLE)  # step1 직후 크래시 → 번들 복귀
@@ -416,7 +416,7 @@ def main():
     # 재시작 실패는 롤백하지 않고 hard fail로 알린다(restart_daemon 내 die).
     # 구 데몬이 아예 없으면 교체할 대상이 없다 — 건너뛴다(다음 기동이 새 바이너리·기존 성공 배포 불변).
     if daemon_identify() is None:
-        print("  ✓ 실행 중인 데몬 없음 — 재시작 생략(다음 기동이 새 cysd)")
+        print("  ✓ 실행 중인 데몬 없음 — 재시작 생략(다음 기동이 새 ezerd)")
         return
     drain_nodes()
     restart_daemon(inv)

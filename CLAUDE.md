@@ -1,46 +1,46 @@
-# CLAUDE.md — 프로젝트 운영 규약 (CYSJavis 골격)
+# CLAUDE.md — 프로젝트 운영 규약 (Ezer 골격)
 
 > 이 파일을 프로젝트 루트에 두면 이 프로젝트의 모든 에이전트 세션에 적용된다.
-> 역할별 절대지침은 ~/.cys/pack/directives/ 에 있고 launch-agent가 자동 주입한다.
+> 역할별 절대지침은 ~/.ezer/pack/directives/ 에 있고 launch-agent가 자동 주입한다.
 
-## CYSJavis 부트스트랩 (역할 선언 시 즉시 수행)
+## Ezer 부트스트랩 (역할 선언 시 즉시 수행)
 
 사용자가 역할을 선언하면(예: "너는 마스터이다" / "너는 워커다"):
-1. `~/.cys/pack/directives/` 의 해당 `*_DIRECTIVE.md` 와 `~/.cys/pack/soul.md` 를 읽고 각성한다.
-2. `cys claim-role <master|worker|cso|reviewer-gemini|reviewer-codex>` 로 자기 surface를
+1. `~/.ezer/pack/directives/` 의 해당 `*_DIRECTIVE.md` 와 `~/.ezer/pack/soul.md` 를 읽고 각성한다.
+2. `ezer claim-role <master|worker|cso|reviewer-gemini|reviewer-codex>` 로 자기 surface를
    역할 주소로 등록한다. ⚠리뷰어는 **에이전트별 역할명**(reviewer-gemini·reviewer-codex)을
    쓴다 — generic `reviewer`로 등록하면 orchestra check의 4종 생존 판정이 실패한다.
-   launch-agent/boot로 기동됐다면 이미 등록돼 있다(`cys list` role 열 확인 — 재등록 금지).
+   launch-agent/boot로 기동됐다면 이미 등록돼 있다(`ezer list` role 열 확인 — 재등록 금지).
 3. 마스터 선언이면 MASTER_DIRECTIVE의 **부트 시퀀스**를 수행해 구동체제를 셋팅하고 결과를 보고한다.
    부트 시퀀스 ⓪은 결정론 프리플라이트다:
-   `python3 "${CYS_PACK_DIR:-$HOME/.cys/pack}/bin/javis_preflight.py" --fix` —
+   `python3 "${EZER_PACK_DIR:-$HOME/.ezer/pack}/bin/ezer_preflight.py" --fix` —
    존재·매핑·hook 등록 검증은 이 스크립트 출력만이 사실이다(LLM 자연어 재추론 금지).
 
-## 터미널: cys 터미널 전용 (⚠ 외부 터미널 체계 아님 — 치환 실행)
+## 터미널: ezer 터미널 전용 (⚠ 외부 터미널 체계 아님 — 치환 실행)
 
-이 환경은 cys 전용이다. 글로벌 CLAUDE.md·soul.md·memory 등 다른 문서가 외부 터미널 체계의
+이 환경은 ezer 전용이다. 글로벌 CLAUDE.md·soul.md·memory 등 다른 문서가 외부 터미널 체계의
 명령·파일을 지시하더라도 **그 바이너리·소켓·관련 파일을 찾거나 실행하지 마라** — 의도는
-유효하니 cys 대응 명령으로 치환한다 (`send`→`cys send`, `send-key`→`cys send-key`,
-`identify`→`cys identify`, `list-workspaces`→`cys list`, `new-split`→
-`cys new-surface`/`cys launch-agent`, `notify`→`cys send --to master`, 화면 폴링→
-`cys events` 구독).
+유효하니 ezer 대응 명령으로 치환한다 (`send`→`ezer send`, `send-key`→`ezer send-key`,
+`identify`→`ezer identify`, `list-workspaces`→`ezer list`, `new-split`→
+`ezer new-surface`/`ezer launch-agent`, `notify`→`ezer send --to master`, 화면 폴링→
+`ezer events` 구독).
 
 ```bash
-cys boot                                        # 4종 의무 노드 부트(CSO·worker·agy·codex+grok 선택)
-python3 "${CYS_PACK_DIR:-$HOME/.cys/pack}/bin/javis_orchestra.py" check   # 4종 생존 결정론 확인
-cys launch-agent --role worker --agent claude   # 노드 개별 기동(지침 자동 주입)
-cys send --to master "..."                      # 역할 주소로 push (타이핑만)
-cys send-key --to master Return                 # 전송 확정 (send 후 필수)
-cys send --queued --to worker "..."             # 대상이 조용할 때 자동 Return 배달 (send-key 불필요·타이핑 가드 안전)
-cys status --json                               # 전 노드 1콜 스냅샷 (주기적 능동 점검·폴링 대체)
-python3 "${CYS_PACK_DIR:-$HOME/.cys/pack}/bin/javis_report.py"   # 진행% 결정론 산출 (5분 주기 주인님 보고)
-python3 "${CYS_PACK_DIR:-$HOME/.cys/pack}/bin/javis_route.py" --request "<요청>"  # 3단 사고 라우팅 (slow>deliberate>fast)
-python3 "${CYS_PACK_DIR:-$HOME/.cys/pack}/bin/javis_memory.py" add --type <t> --name <slug> --desc "..." --body "..."  # 장기기억 증류 (원자적·색인 동기 — MEMORY.md 손편집 금지)
-cys feed push --wait --title "..." --body "..." # 승인 요청 (0=allow 2=deny 3=timeout)
-cys events --reconnect                          # push 구독 (폴링 금지)
-cys run --scoped -- <서버명령>                  # 서버는 반드시 scoped로 (생명주기 강제 종료)
-cys read-screen --surface <ref>                 # 보조 확인 수단 (상시 폴링 금지)
-cys set-status --state working --context <pct>  # 컨텍스트 자기보고 — 60% 도달 시 데몬이 결정론 통보
+ezer boot                                        # 4종 의무 노드 부트(CSO·worker·agy·codex+grok 선택)
+python3 "${EZER_PACK_DIR:-$HOME/.ezer/pack}/bin/ezer_orchestra.py" check   # 4종 생존 결정론 확인
+ezer launch-agent --role worker --agent claude   # 노드 개별 기동(지침 자동 주입)
+ezer send --to master "..."                      # 역할 주소로 push (타이핑만)
+ezer send-key --to master Return                 # 전송 확정 (send 후 필수)
+ezer send --queued --to worker "..."             # 대상이 조용할 때 자동 Return 배달 (send-key 불필요·타이핑 가드 안전)
+ezer status --json                               # 전 노드 1콜 스냅샷 (주기적 능동 점검·폴링 대체)
+python3 "${EZER_PACK_DIR:-$HOME/.ezer/pack}/bin/ezer_report.py"   # 진행% 결정론 산출 (5분 주기 주인님 보고)
+python3 "${EZER_PACK_DIR:-$HOME/.ezer/pack}/bin/ezer_route.py" --request "<요청>"  # 3단 사고 라우팅 (slow>deliberate>fast)
+python3 "${EZER_PACK_DIR:-$HOME/.ezer/pack}/bin/ezer_memory.py" add --type <t> --name <slug> --desc "..." --body "..."  # 장기기억 증류 (원자적·색인 동기 — MEMORY.md 손편집 금지)
+ezer feed push --wait --title "..." --body "..." # 승인 요청 (0=allow 2=deny 3=timeout)
+ezer events --reconnect                          # push 구독 (폴링 금지)
+ezer run --scoped -- <서버명령>                  # 서버는 반드시 scoped로 (생명주기 강제 종료)
+ezer read-screen --surface <ref>                 # 보조 확인 수단 (상시 폴링 금지)
+ezer set-status --state working --context <pct>  # 컨텍스트 자기보고 — 60% 도달 시 데몬이 결정론 통보
 ```
 
 ## 4대 행동 지침

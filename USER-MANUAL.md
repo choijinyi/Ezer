@@ -1,4 +1,4 @@
-# cys-terminal User Manual (사용자 매뉴얼)
+# ezer-agent User Manual (사용자 매뉴얼)
 
 > 설치부터 AI 함대 운용, 전체 레퍼런스까지. (v0.12.x 기준)
 > 무엇을 왜 이렇게 만들었는지는 [Architecture & Philosophy](ARCHITECTURE-AND-PHILOSOPHY.md)를 보세요.
@@ -16,7 +16,7 @@
 9. [Control Center](#9-control-center)
 10. [스킬 보드와 스킬 라이브러리](#10-스킬-보드와-스킬-라이브러리)
 11. [업데이트](#11-업데이트)
-12. [CYSJavis 팩 운용](#12-cysjavis-팩-운용)
+12. [Ezer 팩 운용](#12-ezer-팩-운용)
 13. [채널 브리지 (Slack·Discord)](#13-채널-브리지-slackdiscord)
 14. [기록·증거 (recall / attest)](#14-기록증거-recall--attest)
 15. [CLI 레퍼런스](#15-cli-레퍼런스)
@@ -30,12 +30,12 @@
 
 | 용어 | 뜻 |
 |---|---|
-| **cysd** | 헤드리스 코어 데몬. PTY(세션)·소켓 서버·이벤트·관제 데이터의 소유자 |
-| **cys** | CLI. pane 안의 AI(그리고 사람)가 쓰는 동등 노드 클라이언트 |
-| **cys.app** | Tauri 데스크톱 앱. 터미널 UI + Control Center — 데몬의 thin client |
+| **ezerd** | 헤드리스 코어 데몬. PTY(세션)·소켓 서버·이벤트·관제 데이터의 소유자 |
+| **ezer** | CLI. pane 안의 AI(그리고 사람)가 쓰는 동등 노드 클라이언트 |
+| **ezer.app** | Tauri 데스크톱 앱. 터미널 UI + Control Center — 데몬의 thin client |
 | **surface** | PTY 세션 하나. `surface:12` 같은 ref로 주소화된다 |
 | **역할(role)** | master·worker·cso·reviewer-* 등. surface에 역할을 등록하면 `--to worker`처럼 역할 이름으로 통신한다 |
-| **팩(pack)** | CYSJavis 멀티에이전트 운영체계 — 역할별 절대지침·운영 도구·훅·스킬. `~/.cys/pack`에 설치 |
+| **팩(pack)** | Ezer 멀티에이전트 운영체계 — 역할별 절대지침·운영 도구·훅·스킬. `~/.ezer/pack`에 설치 |
 | **Feed** | 승인 요청함. 에이전트가 위험 작업 승인을 요청하면 여기 모인다 |
 | **부서(dept)** | 독립 데몬(소켓 분리)으로 격리된 워크스페이스 묶음 |
 
@@ -46,54 +46,54 @@
 
 ## 2. 설치
 
-[Releases](https://github.com/idoforgod/cys-terminal/releases/latest)에서 받습니다.
+[Releases](https://github.com/choijinyi/Ezer/releases/latest)에서 받습니다.
 **데몬을 따로 설치할 필요가 없습니다** — 앱이 자동 기동하고 팩도 자동 설치됩니다.
 
 ### 2.1 macOS (Apple Silicon)
 
-1. `cys_<버전>_aarch64.dmg`를 열고 `cys.app`을 Applications로 드래그.
+1. `ezer_<버전>_aarch64.dmg`를 열고 `ezer.app`을 Applications로 드래그.
 2. 첫 실행에서 Gatekeeper 경고가 뜨면: 공증된 빌드는 그대로 열리고, 아니면 우클릭 → "열기".
-3. 앱이 데몬(cysd)을 자동 기동하고 launchd에 등록합니다(재부팅 후에도 유지).
+3. 앱이 데몬(ezerd)을 자동 기동하고 launchd에 등록합니다(재부팅 후에도 유지).
 
 ### 2.2 Windows (x64)
 
-1. `cys_<버전>_x64-setup.exe`(NSIS) 실행 — **자기완결 설치**: 데몬·CLI·런타임(Git Bash·
+1. `ezer_<버전>_x64-setup.exe`(NSIS) 실행 — **자기완결 설치**: 데몬·CLI·런타임(Git Bash·
    Python)이 동봉되어 별도 준비물이 없습니다.
 2. 앱을 1회 실행하면 온보딩이 자동으로 팩 설치·훅 등록·데몬 자동 기동(작업 스케줄러
    ONLOGON)을 마칩니다.
-3. 확인: `dir %USERPROFILE%\.cys\pack` · `schtasks /Query /TN cysd`
+3. 확인: `dir %USERPROFILE%\.ezer\pack` · `schtasks /Query /TN ezerd`
 4. 상세(비기술자용 안내 포함): [INSTALL-Windows-KR.md](docs/INSTALL-Windows-KR.md)
 
 ### 2.3 데몬 상시 가동 (24/365, 선택)
 
 ```bash
-cys daemon install      # macOS launchd KeepAlive / Windows 작업 스케줄러 등록
-cys daemon status
-cys daemon uninstall
+ezer daemon install      # macOS launchd KeepAlive / Windows 작업 스케줄러 등록
+ezer daemon status
+ezer daemon uninstall
 ```
 
 이미 데몬이 돌고 있으면 `install`은 안전하게 거부됩니다.
 
-### 2.4 외부 터미널에서 `cys` 쓰기 (셸 설치)
+### 2.4 외부 터미널에서 `ezer` 쓰기 (셸 설치)
 
-- **권장(macOS)**: 앱 Control Center 헤더 → **"셸에 cys 설치"** 1클릭(관리자 승인 1회) —
-  `/usr/local/bin/cys`·`cysd` 심볼릭 링크가 생기고, 앱 업데이트에도 자동 추종합니다.
+- **권장(macOS)**: 앱 Control Center 헤더 → **"셸에 ezer 설치"** 1클릭(관리자 승인 1회) —
+  `/usr/local/bin/ezer`·`ezerd` 심볼릭 링크가 생기고, 앱 업데이트에도 자동 추종합니다.
 - Windows는 설치기가 PATH를 구성합니다.
 
 ### 2.5 설치 확인
 
 ```bash
-cys ping            # 데몬 응답 확인
-cys identify        # 데몬·내 주소 확인
-cys status          # 전 노드 관제 보드
-cys doctor          # 자기진단 (문제 시 --fix)
+ezer ping            # 데몬 응답 확인
+ezer identify        # 데몬·내 주소 확인
+ezer status          # 전 노드 관제 보드
+ezer doctor          # 자기진단 (문제 시 --fix)
 ```
 
 ### 2.6 제거
 
-1. `cys daemon uninstall`
+1. `ezer daemon uninstall`
 2. 앱 삭제(macOS: Applications에서 제거 + 심링크 제거 / Windows: 제어판 제거)
-3. 선택 — 데이터까지 완전 삭제(비가역): `~/.cys`(팩·설정)와 `~/.local/state/cys`(소켓·
+3. 선택 — 데이터까지 완전 삭제(비가역): `~/.ezer`(팩·설정)와 `~/.local/state/ezer`(소켓·
    관제 DB) 삭제. 장기기억·soul.md도 함께 사라지므로 백업 후 진행하세요.
 
 상세: [INSTALL.md](docs/INSTALL.md)
@@ -104,11 +104,11 @@ cys doctor          # 자기진단 (문제 시 --fix)
 
 앱 첫 실행 시 자동으로 수행됩니다(멱등 — 다시 실행해도 안전):
 
-- 데몬 자동 기동(끄려면 `CYS_NO_AUTOSTART=1`) 및 상시 가동 등록
-- 팩 설치(`~/.cys/pack`) — **이미 사용자가 수정한 파일(soul.md·디렉티브·CLAUDE.md·
+- 데몬 자동 기동(끄려면 `EZER_NO_AUTOSTART=1`) 및 상시 가동 등록
+- 팩 설치(`~/.ezer/pack`) — **이미 사용자가 수정한 파일(soul.md·디렉티브·CLAUDE.md·
   schedule.json)은 보존**되고, 수정하지 않은 파일만 갱신됩니다
-- Claude Code SessionStart 훅 등록(역할 지침 자동 주입용 — `CYS_ROLE` 세션에서만 발동)
-- pane 프로세스에 `CYS_SURFACE_ID`·`CYS_SURFACE_REF`·`CYS_SOCKET` 자동 주입
+- Claude Code SessionStart 훅 등록(역할 지침 자동 주입용 — `EZER_ROLE` 세션에서만 발동)
+- pane 프로세스에 `EZER_SURFACE_ID`·`EZER_SURFACE_REF`·`EZER_SOCKET` 자동 주입
 
 ---
 
@@ -135,8 +135,8 @@ cys doctor          # 자기진단 (문제 시 --fix)
 
 ### 4.4 부서 (독립 데몬 워크스페이스)
 
-`＋부서` 버튼으로 부서 워크스페이스를 만들면 **별도 cysd 데몬(별도 소켓)**이 뜹니다 —
-프로젝트 간 장애·자원·통신이 격리됩니다. Control Center "작업" 탭과 `cys fleet`은 모든
+`＋부서` 버튼으로 부서 워크스페이스를 만들면 **별도 ezerd 데몬(별도 소켓)**이 뜹니다 —
+프로젝트 간 장애·자원·통신이 격리됩니다. Control Center "작업" 탭과 `ezer fleet`은 모든
 부서를 집계해 보여줍니다.
 
 ### 4.5 입력
@@ -191,28 +191,28 @@ surface는 `surface:N` ref로, 역할 등록된 노드는 역할 이름으로 �
 worker 초록 · reviewer-gemini 주황 · reviewer-codex 시안 — Control Center와 동일 색).
 
 ```bash
-cys identify                          # 나는 누구인가 (surface ref)
-cys claim-role worker                 # launch-agent 없이 시작한 세션을 역할로 등록
-cys surface-role                      # 데몬이 알고 있는 내 역할 1단어 출력
+ezer identify                          # 나는 누구인가 (surface ref)
+ezer claim-role worker                 # launch-agent 없이 시작한 세션을 역할로 등록
+ezer surface-role                      # 데몬이 알고 있는 내 역할 1단어 출력
 ```
 
 ### 5.2 노드 기동
 
 ```bash
-cys launch-agent --role worker --agent claude   # surface 생성 + CLI 기동 + 절대지침 자동 주입 + 역할 등록
-cys boot                                        # 표준 노드 세트 일괄 기동(설치된 CLI 자동 감지)
+ezer launch-agent --role worker --agent claude   # surface 생성 + CLI 기동 + 절대지침 자동 주입 + 역할 등록
+ezer boot                                        # 표준 노드 세트 일괄 기동(설치된 CLI 자동 감지)
 ```
 
-`launch-agent`는 ①surface 생성(CYS_ROLE 주입) ②에이전트 CLI 기동 ③역할 절대지침 stdin
+`launch-agent`는 ①surface 생성(EZER_ROLE 주입) ②에이전트 CLI 기동 ③역할 절대지침 stdin
 주입 ④역할 레지스트리 등록을 한 번에 수행합니다. 어댑터 정의는 팩의 `agents.json`에
 있습니다(claude·gemini·codex·grok).
 
 ### 5.3 메시지 보내기
 
 ```bash
-cys send --to worker "상태 보고해줘"    # 대상 PTY stdin에 직접 주입 (타이핑만)
-cys send-key --to worker Return        # 전송 확정 (send 후 필수)
-cys send --queued --to worker "..."    # followup 큐: 대상이 조용해지면 자동 배달(Return 불필요)
+ezer send --to worker "상태 보고해줘"    # 대상 PTY stdin에 직접 주입 (타이핑만)
+ezer send-key --to worker Return        # 전송 확정 (send 후 필수)
+ezer send --queued --to worker "..."    # followup 큐: 대상이 조용해지면 자동 배달(Return 불필요)
 ```
 
 - 기본 send = **steer**(즉시 주입 — 실행 중 조향). `--queued` = **followup**(대상이 3초
@@ -222,11 +222,11 @@ cys send --queued --to worker "..."    # followup 큐: 대상이 조용해지면
 ### 5.4 관제·이벤트
 
 ```bash
-cys status --json                     # 전 노드 1콜 스냅샷 (폴링 대체)
-cys fleet                             # 모든 부서×노드의 현재 업무
-cys events --reconnect                # 이벤트 푸시 구독 (seq 이어받기)
-cys read-screen --surface surface:3   # 화면 읽기 (vt100 정확) — 보조 수단
-cys watch --surface surface:3 --until "DONE"   # scrollback이 regex에 맞을 때까지 대기
+ezer status --json                     # 전 노드 1콜 스냅샷 (폴링 대체)
+ezer fleet                             # 모든 부서×노드의 현재 업무
+ezer events --reconnect                # 이벤트 푸시 구독 (seq 이어받기)
+ezer read-screen --surface surface:3   # 화면 읽기 (vt100 정확) — 보조 수단
+ezer watch --surface surface:3 --until "DONE"   # scrollback이 regex에 맞을 때까지 대기
 ```
 
 `read-screen --since N`은 단조 라인 커서로 델타만 읽습니다.
@@ -236,7 +236,7 @@ cys watch --surface surface:3 --until "DONE"   # scrollback이 regex에 맞을 �
 에이전트는 화면 파싱 대신 스스로 신고합니다:
 
 ```bash
-cys set-status --state working --context 57 --task "리팩터링 중"
+ezer set-status --state working --context 57 --task "리팩터링 중"
 ```
 
 컨텍스트%가 임계(기본 60%)에 닿으면 데몬이 `context.threshold` 이벤트로 통보합니다.
@@ -244,19 +244,19 @@ cys set-status --state working --context 57 --task "리팩터링 중"
 ### 5.6 컨텍스트 사이클·복구
 
 ```bash
-cys cycle-agent --role worker          # 저장 지시 → 파일 게이트 → clear → 지침 재주입 → 재개
-cys node-recover --role worker         # 죽은 에이전트를 같은 surface에서 재기동+재주입
-cys restore [--include-master]         # 토폴로지 스냅샷의 죽은 역할 일괄 복원
-cys reinject --role worker [--check]   # 디렉티브 재주입 (--check: 드리프트 감지 후 필요 시에만)
+ezer cycle-agent --role worker          # 저장 지시 → 파일 게이트 → clear → 지침 재주입 → 재개
+ezer node-recover --role worker         # 죽은 에이전트를 같은 surface에서 재기동+재주입
+ezer restore [--include-master]         # 토폴로지 스냅샷의 죽은 역할 일괄 복원
+ezer reinject --role worker [--check]   # 디렉티브 재주입 (--check: 드리프트 감지 후 필요 시에만)
 ```
 
 에이전트 사망은 즉시 감지되어 `agent.exited/recovered` 이벤트가 흐르고, 옵션으로 자동
-재기동(`CYS_AGENT_AUTORESTART=1`, 3회 상한·인증 오류 시 차단)이 가능합니다.
+재기동(`EZER_AGENT_AUTORESTART=1`, 3회 상한·인증 오류 시 차단)이 가능합니다.
 
 ### 5.7 역할별 TODO 경로
 
 ```bash
-cys todo-path        # 이 surface 역할 전용 TODO 파일 경로를 결정론으로 산출(없으면 생성)
+ezer todo-path        # 이 surface 역할 전용 TODO 파일 경로를 결정론으로 산출(없으면 생성)
 ```
 
 ---
@@ -266,12 +266,12 @@ cys todo-path        # 이 surface 역할 전용 TODO 파일 경로를 결정론
 ### 6.1 Feed — 승인 요청함
 
 ```bash
-cys feed push --wait --title "git push 승인" --body "..."   # 결정까지 블록. exit 0=allow, 2=deny, 3=timeout
-cys feed list --status pending
-cys feed reply <request_id> allow                            # CLI로 응답 (UI Allow/Deny 버튼과 동일)
+ezer feed push --wait --title "git push 승인" --body "..."   # 결정까지 블록. exit 0=allow, 2=deny, 3=timeout
+ezer feed list --status pending
+ezer feed reply <request_id> allow                            # CLI로 응답 (UI Allow/Deny 버튼과 동일)
 ```
 
-- 에이전트 훅 연동 예: PreToolUse 훅에서 `cys feed push --wait ...`를 호출하고 exit code로
+- 에이전트 훅 연동 예: PreToolUse 훅에서 `ezer feed push --wait ...`를 호출하고 exit code로
   결정을 반영.
 - pending이 오래 방치되면 `feed.item.aging` 이벤트로 재알림됩니다(기본 300초).
 - **자동 응답은 없습니다**(HITL). 요청한 노드가 스스로 승인하는 것도 데몬이 거부합니다.
@@ -281,8 +281,8 @@ cys feed reply <request_id> allow                            # CLI로 응답 (UI
 ### 6.2 승인 서명 — 반복 위험 명령의 사전 허가
 
 ```bash
-cys approval sign   # (master 전용) 위험 명령 prefix를 HMAC 서명 — 이후 guard 훅 자동 통과
-cys approval check  # 서명 유효성 확인
+ezer approval sign   # (master 전용) 위험 명령 prefix를 HMAC 서명 — 이후 guard 훅 자동 통과
+ezer approval check  # 서명 유효성 확인
 ```
 
 ---
@@ -292,26 +292,26 @@ cys approval check  # 서명 유효성 확인
 에이전트가 남긴 고아 서버로 시스템이 마비되는 것을 막는 1급 기능입니다.
 
 ```bash
-cys run --scoped -- python -m http.server   # 새 프로세스 그룹+원장 등록. 종료 시 그룹째 강제 정리
-cys ps                                      # 프로세스 원장
-cys kill <pid>                              # 원장 등록 프로세스(그룹) 종료
-cys add-health-rule relogin "Not logged in" # 출력 라인 헬스룰 추가 → health.alert
-cys health-rules
+ezer run --scoped -- python -m http.server   # 새 프로세스 그룹+원장 등록. 종료 시 그룹째 강제 정리
+ezer ps                                      # 프로세스 원장
+ezer kill <pid>                              # 원장 등록 프로세스(그룹) 종료
+ezer add-health-rule relogin "Not logged in" # 출력 라인 헬스룰 추가 → health.alert
+ezer health-rules
 ```
 
 - **watchdog**(5초 주기): load 폭주·프로세스 수·중복 명령·idle(기본 300초 무출력)·에이전트
   사망·좀비를 감시해 이벤트를 발행합니다. 중복 프로세스 자동 kill은 opt-in
-  (`CYS_AUTOKILL_DUP=1`, 최고(最古) 프로세스 보존).
+  (`EZER_AUTOKILL_DUP=1`, 최고(最古) 프로세스 보존).
 - 기본 헬스룰: 로그인 풀림·401·token expired·rate limit (30초 디바운스).
 - 헬스룰에 조치를 묶을 수 있습니다(opt-in): `--action pause-queue` — queued 배달만 일시정지.
 
 ### kill-switch
 
 ```bash
-cys pause        # 큐 배달·스케줄 발화 동결 (직접 send는 통과 — '신경 차단')
-cys resume
-cys gate-check   # exit 0=running, 4=paused (자율주행이 매 action 전 확인)
-cys queue list / clear   # 미배달 큐 검사·철회
+ezer pause        # 큐 배달·스케줄 발화 동결 (직접 send는 통과 — '신경 차단')
+ezer resume
+ezer gate-check   # exit 0=running, 4=paused (자율주행이 매 action 전 확인)
+ezer queue list / clear   # 미배달 큐 검사·철회
 ```
 
 pause 상태는 재부팅에도 유지됩니다.
@@ -321,8 +321,8 @@ pause 상태는 재부팅에도 유지됩니다.
 ## 8. 스케줄러
 
 ```bash
-cys schedule add --id wake --in 20m --text "[wakeup] 다음 액션 착수" --to master   # 원샷(발화 후 자동 삭제)
-cys schedule list / remove <id> / run <id>
+ezer schedule add --id wake --in 20m --text "[wakeup] 다음 액션 착수" --to master   # 원샷(발화 후 자동 삭제)
+ezer schedule list / remove <id> / run <id>
 ```
 
 - 반복 잡은 팩의 `schedule.json`으로 정의됩니다(30초 tick·missed-fire 처리) — 기본으로
@@ -349,7 +349,7 @@ cys schedule list / remove <id> / run <id>
 | **작업** | 모든 부서×노드의 현재 업무(관측 전용)·자기보고/파생 신뢰 배지·컨텍스트 바 |
 | **승인 Feed** | 승인 요청 목록·Allow/Deny |
 
-- PII 가림: `CYS_CONTROL_REDACT=1` — 세션 식별자를 가리고 집계는 보존.
+- PII 가림: `EZER_CONTROL_REDACT=1` — 세션 식별자를 가리고 집계는 보존.
 - 경보(토큰/비용 임계·이상감지·반복실패)는 Live 스트립 + 헤더 배지로 표시되고, 임계값은
   팩의 `alerts-config.json`에서 조정합니다(핫로드).
 
@@ -363,10 +363,10 @@ cys schedule list / remove <id> / run <id>
 - **CLI**:
 
 ```bash
-cys skill list / show <name> / run <name> / new   # 경험을 스킬로 영속·재사용
+ezer skill list / show <name> / run <name> / new   # 경험을 스킬로 영속·재사용
 ```
 
-팩에는 스킬 102종이 실려 있고, 스킬 보안은 정적 스캐너(`javis_skillscan.py`)와 벤더링
+팩에는 스킬 102종이 실려 있고, 스킬 보안은 정적 스캐너(`ezer_skillscan.py`)와 벤더링
 해시 매니페스트로 게이트됩니다.
 
 ---
@@ -385,18 +385,18 @@ cys skill list / show <name> / run <name> / new   # 경험을 스킬로 영속·
 - 재설치(rename-swap) 후 "디스크는 새 버전·프로세스는 구 데몬" 스큐가 남으면 상단바에
   **"데몬 vX · 앱 vY — 세션 보존 중"** 배지가 뜹니다. 클릭해 교대하거나, 라이브 세션이
   0이 되면 자동 교대됩니다(무손실).
-- 수동 팩 업데이트: `cys pack-update --from <디렉터리>` (pack.tar.gz + pack-manifest.json +
+- 수동 팩 업데이트: `ezer pack-update --from <디렉터리>` (pack.tar.gz + pack-manifest.json +
   .minisig). 서명·신선도·replay 검증은 전건 fail-closed입니다.
-- **업데이트 전 미리보기**: `cys pack-plan` — 무엇이 갱신/보존/치유/병합대기/정리되는지
+- **업데이트 전 미리보기**: `ezer pack-plan` — 무엇이 갱신/보존/치유/병합대기/정리되는지
   설치 전에 표시합니다(쓰기 0). 팩을 커스터마이즈해 쓰고 있다면 §12.7을 꼭 읽으세요 —
-  수정본은 파괴되지 않고 `.new`(신버전 병치)/`.user`(보존본)로 관리되며 `cys pack-merge`로
+  수정본은 파괴되지 않고 `.new`(신버전 병치)/`.user`(보존본)로 관리되며 `ezer pack-merge`로
   병합합니다.
-- 진단·수리: `cys doctor [--fix]` — 팩 스큐·stale lock·고아 소켓·훅 등록을 진단하고,
+- 진단·수리: `ezer doctor [--fix]` — 팩 스큐·stale lock·고아 소켓·훅 등록을 진단하고,
   `--fix`는 사용자 데이터·팩 본체·DB를 건드리지 않는 범위만 수리합니다.
 
 ---
 
-## 12. CYSJavis 팩 운용
+## 12. Ezer 팩 운용
 
 팩은 터미널을 "멀티에이전트 회사"로 만드는 운영체계입니다. 개념은
 [Architecture & Philosophy](ARCHITECTURE-AND-PHILOSOPHY.md) §2–4 참조.
@@ -404,8 +404,8 @@ cys skill list / show <name> / run <name> / new   # 경험을 스킬로 영속·
 ### 12.1 설치·구성
 
 ```bash
-cys init-pack                     # ~/.cys/pack 설치 (사용자 수정 파일 보존)
-cys init-pack --install-hook --claude-settings ~/.claude/settings.json   # (선택) Claude Code 훅 강화 주입
+ezer init-pack                     # ~/.ezer/pack 설치 (사용자 수정 파일 보존)
+ezer init-pack --install-hook --claude-settings ~/.claude/settings.json   # (선택) Claude Code 훅 강화 주입
 ```
 
 구성: 절대지침 6(`directives/` — master·worker·CSO·reviewer·RSI 학습·CEO 템플릿) ·
@@ -416,11 +416,11 @@ cys init-pack --install-hook --claude-settings ~/.claude/settings.json   # (선�
 ### 12.2 역할 선언 부트스트랩
 
 프로젝트 루트에 `CLAUDE.md.template`를 복사해 두면, 에이전트에게 "너는 마스터다/워커다"
-라고 선언하는 것만으로 부트스트랩됩니다: 해당 디렉티브+soul.md 각성 → `cys claim-role` →
+라고 선언하는 것만으로 부트스트랩됩니다: 해당 디렉티브+soul.md 각성 → `ezer claim-role` →
 (마스터면) 결정론 프리플라이트:
 
 ```bash
-python3 "${CYS_PACK_DIR:-$HOME/.cys/pack}/bin/javis_preflight.py" --fix
+python3 "${EZER_PACK_DIR:-$HOME/.ezer/pack}/bin/ezer_preflight.py" --fix
 ```
 
 존재·매핑·훅 등록 검증은 **이 스크립트의 출력만이 사실**입니다(자연어 재추론 금지).
@@ -428,39 +428,39 @@ python3 "${CYS_PACK_DIR:-$HOME/.cys/pack}/bin/javis_preflight.py" --fix
 ### 12.3 위임 루프 (orchestra)
 
 ```bash
-P=${CYS_PACK_DIR:-$HOME/.cys/pack}/bin
-python3 $P/javis_orchestra.py check           # 필수 노드 생존 결정론 확인
-python3 $P/javis_orchestra.py task-prompt --task "<T>" --scope "<범위>" --success "<기준>"   # 위임 티켓 생성
-python3 $P/javis_orchestra.py gate-status --task "<T>"   # 게이트 수렴 판정 (CONVERGED=다음 단계)
-python3 $P/javis_orchestra.py next-action                # 다음 액션 큐 결정론 추출
+P=${EZER_PACK_DIR:-$HOME/.ezer/pack}/bin
+python3 $P/ezer_orchestra.py check           # 필수 노드 생존 결정론 확인
+python3 $P/ezer_orchestra.py task-prompt --task "<T>" --scope "<범위>" --success "<기준>"   # 위임 티켓 생성
+python3 $P/ezer_orchestra.py gate-status --task "<T>"   # 게이트 수렴 판정 (CONVERGED=다음 단계)
+python3 $P/ezer_orchestra.py next-action                # 다음 액션 큐 결정론 추출
 ```
 
 ### 12.4 보조 결정론 도구
 
 ```bash
-python3 $P/javis_route.py --request "<요청>"          # fast/deliberate/slow 3단 사고 라우팅
-python3 $P/javis_report.py                            # 진행% 결정론 산출 (todo 체크박스 산술)
-python3 $P/javis_memory.py add --type <t> --name <slug> --desc "..." --body "..."   # 장기기억 증류(색인 원자 동기)
-python3 $P/javis_task.py checkout <id> --owner <역할>  # 원자적 태스크 체크아웃 (충돌=exit 9)
-python3 $P/javis_resource_gate.py check               # 착수 전 자원 게이트 (0 allow / 1 soft / 2 hard)
-python3 $P/javis_event.py emit <type> ...             # 닫힌 enum 이벤트 방출 (미지 타입 거부)
-python3 $P/javis_wakeup.py enqueue --to <역할> --task <key> --reason "..."   # 코얼레싱 웨이크업 큐
+python3 $P/ezer_route.py --request "<요청>"          # fast/deliberate/slow 3단 사고 라우팅
+python3 $P/ezer_report.py                            # 진행% 결정론 산출 (todo 체크박스 산술)
+python3 $P/ezer_memory.py add --type <t> --name <slug> --desc "..." --body "..."   # 장기기억 증류(색인 원자 동기)
+python3 $P/ezer_task.py checkout <id> --owner <역할>  # 원자적 태스크 체크아웃 (충돌=exit 9)
+python3 $P/ezer_resource_gate.py check               # 착수 전 자원 게이트 (0 allow / 1 soft / 2 hard)
+python3 $P/ezer_event.py emit <type> ...             # 닫힌 enum 이벤트 방출 (미지 타입 거부)
+python3 $P/ezer_wakeup.py enqueue --to <역할> --task <key> --reason "..."   # 코얼레싱 웨이크업 큐
 ```
 
 ### 12.5 RSI 학습·페르소나
 
 ```bash
-cys learn                 # RSI 학습 루프 — 제안 생성·라운드 상태 (Control Center 학습 탭과 연동)
-cys persona list-params   # 노드 페르소나·운영 노브 (안전핵은 잠김)
-cys persona show / set / reset
+ezer learn                 # RSI 학습 루프 — 제안 생성·라운드 상태 (Control Center 학습 탭과 연동)
+ezer persona list-params   # 노드 페르소나·운영 노브 (안전핵은 잠김)
+ezer persona show / set / reset
 ```
 
 ### 12.6 pro 채널 (선택)
 
 ```bash
-cys license install / status    # 서명 라이선스 설치·진단 (검증 전용)
-cys pack-repair-channel         # 채널 상태 진단·복구
-cys pack-downgrade-to-free      # pro → free 강등의 유일한 경로 (명시적)
+ezer license install / status    # 서명 라이선스 설치·진단 (검증 전용)
+ezer pack-repair-channel         # 채널 상태 진단·복구
+ezer pack-downgrade-to-free      # pro → free 강등의 유일한 경로 (명시적)
 ```
 
 ### 12.7 커스터마이징 — 업데이트와 공존하는 방법
@@ -469,7 +469,7 @@ cys pack-downgrade-to-free      # pro → free 강등의 유일한 경로 (명�
 따라 업데이트와의 관계가 다릅니다. 원칙은 하나 — *출하 파일을 직접 고치지 말고, 사용자
 전용 계층에 두면 업데이트가 절대 건드리지 않습니다.*
 
-**사용자 전용 오버레이 `~/.cys/local/`** (업데이트·치유·정리가 존재 자체를 모르는 영역):
+**사용자 전용 오버레이 `~/.ezer/local/`** (업데이트·치유·정리가 존재 자체를 모르는 영역):
 
 | 위치 | 효과 |
 |---|---|
@@ -490,13 +490,13 @@ cys pack-downgrade-to-free      # pro → free 강등의 유일한 경로 (명�
   내 수정본을 `<파일>.user`로 보존합니다(파괴 0).
 
 ```bash
-cys pack-plan                 # 업데이트 전 드라이런 — 갱신/보존/치유/병합대기/정리를 미리 표시
-cys pack-merge                # 병합 대기 목록
-cys pack-merge --file <경로> --take-new    # vendor 신버전 채택
-cys pack-merge --file <경로> --keep-mine   # 내 수정 유지 (이번 신버전 소화)
-cys pack-merge --file <경로>               # diff3 3-way 자동 병합 (조상=.pristine)
-cys pack-merge --file <경로> --ai          # AI 3-way 병합 — 내 수정 "의도"를 신버전 위에 재적용
-cys pack-merge --file skills/<이름>/SKILL.md --to-local   # 스킬 수정본을 오버레이로 승격(권장)
+ezer pack-plan                 # 업데이트 전 드라이런 — 갱신/보존/치유/병합대기/정리를 미리 표시
+ezer pack-merge                # 병합 대기 목록
+ezer pack-merge --file <경로> --take-new    # vendor 신버전 채택
+ezer pack-merge --file <경로> --keep-mine   # 내 수정 유지 (이번 신버전 소화)
+ezer pack-merge --file <경로>               # diff3 3-way 자동 병합 (조상=.pristine)
+ezer pack-merge --file <경로> --ai          # AI 3-way 병합 — 내 수정 "의도"를 신버전 위에 재적용
+ezer pack-merge --file skills/<이름>/SKILL.md --to-local   # 스킬 수정본을 오버레이로 승격(권장)
 ```
 
 앱 번들(.app/설치 폴더) 내부 수정은 지원하지 않습니다 — 업데이트가 번들을 통째로 교체하며
@@ -511,7 +511,7 @@ cys pack-merge --file skills/<이름>/SKILL.md --to-local   # 스킬 수정본�
 있습니다.
 
 ```bash
-cys channel --json <액션>   # start·stop·register·inbound·outbound·receipt·ack·
+ezer channel --json <액션>   # start·stop·register·inbound·outbound·receipt·ack·
                             # allow·allow-remote-approve·revoke·lockdown·unlock·status
 ```
 
@@ -524,20 +524,20 @@ cys channel --json <액션>   # start·stop·register·inbound·outbound·receip
 ## 14. 기록·증거 (recall / attest)
 
 ```bash
-cys recall "<검색어>"      # 모든 에이전트 터미널 활동의 영속 전사 전문검색(FTS)
-cys attest pin            # 전사 해시체인을 외부 보관 (평가자 분리)
-cys attest verify         # 사후 변조 대조
-cys cost-baseline lock / diff   # 비용·효율 baseline 잠금·전후 비교
+ezer recall "<검색어>"      # 모든 에이전트 터미널 활동의 영속 전사 전문검색(FTS)
+ezer attest pin            # 전사 해시체인을 외부 보관 (평가자 분리)
+ezer attest verify         # 사후 변조 대조
+ezer cost-baseline lock / diff   # 비용·효율 baseline 잠금·전후 비교
 ```
 
-전사 보존 기간은 `CYS_RECALL_RETAIN_DAYS`(기본 30일, 0=무제한)로 제어합니다 — 무한 성장
+전사 보존 기간은 `EZER_RECALL_RETAIN_DAYS`(기본 30일, 0=무제한)로 제어합니다 — 무한 성장
 차단.
 
 ---
 
 ## 15. CLI 레퍼런스
 
-`cys actions`를 실행하면 기계가 읽는 자기기술 카탈로그가 나옵니다(clap 정의가 단일
+`ezer actions`를 실행하면 기계가 읽는 자기기술 카탈로그가 나옵니다(clap 정의가 단일
 진실원). 아래는 사람용 요약입니다.
 
 | 분류 | 명령 | 설명 |
@@ -560,42 +560,42 @@ cys cost-baseline lock / diff   # 비용·효율 baseline 잠금·전후 비교
 
 ## 16. 환경변수 레퍼런스
 
-### 코어(cysd·cys)가 읽는 변수 — 주요
+### 코어(ezerd·ezer)가 읽는 변수 — 주요
 
 | 변수 | 기본 | 뜻 |
 |---|---|---|
-| `CYS_SOCKET` | `~/.local/state/cys/cys.sock` / win `\\.\pipe\cys` | 소켓 경로 |
-| `CYS_SHELL` | `$SHELL`→zsh | pane 셸 |
-| `CYS_PACK_DIR` | `~/.cys/pack` | 팩 위치 |
-| `CYS_LOAD_THRESHOLD` | 코어수×2 | watchdog load 임계 |
-| `CYS_PROC_THRESHOLD` / `CYS_DUP_THRESHOLD` | 50 / 3 | 프로세스 수·중복 임계 |
-| `CYS_AUTOKILL_DUP` | 0 | 중복 프로세스 자동 kill (opt-in) |
-| `CYS_IDLE_SECONDS` | 300 | idle 감지 |
-| `CYS_TYPING_GUARD_SECS` | 3 (0=off) | 사람 타이핑 보호 |
-| `CYS_CONTEXT_THRESHOLD_PCT` | 60 | 컨텍스트 통보 임계 |
-| `CYS_MAX_ACTIVE_WORKERS` | 8 | 워커 동시 상한 |
-| `CYS_QUEUE_QUIET_SECS` / `CYS_QUEUE_DEPTH_ALERT` | 3 / 5 | followup 배달 조건·큐 깊이 경보 |
-| `CYS_FEED_REMIND_SECS` | 300 (0=off) | 승인 적체 재알림 |
-| `CYS_MASTER_DEADMAN_SECS` | 900 (0=off) | 오케스트레이터 무반응 감지 |
-| `CYS_AGENT_AUTORESTART` | 0 | 죽은 에이전트 자동 재기동 (3회 상한) |
-| `CYS_RECALL_RETAIN_DAYS` | 30 (0=무제한) | 전사 보존 |
-| `CYS_CONTROL_REDACT` | 0 | Control Center 세션 PII 가림 |
-| `CYS_TODO_DIRS` | — | todo 감시 추가 루트(콜론 구분) |
-| `CYS_NO_AUTOSTART` / `CYS_NO_AUTORESTORE` | — | 자동 기동/자동 복원 끄기 |
-| `CYS_APPROVAL_SECRET_B64` | 자동 생성 | 승인 서명 시크릿 오버라이드 |
-| `CYS_CHANNEL_RETAIN_DAYS` / `CYS_CHANNEL_OUTBOUND_TIMEOUT_SECS` | 7 / 30 | 채널 보존·발신 타임아웃 |
-| `CYS_CLAUDE_CTX_WINDOW` | 200k (`[1m]`=1M) | 컨텍스트 창 크기 힌트 |
+| `EZER_SOCKET` | `~/.local/state/ezer/ezer.sock` / win `\\.\pipe\ezer` | 소켓 경로 |
+| `EZER_SHELL` | `$SHELL`→zsh | pane 셸 |
+| `EZER_PACK_DIR` | `~/.ezer/pack` | 팩 위치 |
+| `EZER_LOAD_THRESHOLD` | 코어수×2 | watchdog load 임계 |
+| `EZER_PROC_THRESHOLD` / `EZER_DUP_THRESHOLD` | 50 / 3 | 프로세스 수·중복 임계 |
+| `EZER_AUTOKILL_DUP` | 0 | 중복 프로세스 자동 kill (opt-in) |
+| `EZER_IDLE_SECONDS` | 300 | idle 감지 |
+| `EZER_TYPING_GUARD_SECS` | 3 (0=off) | 사람 타이핑 보호 |
+| `EZER_CONTEXT_THRESHOLD_PCT` | 60 | 컨텍스트 통보 임계 |
+| `EZER_MAX_ACTIVE_WORKERS` | 8 | 워커 동시 상한 |
+| `EZER_QUEUE_QUIET_SECS` / `EZER_QUEUE_DEPTH_ALERT` | 3 / 5 | followup 배달 조건·큐 깊이 경보 |
+| `EZER_FEED_REMIND_SECS` | 300 (0=off) | 승인 적체 재알림 |
+| `EZER_MASTER_DEADMAN_SECS` | 900 (0=off) | 오케스트레이터 무반응 감지 |
+| `EZER_AGENT_AUTORESTART` | 0 | 죽은 에이전트 자동 재기동 (3회 상한) |
+| `EZER_RECALL_RETAIN_DAYS` | 30 (0=무제한) | 전사 보존 |
+| `EZER_CONTROL_REDACT` | 0 | Control Center 세션 PII 가림 |
+| `EZER_TODO_DIRS` | — | todo 감시 추가 루트(콜론 구분) |
+| `EZER_NO_AUTOSTART` / `EZER_NO_AUTORESTORE` | — | 자동 기동/자동 복원 끄기 |
+| `EZER_APPROVAL_SECRET_B64` | 자동 생성 | 승인 서명 시크릿 오버라이드 |
+| `EZER_CHANNEL_RETAIN_DAYS` / `EZER_CHANNEL_OUTBOUND_TIMEOUT_SECS` | 7 / 30 | 채널 보존·발신 타임아웃 |
+| `EZER_CLAUDE_CTX_WINDOW` | 200k (`[1m]`=1M) | 컨텍스트 창 크기 힌트 |
 
-(이 밖에 진단·튜닝용 변수 다수 — `CYS_DEBUG`, `CYS_USAGE_POLL_SECS`, `CYS_REAP_EXITED*`,
-`CYS_CRASH_WINDOW_SECS`, `CYS_MAX_RESPONSE_BYTES`, `CYS_ABI_VERIFY` 등. 소스 grep
+(이 밖에 진단·튜닝용 변수 다수 — `EZER_DEBUG`, `EZER_USAGE_POLL_SECS`, `EZER_REAP_EXITED*`,
+`EZER_CRASH_WINDOW_SECS`, `EZER_MAX_RESPONSE_BYTES`, `EZER_ABI_VERIFY` 등. 소스 grep
 `env_compat`가 전수 목록의 진실원입니다.)
 
 ### 팩 도구가 읽는 변수 (바이너리 아님)
 
 | 변수 | 뜻 |
 |---|---|
-| `CYS_URL_ALLOW_HOSTS` | 외부 URL 허용 도메인 확장(또는 `~/.cys/url-allow-hosts` 파일) |
-| `CYS_WORKER_PROFILE_DIR` | 워커 프로필 경로(또는 `~/.cys/worker-profile-dir` 파일) |
+| `EZER_URL_ALLOW_HOSTS` | 외부 URL 허용 도메인 확장(또는 `~/.ezer/url-allow-hosts` 파일) |
+| `EZER_WORKER_PROFILE_DIR` | 워커 프로필 경로(또는 `~/.ezer/worker-profile-dir` 파일) |
 
 ---
 
@@ -655,16 +655,16 @@ todo.updated   approval.request   approval.stalled   master.deadman   osc.notify
 | 증상 | 조치 |
 |---|---|
 | macOS "손상되어 열 수 없음" | 공증 빌드인지 확인, 우클릭→열기. 미서명 빌드는 quarantine 때문일 수 있음 |
-| `cys ping` 실패 | 앱 실행(데몬 자동 기동) 또는 `cysd` 직접 기동. `cys doctor --fix` |
+| `ezer ping` 실패 | 앱 실행(데몬 자동 기동) 또는 `ezerd` 직접 기동. `ezer doctor --fix` |
 | 데몬이 두 개 뜬 것 같음 | 실제로는 불가(중복 기동 거부). 업데이트 후 스큐 배지가 떠 있으면 클릭해 교대 |
-| 팩 업데이트가 거부됨 | 정상일 수 있음 — 서명·신선도·replay 검증은 fail-closed. `cys pack-update --dry-run`·`cys doctor`로 원인 확인 |
-| 노드에 메시지가 안 들어감 | 타이핑 가드(사람 입력 직후 3초)·ACL(`acl.denied` 이벤트)·kill-switch(`cys gate-check`) 순서로 확인 |
+| 팩 업데이트가 거부됨 | 정상일 수 있음 — 서명·신선도·replay 검증은 fail-closed. `ezer pack-update --dry-run`·`ezer doctor`로 원인 확인 |
+| 노드에 메시지가 안 들어감 | 타이핑 가드(사람 입력 직후 3초)·ACL(`acl.denied` 이벤트)·kill-switch(`ezer gate-check`) 순서로 확인 |
 | Windows SmartScreen 경고 | 현재 Authenticode 미서명 — "추가 정보→실행" |
 
 **알려진 한계** (정직성 규약 — 숨기지 않습니다)
 
 - macOS에서 sysinfo가 cmdline 전체를 못 읽으면 프로세스명으로 중복 그룹핑(과탐 가능).
-- `cys run` 중 Ctrl-C로 CLI가 죽으면 그룹 정리가 watchdog 주기(5초)로 넘어감.
+- `ezer run` 중 Ctrl-C로 CLI가 죽으면 그룹 정리가 watchdog 주기(5초)로 넘어감.
 - GPU/NPU 실시간은 macOS(Apple Silicon) 전용 — Windows는 CPU/MEM만. NPU는 활용률 공개
   API가 없어 실측 전력(W)으로 표시.
 - 단일-UID 신뢰 모델: 승인 서명·자기결재 차단은 같은 계정 내 악성 프로세스에 대한

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sync-pack.sh — 배포본(~/.cys/pack) → 정본(cysjavis-pack) 정제 동기화 (오너 2026-06-14).
+# sync-pack.sh — 배포본(~/.ezer/pack) → 정본(ezer-pack) 정제 동기화 (오너 2026-06-14).
 # 목적: 정본이 배포본보다 뒤처지는 드리프트(예: boot_node 누락·directive 미반영)를 제거하되,
 #       개인정보 회귀(개인경로·계정·memory)를 막는다. 항상 dry-run 기본 + 시크릿 게이트 fail-closed.
 #
@@ -17,8 +17,8 @@
 #            정본이 SOT인 항목(.gitignore·scripts·docs·repo 전용 agents.json)은 동기화 대상 아님.
 set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "git repo 아님"; exit 2; }
-SRC="${CYS_PACK_DIR:-$HOME/.cys/pack}"
-DST="$ROOT/cysjavis-pack"
+SRC="${EZER_PACK_DIR:-$HOME/.ezer/pack}"
+DST="$ROOT/ezer-pack"
 APPLY="${1:-}"
 [ -d "$SRC" ] || { echo "배포본 없음: $SRC"; exit 2; }
 command -v rsync >/dev/null || { echo "rsync 필요"; exit 2; }
@@ -46,7 +46,7 @@ if [ "$APPLY" != "--apply" ]; then
 fi
 
 echo "== 최소 제네릭화 transform (오너 → 오너) =="
-# 텍스트 파일만, 동기화된 cysjavis-pack 안에서만.
+# 텍스트 파일만, 동기화된 ezer-pack 안에서만.
 while IFS= read -r f; do
   LC_ALL=C grep -Iq . "$f" 2>/dev/null || continue   # 바이너리 skip
   if grep -q '오너' "$f" 2>/dev/null; then

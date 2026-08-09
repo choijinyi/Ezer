@@ -1,4 +1,4 @@
-// cys UI — xterm.js panes over the cysd socket (thin client).
+// ezer UI — xterm.js panes over the ezerd socket (thin client).
 // 세션 영속은 구조로 해결: 세션(PTY)은 데몬 소유, UI는 attach만 한다.
 
 import { Terminal } from "@xterm/xterm";
@@ -46,11 +46,11 @@ interface Workspace {
   // 부서 런칭 중 임시 placeholder 표식 — 무거운 launch await 동안 탭을 즉시 표시(체감 지연 0)하기 위함.
   // launch 완료 시 false로 내리고, 실패 시 ws 자체를 제거한다. 직렬화 제외(normalizeWorkspaces)로 디스크/복원 누수 차단.
   pending?: boolean;
-  // 06: 소속 그룹 id(undefined=ungrouped). 부서 ws도 그룹에 들어가면 set. 진실원=localStorage(cys-layout-v2).
+  // 06: 소속 그룹 id(undefined=ungrouped). 부서 ws도 그룹에 들어가면 set. 진실원=localStorage(ezer-layout-v2).
   groupId?: number;
 }
 
-// 06: 워크스페이스 그룹 메타데이터. 진실원=localStorage(cys-layout-v2). 데몬은 모름(그룹=UI/solution 층).
+// 06: 워크스페이스 그룹 메타데이터. 진실원=localStorage(ezer-layout-v2). 데몬은 모름(그룹=UI/solution 층).
 // 부서(데몬)도 일반 그룹과 동일 구조로 표현 — anchorSocket이 있으면 부서 그룹(읽기전용 표식·teardown은 ws close가 담당).
 interface GroupMeta {
   id: number;
@@ -61,7 +61,7 @@ interface GroupMeta {
   anchorSocket?: string; // 부서 그룹이면 부서 데몬 socket
 }
 
-const LAYOUT_KEY = "cys-layout-v2";
+const LAYOUT_KEY = "ezer-layout-v2";
 
 // pane 식별 복합키 — 서로 다른 데몬이 같은 surface_id를 독립 발급하므로 (socket, sid)로 구분한다.
 const paneKey = (sid: number, socket?: string): string => `${socket ?? ""}#${sid}`;
@@ -156,10 +156,10 @@ let ccSessionSelected: string | null = null;
 // HUD-5: 밀도 모드 — 비기술자 Glance(오늘 큰 글씨) ↔ 엔지니어 Ops(6탭). body class 1개가 진실원.
 type CcDensity = "ops" | "glance";
 let ccDensity: CcDensity =
-  (localStorage.getItem("cys-cc-density") as CcDensity) === "glance" ? "glance" : "ops";
+  (localStorage.getItem("ezer-cc-density") as CcDensity) === "glance" ? "glance" : "ops";
 // Tasks Control Center: Glance 모드 안에서 보여줄 면(Live=시스템부하 ↔ tasks=부서 업무) — 오너 선택.
 let ccGlanceFace: "live" | "tasks" =
-  localStorage.getItem("cys-cc-glance-face") === "tasks" ? "tasks" : "live";
+  localStorage.getItem("ezer-cc-glance-face") === "tasks" ? "tasks" : "live";
 // 마지막 org_fleet 스냅샷 — 실시간 이벤트(task.changed/status.changed)가 셀 단위로 패치한다.
 let lastFleet: any = null;
 
@@ -207,7 +207,7 @@ function ccAggRate(fleet: any[]): Record<string, { used: number; reset: number |
 function applyCcDensity(mode: CcDensity) {
   ccDensity = mode;
   document.body.classList.toggle("cc-glance", mode === "glance");
-  localStorage.setItem("cys-cc-density", mode);
+  localStorage.setItem("ezer-cc-density", mode);
   const b = document.getElementById("btn-cc-density");
   if (b) b.textContent = mode === "glance" ? "🔍 상세보기" : "👁 한눈에";
   // Glance는 단일 면 — 오너 선택(Live=시스템부하 ↔ tasks=부서 업무)으로 전환. 분석 전용 탭이면 그 면으로.
@@ -217,7 +217,7 @@ function applyCcDensity(mode: CcDensity) {
 // Glance 면 토글(오너: Live↔작업, 선택된 면을 크게). 토글 버튼은 Glance에서만 보인다(CSS).
 function applyGlanceFace(face: "live" | "tasks") {
   ccGlanceFace = face;
-  localStorage.setItem("cys-cc-glance-face", face);
+  localStorage.setItem("ezer-cc-glance-face", face);
   const fb = document.getElementById("btn-cc-glance-face");
   if (fb) fb.textContent = face === "tasks" ? "📊 Live" : "📋 작업";
   if (ccDensity === "glance") setCcTab(face);
@@ -455,7 +455,7 @@ async function refreshBoard() {
   }
   outHost.innerHTML =
     !dirs || dirs.length === 0
-      ? `<div class="cc-empty">산출물 없음 (~/.cys/_round/skill-out)</div>`
+      ? `<div class="cc-empty">산출물 없음 (~/.ezer/_round/skill-out)</div>`
       : dirs
           .map((x: any) => {
             const p = x.path ?? "";
@@ -559,7 +559,7 @@ function taskRow(s: any, deptKey: string): string {
     label = idle > 60 ? "대기" : "활동";
   }
   const trust = selfReport
-    ? `<span class="cc-trust-badge self" title="노드가 cys set-status로 직접 보고한 상태">📍자기보고</span>`
+    ? `<span class="cc-trust-badge self" title="노드가 ezer set-status로 직접 보고한 상태">📍자기보고</span>`
     : `<span class="cc-trust-badge derived" title="출력 활동에서 데몬이 추정한 상태(자기보고 없음)">⚙파생</span>`;
   const task = selfReport && st.task ? String(st.task) : "(업무 미보고)";
   const ctx =
@@ -625,7 +625,7 @@ async function runSkillButton(s: any) {
       if (got === null) return; // 취소
       userInput = got;
     }
-    // ★무계약 차단: task-prompt 티켓을 먼저 생성(javis_orchestra 경유). UI는 ticket 텍스트만 받는다.
+    // ★무계약 차단: task-prompt 티켓을 먼저 생성(ezer_orchestra 경유). UI는 ticket 텍스트만 받는다.
     const scope = userInput ? `${s.scope ?? ""} · 입력 원고: ${userInput}` : s.scope ?? "";
     const ticket = (await invoke("make_ticket", {
       task: s.label ?? s.name,
@@ -683,7 +683,7 @@ async function refreshLearn() {
           return `<div class="cc-learn-row"><span class="cc-learn-round">${ccEsc(k)}</span><span class="cc-learn-verdict" style="color:${vColor[v] ?? "inherit"}">${ccEsc(v)}</span><span class="cc-learn-meta">저장 ${r?.stored?.length ?? 0} · harness ${r?.harness?.length ?? 0}</span></div>`;
         })
         .join("")
-    : `<div class="cc-empty">학습 라운드 기록 없음 — RSI 라운드(javis_rsi.py checkpoint)가 기록을 남기면 여기 표시됩니다</div>`;
+    : `<div class="cc-empty">학습 라운드 기록 없음 — RSI 라운드(ezer_rsi.py checkpoint)가 기록을 남기면 여기 표시됩니다</div>`;
 
   const ribbons: string[] = [];
   for (const k of keys) for (const h of rounds[k]?.harness ?? []) ribbons.push(`${k}: ${h.retention ?? "?"}`);
@@ -1110,7 +1110,7 @@ function renderControlCenter(d: any) {
   }
 
   document.getElementById("cc-footer")!.textContent =
-    `cys Control Center · v${d.version ?? ""} · 대시보드 5초 · 하드웨어 2초 갱신`;
+    `ezer Control Center · v${d.version ?? ""} · 대시보드 5초 · 하드웨어 2초 갱신`;
 }
 
 function renderLiveBody(d: any, fleet: any[]) {
@@ -1233,23 +1233,23 @@ function npuRow(npu: any): string {
   return `<div class="cc-tbar" title="macOS는 NPU 활용률을 공개 API로 노출하지 않아 실측 전력(W)으로 표시"><span class="cc-tbar-lab">${lab}</span><span class="cc-tbar-track"></span><span class="cc-tbar-pct">${val}</span></div>`;
 }
 
-let fontSize = Number(localStorage.getItem("cys-font-size") || 13);
+let fontSize = Number(localStorage.getItem("ezer-font-size") || 13);
 function applyZoom(delta: number | null) {
   fontSize = delta === null ? 13 : Math.min(32, Math.max(8, fontSize + delta));
-  localStorage.setItem("cys-font-size", String(fontSize));
+  localStorage.setItem("ezer-font-size", String(fontSize));
   for (const rt of panes.values()) {
     rt.term.options.fontSize = fontSize;
     fitPane(rt);
   }
 }
 
-// 터미널 폰트 선택(cys-font-face · 오너 요청 2026-07-12) — 선택 폰트를 기본 스택 앞에 합성
+// 터미널 폰트 선택(ezer-font-face · 오너 요청 2026-07-12) — 선택 폰트를 기본 스택 앞에 합성
 // (composeFontFamily · CJK 폴백 보존), null=기본. 폰트 메트릭 변화 → 셀 재계산(applyZoom과 동일 패턴).
-let fontFace: string | null = localStorage.getItem("cys-font-face");
+let fontFace: string | null = localStorage.getItem("ezer-font-face");
 function applyFontFace(face: string | null) {
   fontFace = face && face.trim() ? face : null;
-  if (fontFace === null) localStorage.removeItem("cys-font-face");
-  else localStorage.setItem("cys-font-face", fontFace);
+  if (fontFace === null) localStorage.removeItem("ezer-font-face");
+  else localStorage.setItem("ezer-font-face", fontFace);
   for (const rt of panes.values()) {
     rt.term.options.fontFamily = composeFontFamily(fontFace);
     fitPane(rt);
@@ -1259,7 +1259,7 @@ function applyFontFace(face: string | null) {
 // Control Center 본문 전용 zoom — 터미널 fontSize와 분리(배율 단위).
 // WebKit `zoom`을 #cc-body에만 적용(host #cc-panel은 fixed라 zoom 시 위치/스크롤 회귀 → 본문만 확대,
 // sticky 헤더·탭은 1.0x 유지). 사이드바(ft/feed)는 터미널 작업공간 폭이라 zoom 비대상(터미널 fit 회귀 방지).
-let panelZoom = Math.min(2, Math.max(0.6, Number(localStorage.getItem("cys-panel-zoom")) || 1)); // NaN·범위밖 방어
+let panelZoom = Math.min(2, Math.max(0.6, Number(localStorage.getItem("ezer-panel-zoom")) || 1)); // NaN·범위밖 방어
 // CC 자동 배율 — 창 크기에 CC 본문을 비례 연동(오너 요청 2026-07-12: 모든 버튼·섹션이 창과 함께 커지고 작아지게).
 // 배율 산식·클램프·합성 상한은 ccscale.ts(순수 로직·단위테스트 대상). 수동 Cmd +/-는 곱으로 합성.
 // 오피스 탭은 CSS에서 zoom:1 고정 — 3D는 fit 카메라가 이미 창에 연동되므로 이중 스케일 금지(수동 zoom도 무효, 정책 확정 2026-07-12).
@@ -1277,7 +1277,7 @@ window.addEventListener("resize", () => {
 });
 function applyPanelZoom(delta: number | null) {
   panelZoom = delta === null ? 1 : Math.min(2, Math.max(0.6, +(panelZoom + delta * 0.1).toFixed(2)));
-  localStorage.setItem("cys-panel-zoom", String(panelZoom));
+  localStorage.setItem("ezer-panel-zoom", String(panelZoom));
   applyPanelZoomVar();
 }
 
@@ -1296,11 +1296,11 @@ const nodeSig = new Map<string, NodeSig>(); // 키 = `${socket}#${surface_id}`
 let pendingApprovals = 0; // org.status feed.pending 집계
 const root = document.getElementById("root")!;
 
-// ---------- 배경 테마 커스텀 (cys-bg-color) ----------
+// ---------- 배경 테마 커스텀 (ezer-bg-color) ----------
 // 색 선택 시 앱 캔버스(--bg)·캔버스 글자(--canvas-text)·모든 pane xterm 테마를 동기 적용 → 화면 일치.
 // null = 기본(다크) 복원. 밝은 배경(휘도>0.5)이면 글자를 어둡게 자동 보정(가독).
 // ★크롬 글자 --text는 건드리지 않는다 — 상단바·모달 등 배경이 안 바뀌는 var(--bar) 표면 가독 유지.
-let bgColor: string | null = localStorage.getItem("cys-bg-color");
+let bgColor: string | null = localStorage.getItem("ezer-bg-color");
 const currentBg = (): string => bgColor ?? DEFAULT_BG;
 function applyBgColor(color: string | null): void {
   bgColor = color;
@@ -1309,8 +1309,8 @@ function applyBgColor(color: string | null): void {
   document.documentElement.style.setProperty("--bg", bg);
   document.documentElement.style.setProperty("--canvas-text", fg);
   for (const rt of panes.values()) rt.term.options.theme = { background: bg, foreground: fg };
-  if (color === null) localStorage.removeItem("cys-bg-color");
-  else localStorage.setItem("cys-bg-color", color);
+  if (color === null) localStorage.removeItem("ezer-bg-color");
+  else localStorage.setItem("ezer-bg-color", color);
 }
 applyBgColor(bgColor); // 마운트 시 저장된 배경색 복원(없으면 기본 유지)
 
@@ -1437,7 +1437,7 @@ function setRoleDot(el: HTMLElement, role: string | null) {
 }
 
 // 주기적으로 데몬에 물어 자동 제목 pane의 현재 디렉토리(cd 추적)를 갱신.
-// + 외부(CLI launch-agent·cys boot)에서 생성된 역할 노드 surface를 pane으로 자동 입양 —
+// + 외부(CLI launch-agent·ezer boot)에서 생성된 역할 노드 surface를 pane으로 자동 입양 —
 //   이게 없으면 노드가 데몬 안에서 헤드리스로만 돌고 화면에 보이지 않는다.
 let refreshing = false;
 let started = false; // start()의 세션 복원이 끝나기 전 인터벌 자동 입양 차단 (이중 생성 방지)
@@ -1714,10 +1714,10 @@ async function makePane(sid: number, title: string, socket?: string): Promise<Pa
   // WKWebView는 표준 composition 없이 음절 첫 자모를 insertText로 커밋하거나(자모 유출), 혼성 프로필에선
   // 첫 자모를 insertText로 커밋한 뒤 나머지 조합을 표준 composition 이벤트로 진행한다.
   // 자모 pending, 병합 커밋, 음절 확정 flush, 조합 흡수 자모 폐기(drop) 판단은 ime.ts 리듀서가 하고,
-  // 여기서는 DOM 이벤트를 리듀서에 배선만 한다. 계측: localStorage.cysImeDebug="1" 또는 파일
-  // 게이트(~/.cys/ime-debug)/CYS_IME_DEBUG=1 시 이벤트 시퀀스를 log_ime로 기록(유실 경로를
+  // 여기서는 DOM 이벤트를 리듀서에 배선만 한다. 계측: localStorage.ezerImeDebug="1" 또는 파일
+  // 게이트(~/.ezer/ime-debug)/EZER_IME_DEBUG=1 시 이벤트 시퀀스를 log_ime로 기록(유실 경로를
   // 결정론으로 확정하는 채널 — 릴리스 빌드엔 devtools가 없어 파일 게이트가 최종 사용자 진단 경로). 평시 비용 0.
-  let imeDbg = localStorage.getItem("cysImeDebug") === "1";
+  let imeDbg = localStorage.getItem("ezerImeDebug") === "1";
   if (!imeDbg) invoke("ime_debug_enabled").then((v) => { imeDbg = v === true; }).catch(() => {});
   const dbg = (line: string) => {
     if (imeDbg) invoke("log_ime", { line: `[s${sid}] ${line}` }).catch(() => {});
@@ -1732,7 +1732,7 @@ async function makePane(sid: number, title: string, socket?: string): Promise<Pa
     }
   };
 
-  // ★프로필 D 유출 감지(cys-neo, macOS 26.5.1 WKWebView): xterm의 Terminal._inputEvent가
+  // ★프로필 D 유출 감지(ezer-neo, macOS 26.5.1 WKWebView): xterm의 Terminal._inputEvent가
   // inputType==='insertText'인 조합 첫 자모를 triggerDataEvent로 onData에 그대로 흘려보낸다
   // (음절 첫 자모 유출 = 이중 전송). 아래 WKWebView input 경로가 그 자모를 pending에 버퍼·확정하므로
   // 이 onData는 중복이다. 'input'(한글 insertText) 디스패치 중에 동기로 발화한 onData만 중복으로
@@ -2800,22 +2800,22 @@ async function addWorkspace(): Promise<Workspace> {
   return ws;
 }
 
-// 부서 socket 경로에서 원래 부서명 역산 — unix(~/.local/state/cys-dept-<name>/cys.sock)와
-// ★Windows named pipe(\\.\pipe\cys-dept-<name> — RC-4 규약·dept_socket_path 정합) 양쪽 지원(2026-07-10).
+// 부서 socket 경로에서 원래 부서명 역산 — unix(~/.local/state/ezer-dept-<name>/ezer.sock)와
+// ★Windows named pipe(\\.\pipe\ezer-dept-<name> — RC-4 규약·dept_socket_path 정합) 양쪽 지원(2026-07-10).
 // rename으로 ws.name이 바뀌어도 socket은 불변이므로, 재-launch가 '다른 소켓 새 데몬'을 만들어
 // 원래 데몬을 고아화하는 것을 막는다(시나리오4). Windows 분기 이전엔 null→ws.name 폴백으로 이 가드가
 // Windows에서 무동작(rename 후 재-launch가 고아 유발)이었다 — 분기 추가로 가드가 비로소 작동한다.
 function deptNameFromSocket(sock: string | undefined): string | null {
-  const m = /\/cys-dept-(.+?)\/cys\.sock$/.exec(sock ?? "");
+  const m = /\/ezer-dept-(.+?)\/ezer\.sock$/.exec(sock ?? "");
   if (m) return m[1];
-  const w = /^\\\\\.\\pipe\\cys-dept-(.+)$/.exec(sock ?? "");
+  const w = /^\\\\\.\\pipe\\ezer-dept-(.+)$/.exec(sock ?? "");
   return w ? w[1] : null;
 }
 
-// 멀티마스터 F4: 새 '부서 workspace' 런칭 = 새 부서 데몬 spawn(cys-dept launch 단일 진입점).
-// 첫 부서가 생기면 백엔드(cys-dept)가 기본 데몬을 CEO로 자동 승격한다.
+// 멀티마스터 F4: 새 '부서 workspace' 런칭 = 새 부서 데몬 spawn(ezer-dept launch 단일 진입점).
+// 첫 부서가 생기면 백엔드(ezer-dept)가 기본 데몬을 CEO로 자동 승격한다.
 // ① 표시 지연(안 C): 무거운 launch await(최대 ~12s) '전에' placeholder 탭을 즉시 render — 체감 지연 0.
-// ② 고아 방지(안 A): 빈 newSurface를 만들지 않는다. cys-dept가 띄우는 role=master surface가
+// ② 고아 방지(안 A): 빈 newSurface를 만들지 않는다. ezer-dept가 띄우는 role=master surface가
 //    refreshPaneTitles 자동입양으로 '첫 pane'이 되게 한다(빈 셸 미생성 → 고아 0).
 async function addDeptWorkspace(catalogKey?: string): Promise<Workspace> {
   // 클릭 즉시 placeholder 탭(tree:null·socket 미정) push+render — launch await 동안 시각 피드백 제공.
@@ -2852,7 +2852,7 @@ async function addDeptWorkspace(catalogKey?: string): Promise<Workspace> {
       if (firstSid != null) setFocus(firstSid);
       return dup;
     }
-    // 안 A(C4 더블 surface 해소): cys-dept(create·allocate 모두 role=master '빈 셸' — WP-11 일원화)가 부서장
+    // 안 A(C4 더블 surface 해소): ezer-dept(create·allocate 모두 role=master '빈 셸' — WP-11 일원화)가 부서장
     // role=master surface를 띄우므로 UI는 plain 셸을 직접 만들지 않는다. socket 확정 + pending 해제 → refreshPaneTitles
     // 자동입양이 그 master(빈 셸)를 '첫 pane'으로 채운다(rolePri master=0 → 좌측·focus). 별도 UI 셸 0·더블 surface 0.
     // 탭이 await 중 닫혀도(close 핸들러가 socket 기준 데몬 teardown) 좀비 없음 — 별도 plain-셸 회수 불필요.
@@ -3243,7 +3243,7 @@ async function promptBinaryPatch() {
 // 업데이트 후 구 데몬(lame-duck)이 세션을 보존하는 동안 "데몬 vX ↔ 앱 vY" 스큐를 비차단으로 알린다.
 // 강제 재시작 없음(세션 보존 우선). 잃을 세션 0인 노드는 무손실 자동 교대, 세션 있는 노드만 배지+1회 안내.
 // ★거버넌스: 부서 교대는 '재기동'일 뿐 CSO 단일소유 생성/폐기 권한을 건드리지 않는다
-// (rotate_dept_daemon=cys-dept rotate=데몬 프로세스만 재기동·레지스트리·묘비·CEO 불변).
+// (rotate_dept_daemon=ezer-dept rotate=데몬 프로세스만 재기동·레지스트리·묘비·CEO 불변).
 let rotatingDaemon = false;
 let verSkewBadge: HTMLElement | null = null;
 let skewNoticeShown = false; // C: 세션당 1회 능동 안내 플래그(스큐 해소 시 리셋)
@@ -3508,7 +3508,7 @@ async function onUpdateButton() {
 
 /// 간단한 확인 모달 (WKWebView confirm 회피). resolve(true/false).
 // ───────── 07 Command Palette (⌘K) — 순수 DOM 오버레이 + fuzzy + 액션 큐레이션 ─────────
-// 흡수: 팔레트 메커니즘(모달·fuzzy·키 라우팅)=webview primitive. 액션 큐레이션(역할 점프·재기동·60% cycle·feed 승인)=cysjavis 처방 solution.
+// 흡수: 팔레트 메커니즘(모달·fuzzy·키 라우팅)=webview primitive. 액션 큐레이션(역할 점프·재기동·60% cycle·feed 승인)=ezer 처방 solution.
 // org_status Tauri 커맨드(src-tauri/main.rs:171)·기존 setFocus/confirmModal/send_input/feed_list/feed_reply 재사용. 데몬 무변경.
 
 // 팔레트 1개 행 — cmux 액션 스키마(title/subtitle/keywords/confirm) adapt.
@@ -3655,8 +3655,8 @@ async function buildPaletteItems(): Promise<PaletteItem[]> {
 
   // ── (3) 노드 재기동(명령 주입) — role별 처방. 파괴적이므로 confirm. ──
   const RESTART: Record<string, string> = {
-    cso: "cys launch-agent --role cso --agent claude",
-    worker: "cys launch-agent --role worker --agent claude",
+    cso: "ezer launch-agent --role cso --agent claude",
+    worker: "ezer launch-agent --role worker --agent claude",
     "reviewer-gemini": "agy --dangerously-skip-permissions",
     "reviewer-codex": "codex --dangerously-bypass-approvals-and-sandbox",
   };
@@ -3683,7 +3683,7 @@ async function buildPaletteItems(): Promise<PaletteItem[]> {
     });
   }
 
-  // ── (4-b) ★R8(WP-2): CEO 승격 대기 해소 — cys-dept PENDING(부트 게이트 보류)의 즉시 경로.
+  // ── (4-b) ★R8(WP-2): CEO 승격 대기 해소 — ezer-dept PENDING(부트 게이트 보류)의 즉시 경로.
   // 온디맨드 조회(팔레트 열 때만 — 신규 타이머 0). 대기형은 오너 동의 게이트(feed --wait) 경유.
   if (await invoke("ceo_pending").catch(() => false)) {
     items.push({
@@ -4008,7 +4008,7 @@ async function start() {
         "daemon-hint",
         "health",
         "데몬 시작 대기 중",
-        "백그라운드 서비스(cysd) 시작을 기다리고 있습니다. 계속 이 상태면: 시스템 설정 → 일반 → 로그인 항목에서 cys 관련 항목을 허용해 주세요. 허용 즉시 자동으로 연결됩니다.",
+        "백그라운드 서비스(ezerd) 시작을 기다리고 있습니다. 계속 이 상태면: 시스템 설정 → 일반 → 로그인 항목에서 ezer 관련 항목을 허용해 주세요. 허용 즉시 자동으로 연결됩니다.",
       );
     });
     listen("daemon-ready", () => dismissToast("daemon-hint"));
@@ -4123,7 +4123,7 @@ async function start() {
       `perm-${p.folder ?? "folder"}`,
       "health",
       `⚠ macOS ${f} 폴더 접근 차단`,
-      `pane 안의 claude 등이 EPERM으로 꺼질 수 있습니다 — 시스템 설정 → 개인정보 보호 및 보안 → 파일 및 폴더(또는 전체 디스크 접근 권한)에서 cys를 허용한 뒤 앱을 재시작하세요.`,
+      `pane 안의 claude 등이 EPERM으로 꺼질 수 있습니다 — 시스템 설정 → 개인정보 보호 및 보안 → 파일 및 폴더(또는 전체 디스크 접근 권한)에서 ezer를 허용한 뒤 앱을 재시작하세요.`,
     );
   });
   await listen("restore-progress", (e) => {
@@ -4154,7 +4154,7 @@ async function start() {
   checkForUpdate(true);
   setInterval(() => checkForUpdate(true), 6 * 3600 * 1000);
 
-  // 테스트 전용(패치 채널 E2E — 오너 2026-07-15): CYS_AUTOTEST_PATCH_INSTALL=1 env 기동이면 기동
+  // 테스트 전용(패치 채널 E2E — 오너 2026-07-15): EZER_AUTOTEST_PATCH_INSTALL=1 env 기동이면 기동
   // 직후 패치 설치를 무클릭 자동 발화(Finder 런칭엔 env 부재 → 프로덕션 무영향). install_update가
   // 자체적으로 업데이트를 재확인하므로 updateAvailable 상태에 의존하지 않는다.
   (async () => {
@@ -4222,7 +4222,7 @@ async function start() {
     deptTombs = null;
   }
 
-  // 부서 데몬 확보를 list 대조보다 선행 — 미가동이면 cys-dept launch. 실패해도(등록된) ws는 보존.
+  // 부서 데몬 확보를 list 대조보다 선행 — 미가동이면 ezer-dept launch. 실패해도(등록된) ws는 보존.
   const ghosts = new Set<number>();
   for (const ws of workspaces.filter((w) => w.socket)) {
     // ★WP-3+R10: 묘비 검사를 생존 검사보다 **선행** — spawn_org_restore는 업데이트 후에만
@@ -4381,10 +4381,10 @@ document.getElementById("btn-cc-glance-face")!.addEventListener("click", () =>
 document.getElementById("btn-install-cli")?.addEventListener("click", async () => {
   try {
     const r = (await invoke("install_cli_to_path")) as {
-      cys_link: string; cysd_link: string; shadowed_by: string | null; warnings: string[];
+      ezer_link: string; ezerd_link: string; shadowed_by: string | null; warnings: string[];
     };
     // B-11: alert()는 WKWebView에서 억제될 수 있음(confirm() 무동작 실측과 동계열) — toast로 통일
-    let msg = `${r.cys_link} · ${r.cysd_link} — 새 터미널에서 'cys' 사용 가능`;
+    let msg = `${r.ezer_link} · ${r.ezerd_link} — 새 터미널에서 'ezer' 사용 가능`;
     if (r.warnings?.length) msg += ` ⚠ ${r.warnings.join(" ⚠ ")}`;
     toast("system", "셸 설치 완료", msg);
   } catch (e) {
@@ -4433,14 +4433,14 @@ document.getElementById("btn-theme")!.addEventListener("click", (e) =>
 );
 // 역할 분리(오너 2026-06-29 결정): "새 워크스페이스"(btn-ws-new) = 기본/현재 데몬의 일반 워크스페이스
 // (addWorkspace) — 부서가 아니다. 격리 부서 데몬 생성은 "+부서"(btn-ws-dept→addDeptWorkspace) 전담.
-// 새 ws를 master로 선언 시 공유 데몬 claim 충돌은 데몬 레벨 claim_denied(cysd handlers.rs·kill 없음)가
+// 새 ws를 master로 선언 시 공유 데몬 claim 충돌은 데몬 레벨 claim_denied(ezerd handlers.rs·kill 없음)가
 // 비파괴 방어한다(생태계 죽지 않음·거부만). guard-master-claim(Fix2') 부트 자동발동 배선은 별건(헌법 토큰).
 document.getElementById("btn-ws-new")!.addEventListener("click", () => addWorkspace());
 
-// ★WP-1 결정 e(BOOTSTRAP_HARDENING v1.1): "마스터 시작" — cys launch-agent --role master 배선.
+// ★WP-1 결정 e(BOOTSTRAP_HARDENING v1.1): "마스터 시작" — ezer launch-agent --role master 배선.
 // worker/cso 기동과 동일 메커니즘(앵커: 시스템은 노드만 띄우고 지휘하지 않는다). 초보를 "올바른
 // surface에서 마법 문구 입력"이라는 취약한 산문 계약에서 해방. 명령 자체가 base 데몬 고정
-// (CYS_SOCKET 제거 — start_master)이라 어느 탭에서 눌러도 부서 오염 불가. 생성 surface는 자동입양.
+// (EZER_SOCKET 제거 — start_master)이라 어느 탭에서 눌러도 부서 오염 불가. 생성 surface는 자동입양.
 // 중복 클릭은 데몬 claim_denied가 비파괴 방어(두 번째 master 거부 — 위 btn-ws-new 주석과 동일 축).
 // ★조직 모델(오너 2026-07-15): 본부=▶CEO(마스터 오브 마스터 자리) · 부서 탭=▶부서장(부서 데몬별
 // 독립 마스터). "데몬당 살아있는 마스터 1명" 규칙은 조직 단위별 적용 — 부서 10개면 마스터 10명.
@@ -4473,7 +4473,7 @@ document.getElementById("btn-dept-master")?.addEventListener("click", async () =
   }
 });
 
-// ★R8(WP-2): 시작 시 1회 CEO PENDING 고지 — cys-dept 알림이 가리키는 실존 컨트롤(팔레트
+// ★R8(WP-2): 시작 시 1회 CEO PENDING 고지 — ezer-dept 알림이 가리키는 실존 컨트롤(팔레트
 // "CEO 승격 진행")로 안내. 폴링 없음(시작 1회+팔레트 온디맨드 — WINAUDIT 타이머 증식 방지).
 (async () => {
   try {
@@ -4489,8 +4489,8 @@ document.getElementById("btn-dept-master")?.addEventListener("click", async () =
 // 폭·배율은 CSS 변수(--wsbar-w/--wsbar-font)가 진실원, localStorage 영속. 클램프 산식=wsbar.ts.
 // pane 재렌더는 이중 안전: 각 pane의 ResizeObserver(→fitPane)가 폭 변화에 자동 발화하고,
 // 드래그 종료 시 refitAllPanes()로 전 pane 강제 재적합+xterm 재렌더를 한 번 더 보장한다.
-let wsbarW = clampWsbarWidth(Number(localStorage.getItem("cys-wsbar-w")) || WSBAR_W_DEFAULT);
-let wsbarFont = clampWsbarFont(Number(localStorage.getItem("cys-wsbar-font")) || 1);
+let wsbarW = clampWsbarWidth(Number(localStorage.getItem("ezer-wsbar-w")) || WSBAR_W_DEFAULT);
+let wsbarFont = clampWsbarFont(Number(localStorage.getItem("ezer-wsbar-font")) || 1);
 function applyWsbarVars() {
   document.documentElement.style.setProperty("--wsbar-w", `${wsbarW}px`);
   document.documentElement.style.setProperty("--wsbar-font", String(wsbarFont));
@@ -4517,7 +4517,7 @@ wsbarDrag?.addEventListener("mousedown", (e0: MouseEvent) => {
     window.removeEventListener("mousemove", move, true);
     window.removeEventListener("mouseup", up, true);
     document.body.classList.remove("wsbar-resizing");
-    localStorage.setItem("cys-wsbar-w", String(wsbarW));
+    localStorage.setItem("ezer-wsbar-w", String(wsbarW));
     refitAllPanes();
   };
   window.addEventListener("mousemove", move, true);
@@ -4526,14 +4526,14 @@ wsbarDrag?.addEventListener("mousedown", (e0: MouseEvent) => {
 wsbarDrag?.addEventListener("dblclick", () => {
   wsbarW = WSBAR_W_DEFAULT;
   applyWsbarVars();
-  localStorage.setItem("cys-wsbar-w", String(wsbarW));
+  localStorage.setItem("ezer-wsbar-w", String(wsbarW));
   refitAllPanes();
 });
 
 function applyWsbarFontStep(dir: number) {
   wsbarFont = clampWsbarFont(wsbarFont + dir * WSBAR_FONT_STEP);
   applyWsbarVars();
-  localStorage.setItem("cys-wsbar-font", String(wsbarFont));
+  localStorage.setItem("ezer-wsbar-font", String(wsbarFont));
 }
 document.getElementById("btn-ws-font-minus")?.addEventListener("click", () => applyWsbarFontStep(-1));
 document.getElementById("btn-ws-font-plus")?.addEventListener("click", () => applyWsbarFontStep(+1));

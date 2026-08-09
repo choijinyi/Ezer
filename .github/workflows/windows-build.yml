@@ -1,6 +1,6 @@
 name: windows-build (feasibility)
 
-# ★목적: Windows x64 자기완결 설치파일(cys-terminal + cysjavis 팩 + bash/python 런타임) 빌드·검증.
+# ★목적: Windows x64 자기완결 설치파일(ezer-agent + ezer 팩 + bash/python 런타임) 빌드·검증.
 #   feat/windows-x64-dist 브랜치 push 시 자동 실행 → setup.exe 를 Actions 아티팩트로 업로드.
 #   release.yml(태그 트리거·공개 repo 발행)과 완전 독립 — 이 잡은 어떤 릴리스도 만들지 않는다.
 #   미서명(프로파일 A). createUpdaterArtifacts=false 라 서명키 불요.
@@ -60,12 +60,12 @@ jobs:
           curl -fL -o "$RT/python/get-pip.py" "https://bootstrap.pypa.io/get-pip.py"
           "$RT/python/python.exe" "$RT/python/get-pip.py" --no-warn-script-location
           rm -f "$RT/python/get-pip.py"
-          # ── uv/uvx 동봉 (serena·nlm-mcp-cli가 uvx 전제 → C20/C43 FAIL 방지). runtime/python은 cysd가 PATH 주입. ──
+          # ── uv/uvx 동봉 (serena·nlm-mcp-cli가 uvx 전제 → C20/C43 FAIL 방지). runtime/python은 ezerd가 PATH 주입. ──
           echo "== uv 0.11.26 (x86_64-pc-windows-msvc) 동봉 =="
           curl -fL -o uv.zip "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-x86_64-pc-windows-msvc.zip"
           7z x uv.zip -o"$RT/python" -y >/dev/null
           ls -la "$RT/python/uv.exe" "$RT/python/uvx.exe"
-          # ── node + npm/npx 동봉 (mac 0.7.0 파리티 — 순정 Windows엔 node 부재. runtime/node는 cysd가 PATH 주입) ──
+          # ── node + npm/npx 동봉 (mac 0.7.0 파리티 — 순정 Windows엔 node 부재. runtime/node는 ezerd가 PATH 주입) ──
           echo "== Node.js 22.17.1 (npm/npx — win-x64, mac과 동일 핀) =="
           curl -fL -o node.zip "https://nodejs.org/dist/v22.17.1/node-v22.17.1-win-x64.zip"
           7z x node.zip -o"$RT" -y >/dev/null
@@ -91,7 +91,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cys-windows-x64-nsis
+          name: ezer-windows-x64-nsis
           path: |
             target/release/bundle/nsis/*.exe
           if-no-files-found: error
@@ -104,14 +104,14 @@ jobs:
           Write-Host ("installer: {0}  size={1}MB" -f $exe.FullName, [math]::Round($exe.Length/1MB,1))
           Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait
           Start-Sleep -Seconds 6
-          Get-Process cys,cysd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter cysd.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $inst) { throw "설치 후 cysd.exe 를 LOCALAPPDATA 아래에서 못 찾음" }
+          Get-Process ezer,ezerd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter ezerd.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $inst) { throw "설치 후 ezerd.exe 를 LOCALAPPDATA 아래에서 못 찾음" }
           $dir = $inst.Directory.FullName
           $rt = Join-Path $dir 'runtime'
           Write-Host "install dir: $dir"
           Write-Host "== runtime top-level =="; if (Test-Path $rt) { Get-ChildItem $rt | Select-Object -ExpandProperty Name } else { throw "runtime 폴더 없음: $rt" }
-          # cysd PATH 주입이 기대하는 정확 경로(구조 보존 시): runtime\git\usr\bin\bash.exe · runtime\python\python3.exe
+          # ezerd PATH 주입이 기대하는 정확 경로(구조 보존 시): runtime\git\usr\bin\bash.exe · runtime\python\python3.exe
           $bash = Get-ChildItem -Path $rt -Recurse -Filter bash.exe -ErrorAction SilentlyContinue |
                   Where-Object { $_.FullName -match 'git\\usr\\bin\\bash\.exe$' } | Select-Object -First 1
           if (-not $bash) { $bash = Get-ChildItem -Path $rt -Recurse -Filter bash.exe -ErrorAction SilentlyContinue | Select-Object -First 1 }
@@ -120,9 +120,9 @@ jobs:
           Write-Host "python3: $($py.FullName)"
           if (-not $bash) { throw "동봉 bash.exe 를 runtime 아래에서 못 찾음" }
           if (-not $py)   { throw "동봉 python3.exe 를 runtime 아래에서 못 찾음" }
-          # cysd 하드코딩 경로와 실제 구조 일치 확인(불일치 시 명시 실패 → cysd PATH 주입도 교정 필요).
-          if ($bash.FullName -notmatch 'runtime\\git\\usr\\bin\\bash\.exe$') { throw "bash 경로가 cysd 기대(runtime\git\usr\bin)와 불일치: $($bash.FullName)" }
-          if ($py.FullName   -notmatch 'runtime\\python\\python3\.exe$')     { throw "python3 경로가 cysd 기대(runtime\python)와 불일치: $($py.FullName)" }
+          # ezerd 하드코딩 경로와 실제 구조 일치 확인(불일치 시 명시 실패 → ezerd PATH 주입도 교정 필요).
+          if ($bash.FullName -notmatch 'runtime\\git\\usr\\bin\\bash\.exe$') { throw "bash 경로가 ezerd 기대(runtime\git\usr\bin)와 불일치: $($bash.FullName)" }
+          if ($py.FullName   -notmatch 'runtime\\python\\python3\.exe$')     { throw "python3 경로가 ezerd 기대(runtime\python)와 불일치: $($py.FullName)" }
           & $bash.FullName --version
           & $py.FullName --version
           & $py.FullName -c "import sqlite3, ssl, json, hashlib, urllib.request, ast; print('embeddable stdlib OK (sqlite3+ssl+json+hashlib+urllib+ast)')"
@@ -133,15 +133,15 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter cysd.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $inst) { throw "설치된 cysd.exe 미발견" }
+          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter ezerd.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $inst) { throw "설치된 ezerd.exe 미발견" }
           $dir = $inst.Directory.FullName
-          $cys = Join-Path $dir 'cys.exe'
-          # list가 형제 cysd를 자동 기동(4초 대기 내장) — ping은 순수 프로브라 autostart가
-          # 의도적으로 꺼져 있어(cys.rs) 부트스트랩에 못 쓴다. 첫 시도 실패 시 1회 재시도.
-          & $cys list; if ($LASTEXITCODE -ne 0) { Start-Sleep -Seconds 3; & $cys list }
-          if ($LASTEXITCODE -ne 0) { throw "cysd 기동 실패 (named pipe 미응답)" }
-          $ref = (& $cys new-surface --title pty-smoke | Select-Object -Last 1).Trim()
+          $ezer = Join-Path $dir 'ezer.exe'
+          # list가 형제 ezerd를 자동 기동(4초 대기 내장) — ping은 순수 프로브라 autostart가
+          # 의도적으로 꺼져 있어(ezer.rs) 부트스트랩에 못 쓴다. 첫 시도 실패 시 1회 재시도.
+          & $ezer list; if ($LASTEXITCODE -ne 0) { Start-Sleep -Seconds 3; & $ezer list }
+          if ($LASTEXITCODE -ne 0) { throw "ezerd 기동 실패 (named pipe 미응답)" }
+          $ref = (& $ezer new-surface --title pty-smoke | Select-Object -Last 1).Trim()
           if (-not $ref) { throw "new-surface 실패" }
           Write-Host "surface: $ref"
           # ① 셸 프롬프트 도달 실측 — 검은 pane 회귀 시 여기서 실패한다.
@@ -149,25 +149,25 @@ jobs:
           $deadline = (Get-Date).AddSeconds(60); $screen = ''
           while ((Get-Date) -lt $deadline) {
             Start-Sleep -Seconds 3
-            $screen = (& $cys read-screen --surface $ref) -join "`n"
+            $screen = (& $ezer read-screen --surface $ref) -join "`n"
             if ($screen -match 'PS ') { break }
           }
           Write-Host "== screen(prompt) =="; Write-Host $screen
           if ($screen -notmatch '\S') { throw "PTY 출력 0바이트 — 검은 pane 회귀 (셸 출력이 pseudoconsole에 도달하지 않음)" }
           if ($screen -notmatch 'PS ') { throw "PowerShell 프롬프트 미검출 — 셸이 pseudoconsole에 붙지 않았거나 즉시 종료" }
           # ② 입력→실행→출력 왕복 실측 — 문자열 연결 결과는 셸이 실제 평가해야만 화면에 나타난다
-          #    (타이핑 에코만으로는 'cys-exec-proof' 원문이 등장하지 않게 조합).
-          & $cys send --surface $ref "echo ('cys-exec-' + 'proof')"
-          & $cys send-key --surface $ref Return
+          #    (타이핑 에코만으로는 'ezer-exec-proof' 원문이 등장하지 않게 조합).
+          & $ezer send --surface $ref "echo ('ezer-exec-' + 'proof')"
+          & $ezer send-key --surface $ref Return
           $deadline = (Get-Date).AddSeconds(40); $ok = $false
           while ((Get-Date) -lt $deadline) {
             Start-Sleep -Seconds 3
-            $screen = (& $cys read-screen --surface $ref) -join "`n"
-            if ($screen -match 'cys-exec-proof') { $ok = $true; break }
+            $screen = (& $ezer read-screen --surface $ref) -join "`n"
+            if ($screen -match 'ezer-exec-proof') { $ok = $true; break }
           }
           if (-not $ok) { Write-Host "== screen(roundtrip) =="; Write-Host $screen; throw "실행 왕복 실패 — PTY 입력 또는 셸 실행 경로 결함" }
           Write-Host "OK: ConPTY 프롬프트·실행 왕복 실측 통과"
-          Get-Process cys,cysd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process ezer,ezerd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
       # ─────────────────────────────────────────────────────────────────────────
       # T3 기능 스모크 (WINFIX_T3_SMOKE_PLAN.md · row별 PASS/FAIL). release 무관.
@@ -177,10 +177,10 @@ jobs:
         shell: pwsh
         timeout-minutes: 12   # ★백스톱: 어떤 하위 호출이 hang해도 12분에 스텝 종료(6h 방지)
         run: |
-          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter cysd.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $inst) { throw "설치된 cysd.exe 미발견" }
+          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter ezerd.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $inst) { throw "설치된 ezerd.exe 미발견" }
           $dir = $inst.Directory.FullName
-          $cys = Join-Path $dir 'cys.exe'
+          $ezer = Join-Path $dir 'ezer.exe'
           $results = @{}
           $userHome = $env:USERPROFILE
           function Rec($id,$ok,$note){ $results["$id"] = [bool]$ok; Write-Host ("T3-{0} RESULT: {1}  {2}" -f $id, ($(if($ok){'PASS'}else{'FAIL'})), $note) }
@@ -198,9 +198,9 @@ jobs:
 
           # ── T3-1/T3-2: 온보딩(init-pack) + hook 등록·내용(RC-1·RC-2) ──
           try {
-            (Bx $cys @('init-pack') 60000).Out | Out-Host
-            $packOk = Test-Path (Join-Path $userHome '.cys\pack\agents.json')
-            $settings = @(Get-ChildItem (Join-Path $userHome '.cys\claude\settings.json'),(Join-Path $userHome '.claude\settings.json') -ErrorAction SilentlyContinue)
+            (Bx $ezer @('init-pack') 60000).Out | Out-Host
+            $packOk = Test-Path (Join-Path $userHome '.ezer\pack\agents.json')
+            $settings = @(Get-ChildItem (Join-Path $userHome '.ezer\claude\settings.json'),(Join-Path $userHome '.claude\settings.json') -ErrorAction SilentlyContinue)
             $hookCmd = ''
             foreach ($s in $settings) { try { $j=Get-Content $s.FullName -Raw|ConvertFrom-Json; $c=$j.hooks.SessionStart.hooks.command; if($c){$hookCmd="$c"} } catch {} }
             Rec 1 ($packOk) "pack=$packOk"
@@ -209,15 +209,15 @@ jobs:
 
           # ── T3-1b(autostart) daemon install → schtasks 등록 + ★진짜 KeepAlive(RestartOnFailure·ExecutionTimeLimit PT0S) ──
           try {
-            (Bx $cys @('daemon','install') 30000).Out | Out-Host
-            $q = (schtasks /Query /TN cysd 2>&1); $reg = ($LASTEXITCODE -eq 0)
-            $xml = (schtasks /Query /TN cysd /XML 2>&1) -join "`n"
+            (Bx $ezer @('daemon','install') 30000).Out | Out-Host
+            $q = (schtasks /Query /TN ezerd 2>&1); $reg = ($LASTEXITCODE -eq 0)
+            $xml = (schtasks /Query /TN ezerd /XML 2>&1) -join "`n"
             $hasRof = ($xml -match 'RestartOnFailure'); $hasPt0 = ($xml -match 'PT0S')
-            Rec '1b' ($reg -and $hasRof -and $hasPt0) "cysd reg=$reg RestartOnFailure=$hasRof ExecTimeLimit_PT0S=$hasPt0"
+            Rec '1b' ($reg -and $hasRof -and $hasPt0) "ezerd reg=$reg RestartOnFailure=$hasRof ExecTimeLimit_PT0S=$hasPt0"
           } catch { Rec '1b' $false "$_" }
 
           # ── 데몬 기동(named pipe 바인드·RC-4 기본) — 바운드 ──
-          $r = Bx $cys @('list') 30000; if ($r.Code -ne 0) { Start-Sleep 3; $r = Bx $cys @('list') 30000 }
+          $r = Bx $ezer @('list') 30000; if ($r.Code -ne 0) { Start-Sleep 3; $r = Bx $ezer @('list') 30000 }
           Rec 'pipe' ($r.Code -eq 0) "named pipe bind (code=$($r.Code))"
 
           # ── T3-13: python3 해소(RC-12) — 동봉 runtime python3.exe 실재+실행 ──
@@ -226,16 +226,16 @@ jobs:
           # ── T3-3(env주입 메커니즘·스텁): claude 실로그인 불가 → 스텁 에이전트로 env 주입만 검증(전부 바운드) ──
           try {
             $py = Join-Path $dir 'runtime\python\python3.exe'
-            $aj = Join-Path $userHome '.cys\pack\agents.json'
-            $pyprog = 'import json,sys; aj=sys.argv[1]; d=json.load(open(aj,encoding="utf-8")); d["stubenv"]={"cmd":"Write-Host CCDPROOF=$env:CLAUDE_CONFIG_DIR","env":{"CLAUDE_CONFIG_DIR":"${CYS_ACCOUNT_DIR:-ENVINJECT_OK}"},"inject_delay_secs":3,"ready_marker":"CCDPROOF=","clear_cmd":"/clear"}; json.dump(d,open(aj,"w",encoding="utf-8"),ensure_ascii=False,indent=2); print("stubenv OK")'
+            $aj = Join-Path $userHome '.ezer\pack\agents.json'
+            $pyprog = 'import json,sys; aj=sys.argv[1]; d=json.load(open(aj,encoding="utf-8")); d["stubenv"]={"cmd":"Write-Host CCDPROOF=$env:CLAUDE_CONFIG_DIR","env":{"CLAUDE_CONFIG_DIR":"${EZER_ACCOUNT_DIR:-ENVINJECT_OK}"},"inject_delay_secs":3,"ready_marker":"CCDPROOF=","clear_cmd":"/clear"}; json.dump(d,open(aj,"w",encoding="utf-8"),ensure_ascii=False,indent=2); print("stubenv OK")'
             # 복잡인자(공백·$·따옴표)는 Bx(Start-Process 재-quoting)가 깨뜨림 → 직접 & 호출(빠른 파일쓰기·hang 무).
             & $py -c $pyprog $aj | Out-Host
-            (Bx $cys @('launch-agent','--role','worker','--agent','stubenv') 90000).Out | Out-Host
-            & $cys send --to worker 'Write-Host CCDFRESH=$env:CLAUDE_CONFIG_DIR' 2>&1 | Out-Null
-            & $cys send-key --to worker Return 2>&1 | Out-Null
+            (Bx $ezer @('launch-agent','--role','worker','--agent','stubenv') 90000).Out | Out-Host
+            & $ezer send --to worker 'Write-Host CCDFRESH=$env:CLAUDE_CONFIG_DIR' 2>&1 | Out-Null
+            & $ezer send-key --to worker Return 2>&1 | Out-Null
             $envProof=$false; $scr=''
             $deadline=(Get-Date).AddSeconds(40)
-            while((Get-Date) -lt $deadline){ Start-Sleep 3; $scr=(Bx $cys @('read-screen','--to','worker') 15000).Out; if($scr -match 'CCDFRESH=ENVINJECT_OK'){$envProof=$true;break} }
+            while((Get-Date) -lt $deadline){ Start-Sleep 3; $scr=(Bx $ezer @('read-screen','--to','worker') 15000).Out; if($scr -match 'CCDFRESH=ENVINJECT_OK'){$envProof=$true;break} }
             if (-not $envProof) { Write-Host "== stub screen =="; Write-Host $scr }
             Rec 3 $envProof "env주입 스텁 CCDFRESH=ENVINJECT_OK (해소+주입 E2E · claude 실발동은 오너 실기 마커)"
           } catch { Rec 3 $false "$_" }
@@ -243,25 +243,25 @@ jobs:
           # ── T3-7/T3-10: 부서 스폰·로그(RC-5/6/15·단일부서·전부 바운드) ──
           try {
             $bash = Join-Path $dir 'runtime\git\usr\bin\bash.exe'
-            $deptTool = Join-Path $userHome '.cys\pack\bin\cys-dept'
+            $deptTool = Join-Path $userHome '.ezer\pack\bin\ezer-dept'
             $env:PATH = "$dir;$(Join-Path $dir 'runtime\git\usr\bin');$(Join-Path $dir 'runtime\python');$env:PATH"
-            $env:CYS_DEPT_DEFAULT_ACCOUNT = 'citest'   # 부서 계정격리 base 해석용(미설정 시 allocate fail-closed exit5)
-            $r = Bx $bash @($deptTool,'allocate') 60000; Write-Host "cys-dept allocate: $($r.Out)"
+            $env:EZER_DEPT_DEFAULT_ACCOUNT = 'citest'   # 부서 계정격리 base 해석용(미설정 시 allocate fail-closed exit5)
+            $r = Bx $bash @($deptTool,'allocate') 60000; Write-Host "ezer-dept allocate: $($r.Out)"
             $name = (($r.Out -split "`n") | Where-Object { $_ -match '^dept-\d+' } | Select-Object -Last 1)
             if ($name) { $name = $name.Trim() }
             $deptOk = ($r.Code -eq 0 -and $name -match '^dept-\d+$')
-            $logdir = Join-Path $env:LOCALAPPDATA "cys\cys-dept-$name"
+            $logdir = Join-Path $env:LOCALAPPDATA "ezer\ezer-dept-$name"
             Start-Sleep 3
-            $logOk = ($deptOk -and (Test-Path (Join-Path $logdir 'cysd.log')))
-            Rec 7 $deptOk "cys-dept allocate → $name (code=$($r.Code))"
-            Rec 10 $logOk "dept_logdir cysd.log @ $logdir"
+            $logOk = ($deptOk -and (Test-Path (Join-Path $logdir 'ezerd.log')))
+            Rec 7 $deptOk "ezer-dept allocate → $name (code=$($r.Code))"
+            Rec 10 $logOk "dept_logdir ezerd.log @ $logdir"
             if ($deptOk) { (Bx $bash @($deptTool,'down',$name) 30000) | Out-Null }
           } catch { Rec 7 $false "$_"; Rec 10 $false "$_" }
 
           # ── 집계 + 크리티컬 게이트 ──
           Write-Host "== T3 SMOKE 집계 =="
           $results.GetEnumerator() | Sort-Object Name | ForEach-Object { Write-Host ("  T3-{0}: {1}" -f $_.Key, ($(if($_.Value){'PASS'}else{'FAIL'}))) }
-          Get-Process cys,cysd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process ezer,ezerd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           $crit = @('1','2','1b','pipe','13')
           $failed = $crit | Where-Object { -not $results["$_"] }
           if ($failed) { throw ("크리티컬 T3 행 실패: " + ($failed -join ',')) }
@@ -270,7 +270,7 @@ jobs:
       # ─────────────────────────────────────────────────────────────────────────
       # T4 무중단 재설치 스모크 (P1 rename-swap + P1b 잔해청소 — nsis-hooks.nsh의 실기기 검증).
       # 핵심 assert: 라이브 데몬+세션 위로 setup.exe /S 재설치 → 데몬 PID 불변·세션 생존·
-      # cysd.prev.exe 존재(kill이 아니라 rename이었다는 증거) → 새 cysd 기동 시 prev 청소(P1b).
+      # ezerd.prev.exe 존재(kill이 아니라 rename이었다는 증거) → 새 ezerd 기동 시 prev 청소(P1b).
       # + T4-9/10 rotate_daemon 프리미티브(P3 지연 핸드오프): lame-duck 데몬의 drain 봉사·PID 세대교체.
       # 이 기능은 "업데이트=전 세션 사망" 불안을 없애는 축이라 실기기 검증 없이 출하 금지.
       # ─────────────────────────────────────────────────────────────────────────
@@ -287,21 +287,21 @@ jobs:
               return @{Code=$p.ExitCode;Out="$(Get-Content $o -Raw -ErrorAction SilentlyContinue)$(Get-Content $e -Raw -ErrorAction SilentlyContinue)"}
             } finally { Remove-Item $o,$e -Force -ErrorAction SilentlyContinue }
           }
-          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter cysd.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'cysd.exe' } | Select-Object -First 1
-          if (-not $inst) { throw "T4: 설치된 cysd.exe 미발견" }
-          $dir = $inst.Directory.FullName; $cys = Join-Path $dir 'cys.exe'; $cysd = $inst.FullName
+          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter ezerd.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'ezerd.exe' } | Select-Object -First 1
+          if (-not $inst) { throw "T4: 설치된 ezerd.exe 미발견" }
+          $dir = $inst.Directory.FullName; $ezer = Join-Path $dir 'ezer.exe'; $ezerd = $inst.FullName
           $setup = Get-ChildItem target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
           if (-not $setup) { throw "T4: setup.exe 미발견" }
 
           # ① 데몬 기동 + PID 기록 + 라이브 세션(role=master 셸) 생성
-          Get-Process cys,cysd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Get-Process ezer,ezerd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           Start-Sleep 1
-          Start-Process -FilePath $cysd -WindowStyle Hidden
-          $r = $null; foreach($i in 1..20){ Start-Sleep 1; $r = Bx $cys @('list') 15000; if($r.Code -eq 0){ break } }
+          Start-Process -FilePath $ezerd -WindowStyle Hidden
+          $r = $null; foreach($i in 1..20){ Start-Sleep 1; $r = Bx $ezer @('list') 15000; if($r.Code -eq 0){ break } }
           if ($r.Code -ne 0) { throw "T4: 데몬 기동 실패(pipe 미응답)" }
-          $pidBefore = (Get-Process cysd | Select-Object -First 1).Id
-          (Bx $cys @('new-surface','--role','master') 30000).Out | Out-Host
-          $before = (Bx $cys @('list') 15000).Out
+          $pidBefore = (Get-Process ezerd | Select-Object -First 1).Id
+          (Bx $ezer @('new-surface','--role','master') 30000).Out | Out-Host
+          $before = (Bx $ezer @('list') 15000).Out
           if ($before -notmatch 'role=master') { throw "T4: 사전 세션 생성 실패: $before" }
           # ①' 실장애 재현(2026-07-02 msys-2.0.dll Can't write → Abort): 라이브 bash가 runtime DLL을
           # 로드한 상태로 재설치한다 — T4 초판은 PowerShell 셸이라 이 잠금을 재현 못 해 놓쳤다.
@@ -318,16 +318,16 @@ jobs:
           if ($ri.ExitCode -ne 0) { throw "T4-1: 재설치 실패 exit=$($ri.ExitCode)" }
           Start-Sleep 2
 
-          # ③ assert: 데몬 PID 불변 + pipe 응답 + 세션 생존 + prev 존재 + 새 cysd.exe 존재
+          # ③ assert: 데몬 PID 불변 + pipe 응답 + 세션 생존 + prev 존재 + 새 ezerd.exe 존재
           $alive = Get-Process -Id $pidBefore -ErrorAction SilentlyContinue
           Write-Host ("T4-2 RESULT: {0}  daemon pid={1} alive" -f ($(if($alive){'PASS'}else{'FAIL'})), $pidBefore)
-          $after = (Bx $cys @('list') 20000)
+          $after = (Bx $ezer @('list') 20000)
           $sessOk = ($after.Code -eq 0 -and $after.Out -match 'role=master')
           Write-Host ("T4-3 RESULT: {0}  pipe+session (code={1})" -f ($(if($sessOk){'PASS'}else{'FAIL'})), $after.Code)
-          $prevOk = Test-Path (Join-Path $dir 'cysd.prev.exe')
-          Write-Host ("T4-4 RESULT: {0}  cysd.prev.exe 존재(rename 증거)" -f ($(if($prevOk){'PASS'}else{'FAIL'})))
-          $newOk = Test-Path $cysd
-          Write-Host ("T4-5 RESULT: {0}  새 cysd.exe 존재" -f ($(if($newOk){'PASS'}else{'FAIL'})))
+          $prevOk = Test-Path (Join-Path $dir 'ezerd.prev.exe')
+          Write-Host ("T4-4 RESULT: {0}  ezerd.prev.exe 존재(rename 증거)" -f ($(if($prevOk){'PASS'}else{'FAIL'})))
+          $newOk = Test-Path $ezerd
+          Write-Host ("T4-5 RESULT: {0}  새 ezerd.exe 존재" -f ($(if($newOk){'PASS'}else{'FAIL'})))
           $bashAlive = -not $bp.HasExited
           Write-Host ("T4-7 RESULT: {0}  잠금 bash 생존(무사망)" -f ($(if($bashAlive){'PASS'}else{'FAIL'})))
           $msysOk = Test-Path (Join-Path $dir 'runtime\git\usr\bin\msys-2.0.dll')
@@ -337,27 +337,27 @@ jobs:
           # ③' T4-9 rotate_daemon 1단계 스모크: 스큐(lame-duck) 상태의 구 데몬이 drain RPC를 봉사하는지.
           # rotate_daemon(src-tauri/main.rs)은 drain을 best-effort(let _ =)로 취급하므로 exit 코드는
           # 로그만 남기고(비0 허용 = 프로덕션 의미론 동일), 워치독 내 완주(hang 아님)만 게이트한다.
-          $dr = Bx $cys @('drain') 30000
+          $dr = Bx $ezer @('drain') 30000
           $drOk = ($dr.Code -ne -1)
           Write-Host ("T4-9 RESULT: {0}  drain 완주(lame-duck 데몬 RPC, exit={1})" -f ($(if($drOk){'PASS'}else{'FAIL'})), $dr.Code)
           if (-not $drOk) { throw "T4-9: drain이 워치독(30s) 내 미완주 — lame-duck 데몬 hang" }
 
-          # ④ P1b: 잠금 해제(bash 종료) → 구 데몬 종료 → 새 cysd 기동 → prev 잔해 재귀 자가청소 assert
+          # ④ P1b: 잠금 해제(bash 종료) → 구 데몬 종료 → 새 ezerd 기동 → prev 잔해 재귀 자가청소 assert
           try { $bp.Kill($true) } catch {}
           Stop-Process -Id $pidBefore -Force; Start-Sleep 2
-          Start-Process -FilePath $cysd -WindowStyle Hidden
-          $r2 = $null; foreach($i in 1..20){ Start-Sleep 1; $r2 = Bx $cys @('list') 15000; if($r2.Code -eq 0){ break } }
+          Start-Process -FilePath $ezerd -WindowStyle Hidden
+          $r2 = $null; foreach($i in 1..20){ Start-Sleep 1; $r2 = Bx $ezer @('list') 15000; if($r2.Code -eq 0){ break } }
           if ($r2.Code -ne 0) { throw "T4: 새 데몬 기동 실패" }
           Start-Sleep 2
           # T4-10 rotate 세대교체 증거: 새 데몬 PID ≠ 구 PID (교대가 재사용이 아니라 신 바이너리 프로세스).
-          $pidAfter = (Get-Process cysd | Select-Object -First 1).Id
+          $pidAfter = (Get-Process ezerd | Select-Object -First 1).Id
           $swapOk = ($pidAfter -ne $pidBefore)
           Write-Host ("T4-10 RESULT: {0}  데몬 세대교체(신 pid={1} ≠ 구 pid={2})" -f ($(if($swapOk){'PASS'}else{'FAIL'})), $pidAfter, $pidBefore)
-          $rootPrev = Test-Path (Join-Path $dir 'cysd.prev.exe')
+          $rootPrev = Test-Path (Join-Path $dir 'ezerd.prev.exe')
           $rtPrev = @(Get-ChildItem (Join-Path $dir 'runtime') -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*.prev*' }).Count
           $cleaned = (-not $rootPrev) -and ($rtPrev -eq 0)
-          Write-Host ("T4-6 RESULT: {0}  새 cysd 기동 후 prev 잔해 재귀 청소(P1b — root+runtime, 잔존 {1}개)" -f ($(if($cleaned){'PASS'}else{'FAIL'})), $rtPrev)
-          Get-Process cys,cysd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Write-Host ("T4-6 RESULT: {0}  새 ezerd 기동 후 prev 잔해 재귀 청소(P1b — root+runtime, 잔존 {1}개)" -f ($(if($cleaned){'PASS'}else{'FAIL'})), $rtPrev)
+          Get-Process ezer,ezerd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           if (-not $cleaned) { throw "T4-6: prev 잔해 미청소" }
           if (-not $swapOk) { throw "T4-10: 데몬 세대교체 실패(PID 불변 — 구 데몬 잔존)" }
           Write-Host "OK: T4 무중단 재설치 스모크 전행 통과 — 업데이트 중 데몬·세션 무사망 실증"
@@ -367,8 +367,8 @@ jobs:
       # 경로/파이프 매핑·supervisor(schtasks)·재시작 프리미티브(identify→taskkill→파이프해제→retrigger→epoch delta)
       # ·snapshot+독립 runbook(.ps1)·stub restore(M9 VERIFIED)·deploy --plan exit 계약 + ★케이스⑦ 진짜 KeepAlive
       # (RestartOnFailure: taskkill→스케줄러 자동 재기동→epoch delta·유발 없이 순수 관측)을 결정론·자기완결로 검증한다.
-      # 스모크는 checkout 된 repo 경로에서 직접 실행(pack 임베드 비의존)하고 동봉 python3 + 설치된 cys/cysd 를 구동한다.
-      # 실패 시 throw(=게이트) — T4 관용과 정합. mac unix 하네스(javis_phoenix_harness.py)는 무접촉.
+      # 스모크는 checkout 된 repo 경로에서 직접 실행(pack 임베드 비의존)하고 동봉 python3 + 설치된 ezer/ezerd 를 구동한다.
+      # 실패 시 throw(=게이트) — T4 관용과 정합. mac unix 하네스(ezer_phoenix_harness.py)는 무접촉.
       # ─────────────────────────────────────────────────────────────────────────
       - name: T5 피닉스 Windows 패리티 스모크 (무손실 복원 S1~S5 + KeepAlive)
         shell: pwsh
@@ -377,29 +377,29 @@ jobs:
           PYTHONUTF8: '1'     # 한글 stdout cp1252 크래시 방지(RC-16 관례)
         run: |
           $ErrorActionPreference = 'Stop'
-          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter cysd.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'cysd.exe' } | Select-Object -First 1
-          if (-not $inst) { throw "T5: 설치된 cysd.exe 미발견" }
+          $inst = Get-ChildItem "$env:LOCALAPPDATA" -Recurse -Filter ezerd.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'ezerd.exe' } | Select-Object -First 1
+          if (-not $inst) { throw "T5: 설치된 ezerd.exe 미발견" }
           $dir = $inst.Directory.FullName
-          $cys = Join-Path $dir 'cys.exe'
-          $cysd = $inst.FullName
+          $ezer = Join-Path $dir 'ezer.exe'
+          $ezerd = $inst.FullName
           $py = Join-Path $dir 'runtime\python\python3.exe'
           if (-not (Test-Path $py))  { throw "T5: 동봉 python3.exe 미발견: $py" }
-          if (-not (Test-Path $cys)) { throw "T5: 설치된 cys.exe 미발견: $cys" }
-          $smoke = Join-Path (Get-Location) 'cysjavis-pack\bin\javis_phoenix_win_smoke.py'
+          if (-not (Test-Path $ezer)) { throw "T5: 설치된 ezer.exe 미발견: $ezer" }
+          $smoke = Join-Path (Get-Location) 'ezer-pack\bin\ezer_phoenix_win_smoke.py'
           if (-not (Test-Path $smoke)) { throw "T5: 스모크 파일 미발견(checkout 경로): $smoke" }
-          Write-Host "cys=$cys"; Write-Host "cysd=$cysd"; Write-Host "py=$py"; Write-Host "smoke=$smoke"
-          # 사전 정리(이전 스텝 잔류 데몬) — 스모크는 테스트 전용 파이프(cys-phxsmoke-*)를 쓰지만 결정성 위해 정돈.
-          Get-Process cys,cysd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Write-Host "ezer=$ezer"; Write-Host "ezerd=$ezerd"; Write-Host "py=$py"; Write-Host "smoke=$smoke"
+          # 사전 정리(이전 스텝 잔류 데몬) — 스모크는 테스트 전용 파이프(ezer-phxsmoke-*)를 쓰지만 결정성 위해 정돈.
+          Get-Process ezer,ezerd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           Start-Sleep 1
-          $env:PHOENIX_CYS = $cys
-          $env:PHOENIX_CYSD = $cysd
+          $env:PHOENIX_EZER = $ezer
+          $env:PHOENIX_EZERD = $ezerd
           & $py $smoke
           $code = $LASTEXITCODE
-          # ★케이스⑦ 정리: 실 cysd 스케줄러 태스크가 남으면 안 됨(스모크가 finally 로 uninstall 하나 방어적 재정리)
-          & $cys daemon uninstall 2>$null
-          Get-Process cys,cysd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          # ★케이스⑦ 정리: 실 ezerd 스케줄러 태스크가 남으면 안 됨(스모크가 finally 로 uninstall 하나 방어적 재정리)
+          & $ezer daemon uninstall 2>$null
+          Get-Process ezer,ezerd -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           if ($code -ne 0) { throw "T5: 피닉스 Windows 패리티 스모크 실패 (exit=$code)" }
-          Write-Host "OK: T5 피닉스 Windows 패리티 스모크 통과 (경로매핑·schtasks·재시작·snapshot/ps1·stub restore·deploy plan·★KeepAlive respawn·★⑧실경로 auto-restore[주입 없이 cysd 자체 decide_auto_restore]·★⑨Job Object 자식트리 동반사망[D3 P2-9])"
+          Write-Host "OK: T5 피닉스 Windows 패리티 스모크 통과 (경로매핑·schtasks·재시작·snapshot/ps1·stub restore·deploy plan·★KeepAlive respawn·★⑧실경로 auto-restore[주입 없이 ezerd 자체 decide_auto_restore]·★⑨Job Object 자식트리 동반사망[D3 P2-9])"
           # ★Actions pwsh 래퍼는 스크립트 말미에 exit $LASTEXITCODE 를 붙인다 — 위 방어적 uninstall(스모크 finally 가
           #   이미 제거해 rc=1)이 그 값을 오염시켜 '스모크 성공인데 스텝 exit 1'(run 28738140283 실증). 판정은 $code 로 끝 — 명시 exit 0.
           exit 0

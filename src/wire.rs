@@ -1,6 +1,6 @@
-//! cys↔cysd 와이어 무결성 가드 (leaf — socket/pty/governance/pack 무의존).
+//! ezer↔ezerd 와이어 무결성 가드 (leaf — socket/pty/governance/pack 무의존).
 //!
-//! producer 자기검증: cysd가 응답 `Value`를 NDJSON 줄로 직렬화할 때,
+//! producer 자기검증: ezerd가 응답 `Value`를 NDJSON 줄로 직렬화할 때,
 //! 같은 바이트를 즉시 재파싱한 `Value`가 선언과 `==`가 아니면 fail-loud(`Drift`).
 //! 디코더 대칭검증: 응답에 additive하게 부착된 `_flen`(payload 바이트 길이) 선언과
 //! 실제 재직렬화 길이가 동일버전에서 어긋나면 트렁케이션(`LenMismatch`)으로 거부.
@@ -25,7 +25,7 @@ pub const PROTO_PV: u16 = 1;
 const KEY_FLEN: &str = "_flen";
 const KEY_PV: &str = "_pv";
 
-/// cys↔cysd 와이어 무결성 위반 분류. T1-3 `Severity`로 사상된다.
+/// ezer↔ezerd 와이어 무결성 위반 분류. T1-3 `Severity`로 사상된다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AbiError {
     /// 인코드 round-trip 불일치: 직렬화→재파싱이 선언 `Value`와 다름 → Critical.
@@ -36,9 +36,9 @@ pub enum AbiError {
     VersionSkew { peer_pv: u16, local_pv: u16 },
 }
 
-/// 인코드 자기검증 기본 ON. `CYS_ABI_VERIFY=0`로만 좁게 opt-out(debug-only 아님).
+/// 인코드 자기검증 기본 ON. `EZER_ABI_VERIFY=0`로만 좁게 opt-out(debug-only 아님).
 fn verify_on() -> bool {
-    std::env::var("CYS_ABI_VERIFY").as_deref() != Ok("0")
+    std::env::var("EZER_ABI_VERIFY").as_deref() != Ok("0")
 }
 
 /// 응답 payload(result 또는 error)의 canonical 직렬화 바이트 길이.
@@ -83,13 +83,13 @@ pub fn frame_response(resp: &Value) -> Result<String, AbiError> {
 /// T4-5A(==T5-6 strand-3 == ONE guard): 단일 RPC 응답 페이로드 바이트 상한.
 /// **프로세스 수명·load = 기존 watchdog(governance.rs)** / **단일 RPC 응답 바이트 = 이 신규
 /// 직교 가드** — ADR 경계: 두 책임은 별개이며 이 가드는 watchdog와 중복이 아니다(한 곳에만 둔다).
-/// cap 수치는 로컬 실측 기본값이며 `CYS_MAX_RESPONSE_BYTES`로 조정(penpot 호스티드 MCP 15MB는
+/// cap 수치는 로컬 실측 기본값이며 `EZER_MAX_RESPONSE_BYTES`로 조정(penpot 호스티드 MCP 15MB는
 /// 검증 상수 아님 — 상속 금지). screen-buffer FIFO `truncated`(handlers.rs:860)와 무관한 별 표면.
 pub const MAX_RESPONSE_BYTES: usize = 8 * 1024 * 1024;
 
 /// 실측 가능한 cap 노브 — 기본 `MAX_RESPONSE_BYTES`, env로만 좁게 조정.
 fn max_response_bytes() -> usize {
-    std::env::var("CYS_MAX_RESPONSE_BYTES")
+    std::env::var("EZER_MAX_RESPONSE_BYTES")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(MAX_RESPONSE_BYTES)
@@ -114,7 +114,7 @@ pub fn cap_response(resp: &Value) -> Option<Value> {
         "error": {
             "code": "response_truncated",
             "message": format!(
-                "RPC response {bytes} bytes exceeds cap {cap} — truncated (set CYS_MAX_RESPONSE_BYTES or use streaming)"
+                "RPC response {bytes} bytes exceeds cap {cap} — truncated (set EZER_MAX_RESPONSE_BYTES or use streaming)"
             ),
             "original_bytes": bytes,
             "cap_bytes": cap,
@@ -240,7 +240,7 @@ mod tests {
     fn wire_byte_cap_truncates_oversize() {
         // cap을 512바이트로 좁혀 핀(테스트 전용 — sentinel(고정 메시지)은 이 안에 들어가되
         // 거대 배열은 초과하도록). 직렬화는 lazy라 set 후 즉시 호출.
-        std::env::set_var("CYS_MAX_RESPONSE_BYTES", "512");
+        std::env::set_var("EZER_MAX_RESPONSE_BYTES", "512");
 
         // cap 이내: 통과(None — 원본 그대로 진행).
         let small = json!({"id": 1, "ok": true, "result": {"x": 1}});
@@ -265,6 +265,6 @@ mod tests {
             "sentinel은 cap 이내 — 재트렁케이트 안 함"
         );
 
-        std::env::remove_var("CYS_MAX_RESPONSE_BYTES");
+        std::env::remove_var("EZER_MAX_RESPONSE_BYTES");
     }
 }

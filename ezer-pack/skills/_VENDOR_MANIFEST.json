@@ -1,0 +1,184 @@
+{
+  "_doc": "벤더링 무결성 + 라이선스 추적 baseline(OPP-19/20). ezer_cleanroom.py vendor-check/license-check 진실원천. files{} sha256 = ezer-승인 벤더링 스냅샷(패치 후 상태·정규화 LF/no-BOM)이지 업스트림 raw 아님(patched:true가 정상화). 갱신: EZER_VENDOR_SNAPSHOT_OWNER_APPROVED=1 ezer_cleanroom.py vendor-snapshot --skills <dir>(denylist ② owner 승인). build.rs:17이 '_' 접두 미제외 → 본 파일 PACK 임베드·코드사이닝 동봉.",
+  "generated_by": "ezer_cleanroom.py vendor-snapshot",
+  "schema": "ezer-vendor-manifest/v1",
+  "sources": [
+    {
+      "copyleft_class": "permissive",
+      "embed": true,
+      "files": {
+        "SKILL.md": {
+          "bytes": 24702,
+          "sha256": "211f4b522379bf218f69ad405f3d1e5bfc1220c8a12a490a02ff3adc6cc275ee"
+        },
+        "engine/__init__.py": {
+          "bytes": 642,
+          "sha256": "3a7b2d0341ee72639d0295f768d613ef0da16370e0a97ab528cec21ed93785ee"
+        },
+        "engine/__main__.py": {
+          "bytes": 5975,
+          "sha256": "72f12c004cd1b4bdf6b5cb8dd491bda419466e8cd4b4caff8e68376f26654148"
+        },
+        "engine/bias_check.py": {
+          "bytes": 10075,
+          "sha256": "182b31ea29da014e546ad67756864265160252efec0e908093f88f62551d4351"
+        },
+        "engine/cred_guard.py": {
+          "bytes": 9166,
+          "sha256": "b7380367c0718ad05ed7af08594fd5e0fe3bb2c4bf86079bf3a1cfc2a40f2c1e"
+        },
+        "engine/dep_doctor.py": {
+          "bytes": 12505,
+          "sha256": "4489f6dd952289659a4ff413b8f927f00e84988dfeaa444f2747a50bc12ee80e"
+        },
+        "engine/disk_signal.py": {
+          "bytes": 10430,
+          "sha256": "e5300310f3bf7d08d1f69bb6d7c59101c94748fae866eb85423e1a197af2aa69"
+        },
+        "engine/executor.py": {
+          "bytes": 9904,
+          "sha256": "f700530d2c2ee322c917255576ffb0ba9a8445a194278088dcd9b8afc9a638aa"
+        },
+        "engine/fetch_chain.py": {
+          "bytes": 35306,
+          "sha256": "ae9f20eb8727b1042906fda37555b43088aec195486054c557ddfdc2708082d3"
+        },
+        "engine/learning.py": {
+          "bytes": 6455,
+          "sha256": "be4dec9da6c69b311d7409a611e8751aed70fa91cb14bc9a1324e4a7956a60f4"
+        },
+        "engine/phase0.py": {
+          "bytes": 20345,
+          "sha256": "3fbcef5f3b3cf5402ca65a6480fd81fa42aea4d0e27a48b545e8b496e6d87295"
+        },
+        "engine/proc.py": {
+          "bytes": 1260,
+          "sha256": "f50ac94e275d77b7e772acf890ab944c5020496846a3bbdb352cdb9c477b9ce3"
+        },
+        "engine/safety.py": {
+          "bytes": 3253,
+          "sha256": "3b78f8130db7041293aab85e53446b5f579cee08e7e7468a50880e17ff8be96e"
+        },
+        "engine/templates/package.json": {
+          "bytes": 331,
+          "sha256": "91adf91af509ea5725783459f4f7a38d43177ec8be136592ea1c0eb1d8c29682"
+        },
+        "engine/templates/playwright_mobile_chrome.js": {
+          "bytes": 3696,
+          "sha256": "cea1b6db5bcf4ccfd61c8487848340b6f37547de9816267f95965e87961f322e"
+        },
+        "engine/templates/playwright_real_chrome.js": {
+          "bytes": 6673,
+          "sha256": "568c6da4b1123364a751cf87ed947ba37ffce8a35afa29cabcb923d0a5697717"
+        },
+        "engine/transport.py": {
+          "bytes": 9592,
+          "sha256": "ba2476672ec034d6cb3a51cc1fdb8d7661292d4de12ff9c4477e2b1ea24d33a8"
+        },
+        "engine/url_transforms.py": {
+          "bytes": 3287,
+          "sha256": "091433e23b9f66bd6d6c0379c013589c6881d7e840c98aa6af0e018ef361de09"
+        },
+        "engine/validators.py": {
+          "bytes": 12918,
+          "sha256": "1f2b49aa917ee500c7d30782517b0a35a89478b8ee1850ca4182e46d4a865ddc"
+        },
+        "engine/waf_detector.py": {
+          "bytes": 7057,
+          "sha256": "5de70edda523f3680040ccbc8a1bc301c0b424d0ee98985adcaab3f5f0da790a"
+        },
+        "engine/waf_profiles.yaml": {
+          "bytes": 5777,
+          "sha256": "ee5da75975e23e627eed6ca54f83bd7b0a5b839cb50eeb4f059ff0251f410376"
+        },
+        "references/blocked-ko.md": {
+          "bytes": 3877,
+          "sha256": "179bab080fdcab1a1aa4f8874212037e3c59f412744a34a781e9faa425cca717"
+        },
+        "references/cache-archive.md": {
+          "bytes": 2682,
+          "sha256": "4abe85d2083881871a7e840754b7a82d27592c0108f583493f33002705e0fe6f"
+        },
+        "references/fallback.md": {
+          "bytes": 6198,
+          "sha256": "555169c5fdf1a8c1f1249e7510374f613b9d18baec24fdb511158ae2ff5c2919"
+        },
+        "references/jina.md": {
+          "bytes": 3402,
+          "sha256": "1ddd2ac5a05596a4862d3cc7b3f9b279d00e4f98495fba4a2c851cf06a69ffa7"
+        },
+        "references/json-api.md": {
+          "bytes": 6132,
+          "sha256": "5ed409ed453a46d4a1673179b0b4531c0ad39cf53e27aceedff3b94de0e7cdcc"
+        },
+        "references/media.md": {
+          "bytes": 3550,
+          "sha256": "3533b9b9f7b6c3183d2bb2630e654ed799a92a7b7dda7fd489be001dcc401edb"
+        },
+        "references/metadata.md": {
+          "bytes": 2984,
+          "sha256": "9a32c65befc2b2e0db0861b400fd596d4a83485abd82d4dba00e17e128f8b420"
+        },
+        "references/naver.md": {
+          "bytes": 3728,
+          "sha256": "6dbd62ee56dbb1d64e15c6cc67504576e524e3f11facf669bfdd296d4a5f0a4b"
+        },
+        "references/playwright.md": {
+          "bytes": 6150,
+          "sha256": "e6a07b103c002516f77ea348d82a8e01bf0ea1fe54cda68b9ed96d6c6d4e524c"
+        },
+        "references/public-api.md": {
+          "bytes": 3520,
+          "sha256": "c0cf68114fb8ec10deb70ca65b127738fa32f7a58a2a920419b343fd6ad1a563"
+        },
+        "references/rss.md": {
+          "bytes": 3329,
+          "sha256": "8078d05ce089176af30a5282ab42667353e07cd04dfe94243d6722a110717bb9"
+        },
+        "references/tls-impersonate.md": {
+          "bytes": 6457,
+          "sha256": "810af0a17c69fbddfe7f7f56d23bef9cc8e3964d8f3f069aa3d91095ad11fa9f"
+        },
+        "references/twitter.md": {
+          "bytes": 4594,
+          "sha256": "60f0259425a1593697e3828e8c90e4c725daf1645e2e40f1675ef6230d83f597"
+        }
+      },
+      "id": "insane-search",
+      "kind": "vendored",
+      "notice": null,
+      "patch_notes": [
+        "Step-0 setup.sh 4부작용 제거",
+        "SKILL.md Step0 star write 제거"
+      ],
+      "patched": true,
+      "spdx": "MIT",
+      "upstream": "fivetaku/insane-search",
+      "upstream_pin": "49306346b59aa89b5e96d98e1104da0890deed72"
+    },
+    {
+      "copyleft_class": "public_domain",
+      "declared_in": "skills/insane-search/SKILL.md:246-251",
+      "embed": false,
+      "id": "yt-dlp",
+      "kind": "runtime_dep",
+      "spdx": "Unlicense"
+    },
+    {
+      "copyleft_class": "permissive",
+      "declared_in": "skills/insane-search/SKILL.md:27",
+      "embed": false,
+      "id": "curl_cffi",
+      "kind": "runtime_dep",
+      "spdx": "MIT"
+    },
+    {
+      "copyleft_class": "permissive",
+      "declared_in": "skills/insane-search/SKILL.md:246-251",
+      "embed": false,
+      "id": "playwright",
+      "kind": "runtime_dep",
+      "spdx": "Apache-2.0"
+    }
+  ]
+}

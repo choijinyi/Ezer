@@ -30,7 +30,7 @@ from urllib.parse import urlparse, parse_qs
 # /peek 로 서버가 실제 수신한 key 를 기록(② fragment/절단 회귀 방지 — 서버측 기록을 게이트가 검사).
 PEEK_KEYS: list[str] = []
 
-WEB_DIR = Path(__file__).resolve().parents[2] / "cysjavis-pack" / "web"
+WEB_DIR = Path(__file__).resolve().parents[2] / "ezer-pack" / "web"
 SHOT = Path(__file__).resolve().parent / "office_detail_snapshot.png"
 NOW = int(time.time())
 

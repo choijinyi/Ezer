@@ -4,7 +4,7 @@ name: release
 #   build         : tag(vX.Y.Z) push → 앱 빌드·서명 → 이 repo에 public 릴리스 발행(updater 대상)
 #   pack-artifacts: 팩 서명 자산 업로드 + latest 마킹 결정론 강제
 #   (P0 이력: --draft 는 수동 Publish 누락 시 채널 영구 정지 → 자동 발행 유지.
-#    구 배포 repo cys-terminal-releases는 Archive — 마지막 미러가 구 설치본 이주 경로로 영구 생존.)
+#    구 배포 repo ezer-agent-releases는 Archive — 마지막 미러가 구 설치본 이주 경로로 영구 생존.)
 # 사용: 버전 6곳 범프(scripts/version-check.sh) 후  git tag vX.Y.Z && git push origin vX.Y.Z
 #       (수동 실행도 가능 — Actions 탭 Run workflow)
 # 활성 조건(시크릿):  TAURI_SIGNING_PRIVATE_KEY
@@ -19,7 +19,7 @@ permissions:
   contents: write          # 비공개 repo에 릴리스 생성·자산 업로드(+ relocate 단계 다운로드)에 필요
 
 env:
-  SRC_REPO: idoforgod/cys-terminal              # 공개 소스 repo = 공개 배포 원본 (updater 대상)
+  SRC_REPO: choijinyi/Ezer              # 공개 소스 repo = 공개 배포 원본 (updater 대상)
 
 jobs:
   build:
@@ -30,7 +30,7 @@ jobs:
           - platform: macos-latest
             target: aarch64-apple-darwin    # Apple Silicon
           - platform: macos-latest
-            target: x86_64-apple-darwin     # Intel — arm64 러너에서 크로스 빌드(bundle-prep이 CYS_TARGET 사용)
+            target: x86_64-apple-darwin     # Intel — arm64 러너에서 크로스 빌드(bundle-prep이 EZER_TARGET 사용)
           - platform: windows-latest
             target: x86_64-pc-windows-msvc  # Windows x64 — NSIS 자기완결(PortableGit+Python 동봉).
                                             # createUpdaterArtifacts=true(tauri.windows.conf.json) + 서명키로
@@ -82,7 +82,7 @@ jobs:
           key: ${{ matrix.target }}
 
       # ★W6/E1 phoenix host-level 로직 게이트 (macOS 네이티브 arm64 레그 1회 · 스텝 정의 — 실 실행은 릴리스 시 확인).
-      # 실 cysd 를 격리 상태 디렉터리에서 kill→재기동해 auto-restore 부활·STRICT 주입·no-target NOOP·cross-layer
+      # 실 ezerd 를 격리 상태 디렉터리에서 kill→재기동해 auto-restore 부활·STRICT 주입·no-target NOOP·cross-layer
       # 재시도·C2 sentinel·E3 GC·E2 스케줄 배선을 커밋 테스트로 실증(a07cc7f Not-tested 봉인).
       # ★codex W6 minor: 이 게이트는 **host-아키텍처 무관 로직**(phoenix python + Rust auto-restore 단위)을
       #   검증한다 — host debug(arm64) 바이너리로 충분하며 matrix.target 별 sidecar 는 뒤 build 스텝이 컴파일한다.
@@ -92,21 +92,21 @@ jobs:
         if: matrix.target == 'aarch64-apple-darwin'
         run: |
           set -euo pipefail
-          cargo build --bin cys --bin cysd
-          export PHOENIX_HARNESS_CYSD="$PWD/target/debug/cysd"
+          cargo build --bin ezer --bin ezerd
+          export PHOENIX_HARNESS_EZERD="$PWD/target/debug/ezerd"
           export PATH="$PWD/target/debug:$PATH"
-          export PHOENIX_CYS="$PWD/target/debug/cys"
+          export PHOENIX_EZER="$PWD/target/debug/ezer"
           # ★커밋된 phoenix 테스트 전건 실행(glob) — 하드코딩 리스트는 신규 웨이브 테스트(w2/w3/c6/as3 …)를 조용히
           #   누락시키는 위험이 있어 tests/ 디렉터리를 스캔한다(정직성: 게이트가 실제 커밋 테스트 전부를 돈다).
-          for t in cysjavis-pack/bin/tests/test_phoenix_*.py; do
+          for t in ezer-pack/bin/tests/test_phoenix_*.py; do
             echo "== phoenix test: $(basename "$t") =="
-            CYS_PACK_DIR="$(mktemp -d)" python3 "$t"
+            EZER_PACK_DIR="$(mktemp -d)" python3 "$t"
           done
           # Rust auto-restore 단위(재시도 seam·env 주입·B1·B3) + pack 소유권(B2).
           # ★--skip hwmon:: — hwmon 테스트는 실 GPU 전제(gpu.cores>0 단언)라 가상 러너에서 환경 FAIL
           #   (v0.12.21 release run 28792111282 실증 — phoenix 게이트와 무관한 host 하드웨어 의존).
-          CYS_PACK_DIR="$(mktemp -d)" cargo test --bin cysd -- --test-threads=1 --skip hwmon::
-          CYS_PACK_DIR="$(mktemp -d)" cargo test --lib -- --test-threads=1
+          EZER_PACK_DIR="$(mktemp -d)" cargo test --bin ezerd -- --test-threads=1 --skip hwmon::
+          EZER_PACK_DIR="$(mktemp -d)" cargo test --lib -- --test-threads=1
 
       # Windows 자기완결 런타임 동봉 (windows-build.yml과 동일 절차 — PortableGit + Python embeddable).
       # tauri.windows.conf.json bundle.resources("runtime/")가 이 트리를 NSIS에 싣는다.
@@ -131,11 +131,11 @@ jobs:
           curl -fL -o "$RT/python/get-pip.py" "https://bootstrap.pypa.io/get-pip.py"
           "$RT/python/python.exe" "$RT/python/get-pip.py" --no-warn-script-location
           rm -f "$RT/python/get-pip.py"
-          # ── uv/uvx 동봉 (serena·nlm-mcp-cli가 uvx 전제 → C20/C43 FAIL 방지). runtime/python은 cysd가 PATH 주입. ──
+          # ── uv/uvx 동봉 (serena·nlm-mcp-cli가 uvx 전제 → C20/C43 FAIL 방지). runtime/python은 ezerd가 PATH 주입. ──
           curl -fL -o uv.zip "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-x86_64-pc-windows-msvc.zip"
           7z x uv.zip -o"$RT/python" -y >/dev/null
           ls -la "$RT/python/uv.exe" "$RT/python/uvx.exe"
-          # ── node + npm/npx 동봉 (mac 0.7.0 파리티 — 순정 Windows엔 node 부재. runtime/node는 cysd가 PATH 주입) ──
+          # ── node + npm/npx 동봉 (mac 0.7.0 파리티 — 순정 Windows엔 node 부재. runtime/node는 ezerd가 PATH 주입) ──
           echo "== Node.js 22.17.1 (npm/npx — win-x64, mac과 동일 핀) =="
           curl -fL -o node.zip "https://nodejs.org/dist/v22.17.1/node-v22.17.1-win-x64.zip"
           7z x node.zip -o"$RT" -y >/dev/null
@@ -165,35 +165,35 @@ jobs:
         if: matrix.platform == 'macos-latest'
         shell: bash
         env:
-          CYS_TARGET: ${{ matrix.target }}                         # bundle-prep.sh 크로스빌드 타깃
+          EZER_TARGET: ${{ matrix.target }}                         # bundle-prep.sh 크로스빌드 타깃
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         run: |
           set -euo pipefail
           TRIPLE="${{ matrix.target }}"
           BUNDLE="target/$TRIPLE/release/bundle"
-          APP="$BUNDLE/macos/cys.app"
+          APP="$BUNDLE/macos/ezer.app"
           VERSION="$(grep -m1 '"version"' src-tauri/tauri.conf.json | sed -E 's/.*"([0-9][0-9.]*)".*/\1/')"
           case "$TRIPLE" in
             aarch64-apple-darwin) ARCH=aarch64 ;;
             x86_64-apple-darwin)  ARCH=x64 ;;
             *) echo "unexpected target: $TRIPLE"; exit 1 ;;
           esac
-          # ① 앱 번들만 빌드(--bundles app) — beforeBuildCommand(bundle-prep)가 UI·cys/cysd·pack 빌드. fat DMG는 생략.
+          # ① 앱 번들만 빌드(--bundles app) — beforeBuildCommand(bundle-prep)가 UI·ezer/ezerd·pack 빌드. fat DMG는 생략.
           bun x @tauri-apps/cli@2 build --bundles app --target "$TRIPLE"
           # ② git-core dedup (역참조 되돌리기 · build-macos-signed.sh와 동일 공유 스크립트) → runtime/git 608→~144MB
           bash scripts/dedup-git-core.sh "$APP"
           # ③ 업데이터 tar.gz 재생성(dedup 반영·심볼릭링크 보존) + 재서명 → tauri-action이 이 .sig로 latest.json 작성
-          ( cd "$BUNDLE/macos" && tar czf cys.app.tar.gz cys.app )
-          bun x @tauri-apps/cli@2 signer sign --private-key "$TAURI_SIGNING_PRIVATE_KEY" --password "" "$BUNDLE/macos/cys.app.tar.gz"
-          # ④ dedup된 .app으로 UDZO DMG(hdiutil · Tauri 기본 포맷 동일). 파일명 cys_<ver>_<arch>.dmg = tauri-action 표준 수집명.
-          STAGE="$(mktemp -d)"; ditto "$APP" "$STAGE/cys.app"; ln -s /Applications "$STAGE/Applications"
+          ( cd "$BUNDLE/macos" && tar czf ezer.app.tar.gz ezer.app )
+          bun x @tauri-apps/cli@2 signer sign --private-key "$TAURI_SIGNING_PRIVATE_KEY" --password "" "$BUNDLE/macos/ezer.app.tar.gz"
+          # ④ dedup된 .app으로 UDZO DMG(hdiutil · Tauri 기본 포맷 동일). 파일명 ezer_<ver>_<arch>.dmg = tauri-action 표준 수집명.
+          STAGE="$(mktemp -d)"; ditto "$APP" "$STAGE/ezer.app"; ln -s /Applications "$STAGE/Applications"
           mkdir -p "$BUNDLE/dmg"
-          hdiutil create -volname "cys" -srcfolder "$STAGE" -ov -format UDZO "$BUNDLE/dmg/cys_${VERSION}_${ARCH}.dmg"
+          hdiutil create -volname "ezer" -srcfolder "$STAGE" -ov -format UDZO "$BUNDLE/dmg/ezer_${VERSION}_${ARCH}.dmg"
           rm -rf "$STAGE"
-          echo "✓ macOS slim 산출물 준비: $BUNDLE/dmg/cys_${VERSION}_${ARCH}.dmg + $BUNDLE/macos/cys.app.tar.gz(.sig)"
+          echo "✓ macOS slim 산출물 준비: $BUNDLE/dmg/ezer_${VERSION}_${ARCH}.dmg + $BUNDLE/macos/ezer.app.tar.gz(.sig)"
 
-      # tauri build → beforeBuildCommand(bundle-prep.sh)가 UI 번들 + cys/cysd 릴리스 빌드 + externalBin
+      # tauri build → beforeBuildCommand(bundle-prep.sh)가 UI 번들 + ezer/ezerd 릴리스 빌드 + externalBin
       # 배치 → 번들(dmg/app) → createUpdaterArtifacts(.app.tar.gz + .sig + latest.json) → 비공개 repo 릴리스 업로드.
       # Windows: NSIS setup.exe + .sig — tauri-action이 같은 릴리스의 latest.json에 platforms.windows-x86_64를 병합.
       # ★macOS는 위 스텝이 slim 산출물을 이미 만들었으므로 tauriScript=true 로 빌드를 no-op 시킨다(재빌드=fat 재역참조
@@ -203,7 +203,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CYS_TARGET: ${{ matrix.target }}    # bundle-prep.sh가 매트릭스 타깃으로 사이드카(cys-<target>)를 크로스 빌드
+          EZER_TARGET: ${{ matrix.target }}    # bundle-prep.sh가 매트릭스 타깃으로 사이드카(ezer-<target>)를 크로스 빌드
           PYTHONUTF8: '1'                     # Windows 러너 python 한국어 print cp1252 크래시 방지(타 OS 무해)
           # ── 업데이트 무결성 서명 (필수 — 없으면 .sig·latest.json 미생성) ──
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -216,22 +216,22 @@ jobs:
           tauriScript: ${{ matrix.platform == 'macos-latest' && 'true' || '' }}
           tagName: ${{ github.ref_name }}
           # Phase 2(릴리스 통합·2026-07-03): 소스 repo가 public이 되면서 이 릴리스가 곧 공개 배포다.
-          releaseName: 'cys ${{ github.ref_name }}'
-          releaseBody: 'cys 터미널 ${{ github.ref_name }}. macOS는 .dmg, Windows는 -setup.exe를 내려받아 설치하세요. 기존 사용자는 앱 내 Update 버튼으로 자동 갱신됩니다.'
+          releaseName: 'ezer ${{ github.ref_name }}'
+          releaseBody: 'ezer 터미널 ${{ github.ref_name }}. macOS는 .dmg, Windows는 -setup.exe를 내려받아 설치하세요. 기존 사용자는 앱 내 Update 버튼으로 자동 갱신됩니다.'
           releaseDraft: false     # 실태그 자동 발행 — updater가 releases/latest를 즉시 인식
           prerelease: false
           args: --target ${{ matrix.target }}
 
   # ── 무중단 팩 채널 아티팩트 (DESIGN-noshutdown-pack-update §2-①/§5/§7) ──
-  # 기존 build/서명/updater 잡과 독립·가산. cys 바이너리를 네이티브로 빌드(팩 콘텐츠는 플랫폼 무관)해
-  # 권위 manifest를 emit → cysjavis-pack/ 트리에서 결정론 tar 생성 → embed-vs-standalone 동일성 게이트
+  # 기존 build/서명/updater 잡과 독립·가산. ezer 바이너리를 네이티브로 빌드(팩 콘텐츠는 플랫폼 무관)해
+  # 권위 manifest를 emit → ezer-pack/ 트리에서 결정론 tar 생성 → embed-vs-standalone 동일성 게이트
   # → pack-manifest.json을 minisign 서명(서명 대상=manifest, tar 아님) → 비공개 릴리스에 업로드.
   # relocate가 이 자산까지 공개 repo로 옮긴다(dist/* 일괄).
   pack-artifacts:
     needs: build
     runs-on: ubuntu-latest
     env:
-      KEY_ID: '39E60A702949D6C3'    # 임베드 키링(cysjavis-pack/trusted-keys.json) key_id — manifest.key_id
+      KEY_ID: '39E60A702949D6C3'    # 임베드 키링(ezer-pack/trusted-keys.json) key_id — manifest.key_id
       EXPIRES_DAYS: '90'            # 서명 신선도 유효창(§6-5 트레이드오프 — Replay 차단 vs 재발행 부담)
       # ★무중단 팩 채널 안전 하한(2026-07-12 오너 확정). seed-once 상태 보호(memory/·SESSION_STATE
       # 불가침)는 0.12.48+ 바이너리 코드다 — 공란이면 ≤0.12.47 구버전 pack-update가 사용자 상태를
@@ -241,7 +241,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # ★시크릿/개인정보 발행 hard-gate (팩 바이너리 빌드·임베드 전 최우선). 아래 scan-pack-secrets.sh는
-      # cysjavis-pack 트리만·개인 계정 핸들 허용이라, 여기서 whole-repo 엄격 스캔(secret-scan.sh --all:
+      # ezer-pack 트리만·개인 계정 핸들 허용이라, 여기서 whole-repo 엄격 스캔(secret-scan.sh --all:
       # 개인 홈경로·개인 프로필 디렉토리·개인 핸들·이메일·키토큰)을 fail-closed로 선행해 누출을 이중 차단한다.
       - name: Secret/PII scan (pre-build hard-gate)
         shell: bash
@@ -258,21 +258,21 @@ jobs:
         with:
           key: pack-artifacts
 
-      # ★콘텐츠 스캔 발행 hard-gate (지점①/2 — 바이너리 빌드 전). git-추적 cysjavis-pack 전 트리가
-      # build.rs로 cys 바이너리에 자동 임베드되므로, gitignore가 못 잡는 콘텐츠 누출(개인 홈경로·
+      # ★콘텐츠 스캔 발행 hard-gate (지점①/2 — 바이너리 빌드 전). git-추적 ezer-pack 전 트리가
+      # build.rs로 ezer 바이너리에 자동 임베드되므로, gitignore가 못 잡는 콘텐츠 누출(개인 홈경로·
       # 이메일·키토큰)을 바이너리 link 전에 fail-closed로 차단한다. 비0이면 잡 실패(발행 차단).
       - name: Scan pack content (pre-build hard-gate)
         run: bash scripts/scan-pack-secrets.sh
 
-      # ★cargo clean 선행 — rust-cache가 복원한 스테일 OUT_DIR/pack_all.rs(이전 cysjavis-pack 트리로
+      # ★cargo clean 선행 — rust-cache가 복원한 스테일 OUT_DIR/pack_all.rs(이전 ezer-pack 트리로
       # 생성된 임베드 테이블)가 재사용돼 manifest SOT를 오염시키는 회귀를 차단한다. 캐시 복원 직후에
       # target을 비워 build.rs 코드젠을 강제 재실행시킨다(스테일 생성표 무효화).
       - name: cargo clean (스테일 생성표 무효화)
         run: cargo clean
 
-      # cys 바이너리(순수 Rust·Tauri 불요)를 러너에서 빌드 → pack-manifest emit에 사용.
-      - name: Build cys
-        run: cargo build --release --bin cys
+      # ezer 바이너리(순수 Rust·Tauri 불요)를 러너에서 빌드 → pack-manifest emit에 사용.
+      - name: Build ezer
+        run: cargo build --release --bin ezer
 
       # 권위 manifest(임베드 PACK+PACK_SKILLS에서 파생)를 단일 SOT로 캡처. signed_at=지금,
       # expires_at=now+EXPIRES_DAYS, key_id=임베드 키링. min_binary_version=PACK_MIN_BINARY
@@ -282,7 +282,7 @@ jobs:
           set -euo pipefail
           SIGNED_AT="$(date -u +%s)"
           EXPIRES_AT="$(( SIGNED_AT + EXPIRES_DAYS * 86400 ))"
-          ./target/release/cys pack-manifest \
+          ./target/release/ezer pack-manifest \
             --key-id "$KEY_ID" \
             --signed-at "$SIGNED_AT" \
             --expires-at "$EXPIRES_AT" \
@@ -291,8 +291,8 @@ jobs:
           echo "── pack-manifest.json (head) ──"; head -c 600 pack-manifest.json; echo
 
       # ★역방향 커버리지 게이트(디스크 고아 차단). 동일성 게이트(forward: manifest⊆disk)의 역방향 —
-      # git-추적 cysjavis-pack/ 트리에서 build.rs가 임베드했어야 할 파일이 manifest에 누락(디스크 고아)
-      # 됐는지 검출한다. ★SOT = `cys pack-manifest` 출력(임베드 권위 테이블) — 제외규칙을 python으로
+      # git-추적 ezer-pack/ 트리에서 build.rs가 임베드했어야 할 파일이 manifest에 누락(디스크 고아)
+      # 됐는지 검출한다. ★SOT = `ezer pack-manifest` 출력(임베드 권위 테이블) — 제외규칙을 python으로
       # 재구현해 임베드 집합을 독립 재유도하지 않는다. python은 (tracked − manifest) 잔차만 분류한다:
       # 잔차의 각 항목이 build.rs:41-44가 배제하는 알려진 카테고리(경로 컴포넌트가 '.'로 시작·tests·
       # __pycache__)면 정당한 제외, 아니면 디스크 고아 → exit 1. build.rs 제외규칙이 바뀌어 새 카테고리가
@@ -309,16 +309,16 @@ jobs:
               print("::error::manifest.files 비어있음 — 역커버리지 불가", file=sys.stderr); sys.exit(1)
 
           out = subprocess.run(
-              ["git", "ls-files", "cysjavis-pack"],
+              ["git", "ls-files", "ezer-pack"],
               capture_output=True, text=True, check=True,
           ).stdout
           tracked = set()
           for line in out.splitlines():
               line = line.strip()
-              if line.startswith("cysjavis-pack/"):
-                  tracked.add(line[len("cysjavis-pack/"):])
+              if line.startswith("ezer-pack/"):
+                  tracked.add(line[len("ezer-pack/"):])
           if not tracked:
-              print("::error::git ls-files cysjavis-pack 비어있음 — 인덱스 부재?", file=sys.stderr); sys.exit(1)
+              print("::error::git ls-files ezer-pack 비어있음 — 인덱스 부재?", file=sys.stderr); sys.exit(1)
 
           # build.rs:41-44 제외 카테고리(잔차 분류용 allowlist — 임베드 집합 재유도 아님).
           def is_excluded(rel):
@@ -337,7 +337,7 @@ jobs:
           PY
 
       # ★embed-vs-standalone 동일성 게이트 + 결정론 pack.tar.gz 생성(§5-1).
-      # ① manifest.files(임베드 권위) ⇔ cysjavis-pack/ 온디스크 트리 sha256 전수 일치(드리프트 차단).
+      # ① manifest.files(임베드 권위) ⇔ ezer-pack/ 온디스크 트리 sha256 전수 일치(드리프트 차단).
       # ② 정확히 manifest.files 집합만으로 결정론 tar(정렬·고정 mtime/uid) 생성.
       # ③ tar 재추출 sha256 == manifest.files 전수 일치(tar ⇔ manifest ⇔ embed 3자 폐포).
       # 하나라도 불일치 = exit 1 = 빌드 FAIL.
@@ -347,7 +347,7 @@ jobs:
           python3 - <<'PY'
           import hashlib, json, os, subprocess, sys, tempfile
 
-          ROOT = "cysjavis-pack"
+          ROOT = "ezer-pack"
           man = json.load(open("pack-manifest.json"))
           files = man["files"]
           if not files:
@@ -360,7 +360,7 @@ jobs:
                       h.update(chunk)
               return h.hexdigest()
 
-          # ① embed 권위 vs 온디스크 cysjavis-pack/ 트리 전수 일치.
+          # ① embed 권위 vs 온디스크 ezer-pack/ 트리 전수 일치.
           for rel, want in files.items():
               src = os.path.join(ROOT, rel)
               if not os.path.isfile(src):
@@ -438,7 +438,7 @@ jobs:
 
       # ★실서명→실검증 폐포 게이트(릴리스 전 결정론 검증). 방금 PRODUCTION 서명기
       # (bunx @tauri-apps/cli signer → base64 --decode → .minisig)가 낸 실제 아티팩트를
-      # PRODUCTION 검증기(cys pack-update → packsig::verify_minisign → minisign_verify)에
+      # PRODUCTION 검증기(ezer pack-update → packsig::verify_minisign → minisign_verify)에
       # --dry-run으로 통과시킨다 — 서명+신선도+파일sha256+역방향 커버리지를 적용 없이 검증.
       # packsig 단위테스트는 minisign 크레이트로만 서명하므로 tauri-signer+base64 경로(release.yml이
       # 실제로 배포하는 형식)는 여기서만 행사된다. 형식 불일치 시 정상 팩이 전수 거부(DoS)되는데,
@@ -446,7 +446,7 @@ jobs:
       - name: Verify signed pack end-to-end (real signer → real verifier)
         run: |
           set -euo pipefail
-          ./target/release/cys pack-update --from . --dry-run
+          ./target/release/ezer pack-update --from . --dry-run
           echo "✅ 실서명 아티팩트가 실검증기를 통과(서명+신선도+파일+커버리지) — 폐포 확인"
 
       # 비공개 릴리스(build 잡이 생성)에 팩 자산 업로드 → relocate가 공개 repo로 옮긴다.
@@ -462,6 +462,6 @@ jobs:
           gh release edit "${{ github.ref_name }}" -R "$SRC_REPO" --latest --draft=false
           echo "✅ 팩 아티팩트 업로드 + latest 마킹 완료"
 
-  # (Phase 2-4 완결·2026-07-03) 전환기 미러(relocate) 잡 제거 — 구 repo(cys-terminal-releases)는
+  # (Phase 2-4 완결·2026-07-03) 전환기 미러(relocate) 잡 제거 — 구 repo(ezer-agent-releases)는
   # Archive됨. 마지막 미러(v0.10.0·자산 URL=소스 repo)가 읽기 전용으로 영구 생존하므로,
   # 늦게 업데이트하는 구 설치본도 그 경로로 이주 가능하다.

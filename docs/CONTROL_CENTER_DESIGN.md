@@ -3,13 +3,13 @@
 > 작성 2026-06-17. 근거: 팀 단위 관측·분석 도구 1·2차 전수조사.
 > 목표: 현 T6 Control Center(실시간 관제)를
 > **실시간 관제 + 영속 분석 + 효율 최적화 + 자동 거버넌스** 단일 네이티브 플랫폼으로 격상.
-> 철학: 로컬 우선(데이터 머신 밖으로 안 나감)·추가 인프라 0(cysd 내장 SQLite)·에이전트 0ms 지연.
+> 철학: 로컬 우선(데이터 머신 밖으로 안 나감)·추가 인프라 0(ezerd 내장 SQLite)·에이전트 0ms 지연.
 
 ---
 
 ## 0. 현재 상태 vs 목표
 
-**현재(T5·T6)**: cysd가 claude `.jsonl`·codex rollout tail + agy RPC → `control.dashboard` RPC →
+**현재(T5·T6)**: ezerd가 claude `.jsonl`·codex rollout tail + agy RPC → `control.dashboard` RPC →
 Tauri 풀 패널(플릿·rate 5h/7d·CPU/MEM·소비·12h 스파크라인·가동시간). **휘발성**(in-memory·재시작 소실),
 **양(volume)만** 측정. 툴/스킬/에이전트 호출·비용·세션 전사·추세 영속 없음.
 
@@ -21,9 +21,9 @@ Tauri 풀 패널(플릿·rate 5h/7d·CPU/MEM·소비·12h 스파크라인·가�
 ## 1. 아키텍처 — 분석 척추(spine)
 
 ```
-[hooks 확장]                       [수집/저장 — cysd]                 [노출]                  [UI — cys-app]
+[hooks 확장]                       [수집/저장 — ezerd]                 [노출]                  [UI — ezer-app]
 SessionStart ─┐                  ┌─ usage.rs collector (tail)        control.dashboard ──┐   Control Center
-PreToolUse  ──┤  cys hook ──push─┤  ingest.rs (event 적재)            control.analytics ─┼─→ 탭: Live / 비용·효율
+PreToolUse  ──┤  ezer hook ──push─┤  ingest.rs (event 적재)            control.analytics ─┼─→ 탭: Live / 비용·효율
 PostToolUse ──┤  (즉시 exit0,    ├─ cost.rs (모델단가→$)              control.sessions ──┤      / 스킬·에이전트
 Stop        ──┤   detached)      ├─ rollup.rs (일/주 롤업·lazy캐시)   control.skills ────┤      / 세션 / 추세·주간
 SubagentStop ─┘                  └─ SQLite analytics.db (영속)        control.alerts ────┘   + 경보 배지·master push
@@ -32,14 +32,14 @@ SubagentStop ─┘                  └─ SQLite analytics.db (영속)        
 ```
 
 **핵심 enabler 3가지**
-1. **SQLite 영속**(`analytics.db`) — cysd엔 이미 rusqlite(transcripts.db) → 추가 의존성 0. 휘발성 해소.
+1. **SQLite 영속**(`analytics.db`) — ezerd엔 이미 rusqlite(transcripts.db) → 추가 의존성 0. 휘발성 해소.
 2. **이벤트 캡처 hook 확장** — 현 SessionStart(transcript 등록)·statusline(rate) 위에 PreToolUse/PostToolUse/
    Stop/SubagentStop 추가 → 툴·스킬·에이전트 호출·exit_code·duration·세션 메타 포착. fire-and-forget(에이전트 0ms).
 3. **엔진 3종** — cost(단가표)·rollup(일/주 집계 lazy 캐시)·metrics(효율 파생).
 
 ---
 
-## 2. 데이터 모델 (cysd `analytics.db` — SQLite)
+## 2. 데이터 모델 (ezerd `analytics.db` — SQLite)
 
 ```sql
 -- 세션 메타 (claude/codex 1세션 = 1행)
@@ -102,7 +102,7 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 > - ② 비용 UI(47ce67c): Control Center 토큰 섹션 `오늘 비용($)`·모델믹스 바.
 > - ③ SQLite 영속(d430320·척추): `analytics.rs`(`analytics.db`·`usage_records` 적재·부트 12h
 >   리플레이 seed) → 재시작 보존. cargo 206/206 · E2E 7/7(`docs/cost_persist_e2e.py`).
-> - ④ 이벤트 캡처(★): hook(PreToolUse/PostToolUse/Stop/SubagentStop)→`cys-hook.sh`→`cys usage-event-stdin`
+> - ④ 이벤트 캡처(★): hook(PreToolUse/PostToolUse/Stop/SubagentStop)→`ezer-hook.sh`→`ezer usage-event-stdin`
 >   →`usage.event` RPC→`events` 테이블. `derive_tool`(Skill→스킬·Task/Agent→에이전트 파생)·`record_event`·
 >   PostToolUse `tool_response.is_error`→exit_code(E3 반복실패 토대). pack 임베드·preflight C33(멱등 등록).
 >   cargo 208/208(신규 2종) · E2E 7/7(`docs/event_capture_e2e.py`) · C33 격리 검증(등록·체인보존·멱등).
@@ -132,7 +132,7 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 >   실패율·최소표본 동시충족·≥50% crit). `governance.rs` watchdog **check_alerts**(30초·에지 디바운스
 >   1800s·해소 시 재무장)→`alert.<kind>` "alert" 이벤트 발화. `control.alerts` RPC(동일 평가기=단일 진실원).
 > - 프런트: Control Center 헤더 **경보 배지**(개수·crit 점멸) + Live 뷰 상단 경보 스트립. Tauri `control_alerts`.
-> - **설계 갱신**: "cys send --to master push"는 governance 교리(★자동응답 금지 — 감지·격상만)에 맞춰
+> - **설계 갱신**: "ezer send --to master push"는 governance 교리(★자동응답 금지 — 감지·격상만)에 맞춰
 >   **이벤트 발화 + UI 배지**로 정합화(master PTY 주입은 kill-switch 위험·기존 패턴 위배라 회피).
 > - **정직 범위**: 노드 토큰 급증 이상감지·스킬 ROI 패턴(commit→재edit)은 per-node 시계열 베이스라인 미보존 → 후속.
 > - 검증: cargo 213/213(신규 alerts 3종) · E2E 7/7(`docs/alerts_e2e.py` — 핫로드·예산·반복실패·심각도·재무장) · UI 번들 OK.
@@ -148,9 +148,9 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 >   미적재·recall은 surface_id 기준 스크롤백) → **이벤트 타임라인으로 대체**, title은 UI에서 메타로 합성. 후속.
 > - 검증: cargo 215/215(신규 `summarize_sessions`·`ribbon`) · E2E 16/16(`docs/sessions_e2e.py`) · UI 번들 OK.
 >
-> **★8커밋 일괄 배포 완료**(2026-06-17 21:4x): /opt/homebrew/bin+/Applications/cys.app 신본 os.replace(.bak-t7)·
+> **★8커밋 일괄 배포 완료**(2026-06-17 21:4x): /opt/homebrew/bin+/Applications/ezer.app 신본 os.replace(.bak-t7)·
 > 데몬 단일 재기동(pid 88170 v0.2.2)·pack 동기·preflight C32 PASS+C33 FIXED·앱 ad-hoc 재서명 valid.
-> 5 RPC 라이브 실측. ★교훈: release는 strings|grep 부정확(기능검사 권위)·cys.app가 target/release/cysd 재spawn.
+> 5 RPC 라이브 실측. ★교훈: release는 strings|grep 부정확(기능검사 권위)·ezer.app가 target/release/ezerd 재spawn.
 >
 > **E5 추세·주간 다이제스트 탭 완료**(로컬 커밋·미배포):
 > - 백엔드: `analytics.rs` `summarize_weekly`(순수·이번주 vs 지난주)·`weekly_summary` + `control.weekly` RPC.
@@ -162,7 +162,7 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 >   가능 → 조회형 탭+RPC 우선 완성, 스케줄러 자동 이벤트 push는 후속(E6 alert 패턴 재사용 가능).
 > - 검증: cargo 216/216(신규 `summarize_weekly`) · E2E 11/11(`docs/weekly_e2e.py`) · UI 번들 OK.
 >
-> **E7 RSI 무결성 도구 완료**(`javis_rsi.py` — Control Center 외 트랙·로컬 커밋):
+> **E7 RSI 무결성 도구 완료**(`ezer_rsi.py` — Control Center 외 트랙·로컬 커밋):
 > - 결정론 도구(eval-driven 원칙 박제·producer≠evaluator=점수 주입만): `checkpoint`(HEAD SHA+기준score+복구 ref
 >   `refs/rsi/ckpt/<id>`)·`progress`(delta·verdict improved/regressed/flat)·`markers`(커밋 trailer `iter-id` 파싱)·
 >   `rollback`·`status`. _round/rsi/{state.json,ledger.jsonl} 영속.
@@ -173,11 +173,11 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 >
 > **E9 RBAC(PII 차단) 완료 — 로컬 의미 부분만(로컬 커밋)**:
 > - `analytics.rs` `redact_session_id`(sha256→`sess-<8hex>`·안정적·경로 미노출)·`redact_sessions`(집계 보존).
->   `control.sessions {redact}` 파라미터 OR 환경변수 `CYS_CONTROL_REDACT=1` → session_id 경로 PII 가림.
+>   `control.sessions {redact}` 파라미터 OR 환경변수 `EZER_CONTROL_REDACT=1` → session_id 경로 PII 가림.
 >   UI 세션 탭 **🔒 PII 가림 토글**(켜면 집계만=드릴다운 비활성·"VIEWER=집계만" 충실 해석). Tauri 동형.
 > - 검증: cargo 217/217(신규 `redact_session_id_stable_and_pii_free`) · E2E 7/7(`docs/redact_e2e.py`).
 > - **★정직 분리(자율 구축 안 함)**: ▶보존(retention 자동삭제)=프로젝트 eval-driven "삭제 reward-hack 차단·
->   retention hard gate" 원칙과 상충→미구현. ▶멀티머신 중앙 cysd·--api-url=네트워크/외부발행 경계+로컬우선
+>   retention hard gate" 원칙과 상충→미구현. ▶멀티머신 중앙 ezerd·--api-url=네트워크/외부발행 경계+로컬우선
 >   철학 정면위배+존재하지 않는 멀티유저 시나리오용 투기 인프라→오너 명시 결정 전까지 미구축.
 >
 > **▣ T7 Control Center 9페이즈 전부 처리: E1-E6 완결·배포 · E7 RSI 도구 · E8 감사충족 · E9 RBAC(로컬부분).**
@@ -186,7 +186,7 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 - **백엔드**: `analytics.db` 스키마 생성(state.rs init) · `ingest.rs`(hook 이벤트→events/messages 적재) ·
   Stop 시 transcript 전체 파싱→usage_records/messages bulk(현 usage.rs 파서 재사용·`parse_claude_message_io` 확장) ·
   `cost.rs`(MODEL_PRICING Rust 포트 + `normalize_model_name` + 4토큰 공식).
-- **hook**: pack에 `cys hook` 서브커맨드 + PreToolUse/PostToolUse/Stop/SubagentStop을 settings.json에
+- **hook**: pack에 `ezer hook` 서브커맨드 + PreToolUse/PostToolUse/Stop/SubagentStop을 settings.json에
   멱등 주입(preflight C33). statusline 래퍼와 동일 fire-and-forget(즉시 exit0).
 - **검증**: 단위(파서·cost·정규화) + E2E(가짜 hook→DB 적재) + 회귀.
 - **산출**: 세션·토큰·호출·메시지·비용이 **영속 저장**(재시작 무관).
@@ -208,12 +208,12 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 
 ### E5 — 추세·주간 다이제스트 탭
 - **지표**: WoW% 델타(↑↓ 색상)·이번주 vs 지난주 오버레이·🔥효율 리더(노드/역할별 토큰·세션·스킬다양성·간결도)·위임 인사이트·스킬자산(신규/최다/휴면).
-- **백엔드**: 주간 롤업 + `control.weekly` RPC. **연동**: 기존 5분 스케줄러(`javis_report`) 확장 → **주간 다이제스트 master push**.
+- **백엔드**: 주간 롤업 + `control.weekly` RPC. **연동**: 기존 5분 스케줄러(`ezer_report`) 확장 → **주간 다이제스트 master push**.
 - **산출**: 팀(=플릿) 차원 추세·인사이트 자동 보고.
 
 ### E6 — 경보·이상감지·ROI
 - **기능**: 임계값 경고(주간 토큰/비용 한도·rate 90%)·🔥이상감지(노드 토큰 급증)·🔥반복실패 스킬 경고·스킬 ROI 패턴(예: commit→재edit 반복).
-- **백엔드**: `alerts.rs` — **context.threshold와 동일 에지게이트**로 1회 발화 → `cys send --to master` push + UI 배지. `alerts-config.json`(임계값).
+- **백엔드**: `alerts.rs` — **context.threshold와 동일 에지게이트**로 1회 발화 → `ezer send --to master` push + UI 배지. `alerts-config.json`(임계값).
 - **산출**: 수동 관찰→**능동 경보**. autopilot 자원 거버넌스와 직결.
 
 ### E7 — RSI/autopilot 강화 (Control Center 외 트랙)
@@ -221,11 +221,11 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 - **산출**: RSI 무결성·실패 복원력↑(eval-driven 원칙 강화).
 
 ### E8 — 엔지니어링 품질 (횡단)
-- 컨텍스트 감지 `cys status`/boot(누락 단계만) · self-heal 원자쓰기 · hook 멱등+부트스트랩 · 설정 우선순위+stale 정리 · HTTP retry/timeout · HARD/SOFT 게이트.
+- 컨텍스트 감지 `ezer status`/boot(누락 단계만) · self-heal 원자쓰기 · hook 멱등+부트스트랩 · 설정 우선순위+stale 정리 · HTTP retry/timeout · HARD/SOFT 게이트.
 
 ### E9 — (선택) 팀/멀티머신 확장
-- RBAC 4단(VIEWER=집계만·PII 차단) · 보존/redaction · self-host 다머신 집계(`--api-url`·중앙 cysd). **큰 결정**(로컬 우선 철학과 trade-off).
-- **잔여 현황(2026-07-03)**: redact는 sessions·session_detail 대칭 적용 완료(로컬 부분). retention 자동삭제는 eval-driven "삭제 reward-hack 차단" 원칙과 상충해 보류. 멀티머신 중앙 cysd는 로컬우선 철학 위배 소지 — 오너 명시 결정 대기.
+- RBAC 4단(VIEWER=집계만·PII 차단) · 보존/redaction · self-host 다머신 집계(`--api-url`·중앙 ezerd). **큰 결정**(로컬 우선 철학과 trade-off).
+- **잔여 현황(2026-07-03)**: redact는 sessions·session_detail 대칭 적용 완료(로컬 부분). retention 자동삭제는 eval-driven "삭제 reward-hack 차단" 원칙과 상충해 보류. 멀티머신 중앙 ezerd는 로컬우선 철학 위배 소지 — 오너 명시 결정 대기.
 
 ---
 
@@ -239,7 +239,7 @@ stale 마커(정의 변경 시 재계산). 보존 정책(기본 60일·`retentio
 - `control.session_star {session_id, starred, note}`: ⭐ 토글+노트(재스타 시 starred_at 갱신).
 - `control.weekly`: WoW·리더·인사이트.
 - `control.alerts` + `alert.<kind>` 이벤트(경보는 이벤트+UI 배지로 정합화 — E5/E6의 "master push" 원안은 governance 교리상 채택하지 않음).
-- `learn.status`: 학습 탭 데이터 — `{pack}/round/learn/state.json`(또는 $CYS_ROUND_DIR/learn). javis_rsi.py가 `_round/rsi/state.json` 저장 시 이 위치로 rounds/discovery를 미러링한다.
+- `learn.status`: 학습 탭 데이터 — `{pack}/round/learn/state.json`(또는 $EZER_ROUND_DIR/learn). ezer_rsi.py가 `_round/rsi/state.json` 저장 시 이 위치로 rounds/discovery를 미러링한다.
 - Tauri 커맨드 동형 노출(`src-tauri/main.rs`).
 
 ### 소비 수집 경계 (usage.rs — 2026-07-03 현행화)

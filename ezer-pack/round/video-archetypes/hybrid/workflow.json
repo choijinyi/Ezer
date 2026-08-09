@@ -1,0 +1,119 @@
+{
+  "name": "hybrid",
+  "version": "1.0",
+  "description": "앵커 footage(인터뷰 등)에 생성 보조 자산(다이어그램·오버레이·음악)을 합성하는 하이브리드 파이프라인. transcription→앵커 footage·삽입점 계획→다이어그램/오버레이/음악 생성→오버레이 합성. provider는 하드코딩 없이 ezer_select 위임, render_runtime은 edit에 명시 고정되고 무음 swap은 위반(SF-RENDER-RUNTIME-SWAP).",
+  "phases": [
+    {
+      "id": "idea",
+      "skill": "youtube-video-pipeline",
+      "produces": ["brief.md"],
+      "success_criteria": {
+        "statement": "앵커 footage 내용과 생성 보조 자산(다이어그램·오버레이) 계획을 정의하는 브리프를 작성한다(범위·자산 섹션 포함).",
+        "checks": [
+          {"kind": "section_present", "value": "범위", "statement": "범위 섹션 존재"},
+          {"kind": "section_present", "value": "자산", "statement": "보조 자산 계획 섹션 존재"}
+        ]
+      },
+      "review_focus": ["anchor-footage-scope", "supporting-asset-plan"],
+      "human_approval_default": true,
+      "max_revisions": 3,
+      "budget_minutes": 15
+    },
+    {
+      "id": "script",
+      "skill": "transcription",
+      "produces": ["transcript.json"],
+      "success_criteria": {
+        "statement": "ezer_select로 전사 provider 선택(무키 whisperx 바닥) 후 앵커 footage(인터뷰)의 타임스탬프 전사를 산출한다. 모든 타임스탬프는 소스 경계 안(다이어그램/오버레이 삽입점의 토대).",
+        "checks": [
+          {"kind": "json_valid", "statement": "transcript.json 파싱"},
+          {"kind": "field_present", "value": "segments", "statement": "전사 세그먼트 필드 존재"},
+          {"kind": "min_items", "value": {"field": "segments", "min": 1}, "statement": "세그먼트 ≥1(빈 전사 차단)"}
+        ]
+      },
+      "review_focus": ["timestamp-accuracy", "no-hallucinated-fills"],
+      "human_approval_default": false,
+      "max_revisions": 3,
+      "budget_minutes": 20
+    },
+    {
+      "id": "scene-plan",
+      "skill": "video-stitch-compositing",
+      "produces": ["scene_plan.json"],
+      "success_criteria": {
+        "statement": "앵커 footage 구간과 생성 보조 자산(다이어그램·오버레이) 삽입점을 매핑하는 씬 계획을 산출한다(앵커 씬 + 보조 자산 오버레이 슬롯).",
+        "checks": [
+          {"kind": "json_valid", "statement": "scene_plan.json 파싱"},
+          {"kind": "field_present", "value": "scenes", "statement": "씬 계획 필드 존재"},
+          {"kind": "min_items", "value": {"field": "scenes", "min": 2}, "statement": "씬 ≥2(앵커 footage + 보조 자산 삽입 커버리지)"}
+        ]
+      },
+      "review_focus": ["insertion-point-alignment", "anchor-vs-generated-balance"],
+      "human_approval_default": false,
+      "max_revisions": 3,
+      "budget_minutes": 20
+    },
+    {
+      "id": "assets",
+      "skill": "media-gen",
+      "produces": ["asset_manifest.json"],
+      "success_criteria": {
+        "statement": "다이어그램·오버레이 그래픽·배경 음악 등 생성 보조 자산을 준비한다. 생성 자산은 ezer_select로 provider 선택(무료·로컬 바닥부터).",
+        "checks": [
+          {"kind": "json_valid", "statement": "asset_manifest.json 파싱"}
+        ]
+      },
+      "review_focus": ["diagram-clarity", "overlay-legibility", "music-fit"],
+      "human_approval_default": false,
+      "max_revisions": 3,
+      "budget_minutes": 30
+    },
+    {
+      "id": "edit",
+      "skill": "video-stitch-compositing",
+      "produces": ["edit_decisions.json"],
+      "success_criteria": {
+        "statement": "앵커 footage 위 다이어그램/오버레이 합성·타이밍·음악 믹스 편집 결정을 산출한다. render_runtime을 명시 고정(무음 swap=위반·SF-RENDER-RUNTIME-SWAP).",
+        "checks": [
+          {"kind": "json_valid", "statement": "edit_decisions.json 파싱"},
+          {"kind": "field_present", "value": "render_runtime", "statement": "render_runtime 명시 고정(무음 swap 방지·SF-RENDER-RUNTIME-SWAP)"}
+        ]
+      },
+      "review_focus": ["overlay-timing", "render-runtime-locked"],
+      "human_approval_default": false,
+      "max_revisions": 3,
+      "budget_minutes": 20
+    },
+    {
+      "id": "compose",
+      "skill": "video-verify",
+      "produces": ["render_report.json"],
+      "success_criteria": {
+        "statement": "오버레이 합성·오디오믹스 후 render_report를 산출한다. render_runtime은 edit_decisions의 고정값과 일치해야 하며(무음 swap=위반·SF-RENDER-RUNTIME-SWAP) ffprobe·시각 QA 통과를 기록한다.",
+        "checks": [
+          {"kind": "json_valid", "statement": "render_report.json 파싱"},
+          {"kind": "field_present", "value": "render_runtime", "statement": "render_report에 사용 런타임 기록(edit 고정값 대조·무음 swap 검출)"}
+        ]
+      },
+      "review_focus": ["render-runtime-match", "overlay-composited", "visual-qa-pass"],
+      "human_approval_default": true,
+      "max_revisions": 5,
+      "budget_minutes": 30
+    },
+    {
+      "id": "publish",
+      "skill": "youtube-video-pipeline",
+      "produces": ["publish_log.json"],
+      "success_criteria": {
+        "statement": "메타데이터·익스포트 패키지(또는 게시 URL)를 산출한다.",
+        "checks": [
+          {"kind": "json_valid", "statement": "publish_log.json 파싱"}
+        ]
+      },
+      "review_focus": ["metadata-complete"],
+      "human_approval_default": false,
+      "max_revisions": 2,
+      "budget_minutes": 10
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 //! 페르소나 오버라이드 계층 — 노드 페르소나·운영 노브의 안전한 사용자 튜닝.
 //! 안전 불변식(denylist·recovery·kill-switch)은 레지스트리에 부재 → 구조적 튜닝 불가.
-//! 오버라이드 파일은 임베드 PACK 밖(~/.cys/pack/overrides/<role>.json)이라
+//! 오버라이드 파일은 임베드 PACK 밖(~/.ezer/pack/overrides/<role>.json)이라
 //! install() 불가침·정식 directive 무동결(업그레이드 계속).
 
 use std::collections::BTreeMap;
@@ -61,7 +61,7 @@ pub fn override_path(role: &str) -> PathBuf {
 
 /// 노브 1개 검증 (CLI hard-reject·런타임 폴백 공용 순수함수). Ok=유효값.
 pub fn validate_knob(key: &str, value: u64, expert: bool) -> Result<u64, String> {
-    let k = knob(key).ok_or_else(|| format!("unknown param '{key}' (cys persona list-params 참고)"))?;
+    let k = knob(key).ok_or_else(|| format!("unknown param '{key}' (ezer persona list-params 참고)"))?;
     let hi = if expert { k.expert_max } else { k.max };
     if value < k.min || value > hi {
         return Err(format!(
@@ -83,7 +83,7 @@ pub fn sanitize_persona(raw: &str) -> (String, Vec<String>) {
     sanitize_with_cap(raw, PERSONA_MAX_LEN, "persona")
 }
 
-/// 사용자 로컬 디렉티브(~/.cys/local/directives/*_DIRECTIVE.local.md) 캡 — persona 보다 넉넉하되
+/// 사용자 로컬 디렉티브(~/.ezer/local/directives/*_DIRECTIVE.local.md) 캡 — persona 보다 넉넉하되
 /// 컨텍스트 예산 보호(오버레이는 append 지침이지 본 디렉티브 대체가 아니다).
 pub const LOCAL_DIRECTIVE_MAX_LEN: usize = 24_000;
 
@@ -244,7 +244,7 @@ mod tests {
     fn with_pack_dir<T>(write_json: Option<(&str, &str)>, role: &str, f: impl FnOnce() -> T) -> T {
         // pack.rs 테스트와 동일 락 공유 — 같은 lib 바이너리에서 ENV_PACK_DIR 전역 경합 차단.
         let _g = crate::pack::PACK_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let td = std::env::temp_dir().join(format!("cys-ov-{}-{}", std::process::id(), role));
+        let td = std::env::temp_dir().join(format!("ezer-ov-{}-{}", std::process::id(), role));
         let _ = std::fs::remove_dir_all(&td);
         std::fs::create_dir_all(td.join("overrides")).unwrap();
         if let Some((name, body)) = write_json {

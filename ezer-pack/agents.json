@@ -1,0 +1,91 @@
+{
+  "_doc": "에이전트 어댑터 정의. launch-agent가 사용: 기동 명령 → inject_delay_secs 대기 → 역할 디렉티브를 stdin push. clear_cmd=cycle-agent의 컨텍스트 초기화 명령, resume_arg=restore/node-recover의 대화 기억 복원 플래그, approval_patterns=데몬 승인 격상 스캔(자동 응답 절대 없음 — 감지·feed 격상만). 사용자 환경에 맞게 수정 가능(~/.ezer/pack/agents.json).",
+  "claude": {
+    "cmd": "claude --dangerously-skip-permissions",
+    "env": { "CLAUDE_CONFIG_DIR": "${EZER_ACCOUNT_DIR:-$HOME/.ezer/claude}" },
+    "inject_delay_secs": 10,
+    "notes": "Claude Code. ezer 전용 CLAUDE_CONFIG_DIR(~/.ezer/claude)로 기동 — 사용자 ~/.claude(외부 터미널 체계·구 지침 오염 가능)와 격리(읽지도 지우지도 않음). RC-3(B′): cmd=순수 명령·env=맵 구조. unix launch-agent는 `KEY=\"val\" cmd` 인라인으로 재조립(셸이 ${:-}·$HOME 전개·기존과 byte-identical), Windows는 순수 cmd send + surface.create가 해소된 env를 builder.env 주입(powershell이 POSIX env-assign 미해석 회귀 차단). macOS 인증은 계정 단위 Keychain이라 격리해도 로그인 유지. ready_marker(❯) 감지 후 주입. 폴더 신뢰 프롬프트는 launch-agent가 자동 확인한다.",
+    "ready_marker": "❯",
+    "clear_cmd": "/clear",
+    "resume_arg": "--resume {session_id}",
+    "resume_arg_fallback": "--continue",
+    "cost_tier": "heavy",
+    "strengths": ["orchestration", "deep-reasoning", "coding", "writing"],
+    "approval_patterns": [
+      {
+        "name": "tool-permission",
+        "pattern": "Do you want to (proceed|allow|make this edit|run)"
+      },
+      {
+        "name": "trust-prompt",
+        "pattern": "Do you trust the files in this folder"
+      }
+    ]
+  },
+  "gemini": {
+    "cmd": "~/.local/bin/agy --dangerously-skip-permissions",
+    "inject_delay_secs": 12,
+    "ready_marker": "? for shortcuts",
+    "notes": "Antigravity CLI(agy) — 구 Gemini CLI가 2026-06-18 소비자 티어(무료·AI Pro·Ultra) 중단되어 이주(오너 Google AI Ultra 연동 실측 2026-06-13). 키 이름 'gemini' 유지: 역할(reviewer-gemini)·orchestra check·boot PLAN 계약 무변. 로그인은 사람 단계(Google OAuth — 첫 기동 시 화면 안내). 절대경로인 이유: 설치 스크립트가 ~/.profile에만 PATH를 넣어 zsh 비로그인 셸에서 'agy'가 안 잡힌다.",
+    "clear_cmd": "/clear",
+    "resume_arg": "--continue",
+    "capabilities": [
+      "review",
+      "coding",
+      "deep-research"
+    ],
+    "capability_notes": "앵커4-6: deep research는 gemini(agy) 담당. image 생성은 ChatGPT Image 2.0 사용. 코딩 협업 가능.",
+    "cost_tier": "standard",
+    "strengths": ["deep-research", "review", "coding"],
+    "approval_patterns": [
+      {
+        "name": "approve",
+        "pattern": "(Approve|Allow|Yes, proceed)"
+      }
+    ]
+  },
+  "codex": {
+    "cmd": "~/.npm-global/bin/codex --dangerously-bypass-approvals-and-sandbox",
+    "inject_delay_secs": 12,
+    "notes": "OpenAI Codex CLI (YOLO 모드 — ezer 터미널 소켓 push 무프롬프트). 첫 실행 update 프롬프트는 Skip. 홈 기반 경로(~)인 이유: brew 본 /opt/homebrew/bin/codex가 dangling symlink(Caskroom 0.76.0 타깃 소멸)라 PATH 순서·로그인셸 차이에 따라 끊긴 본을 잡을 수 있다 → npm 설치본(~/.npm-global/bin/codex)으로 고정해 회피. ~ 는 로그인셸이 전개(gemini agy 어댑터와 동일 방식). 설치 위치가 다르면 이 경로를 수정.",
+    "clear_cmd": "/new",
+    "resume_arg": "resume {session_id}",
+    "resume_arg_fallback": "resume --last",
+    "capabilities": [
+      "review",
+      "coding"
+    ],
+    "capability_notes": "앵커4-6: 코딩 협업·코드 리뷰 담당.",
+    "cost_tier": "standard",
+    "strengths": ["review", "coding"],
+    "approval_patterns": [
+      {
+        "name": "approve-command",
+        "pattern": "(Approve|Allow) (this )?(command|request)"
+      }
+    ]
+  },
+  "grok": {
+    "cmd": "grok",
+    "inject_delay_secs": 12,
+    "notes": "Grok CLI — 독립 설치 필요(xAI). 외부 터미널 앱 번들의 grok은 내부 래퍼라 단독 사용 불가.",
+    "approval_patterns": [
+      {
+        "name": "allow-execution",
+        "pattern": "Allow execution"
+      }
+    ]
+  },
+  "_roles": {
+    "master": "directives/MASTER_DIRECTIVE.md",
+    "worker": "directives/WORKER_DIRECTIVE.md",
+    "cso": "directives/CSO_DIRECTIVE.md",
+    "reviewer": "directives/REVIEWER_DIRECTIVE.md"
+  },
+  "_tier_nodes": {
+    "_comment": "tier 등급 → slow 작업 권장 노드/사고규약. P1 suggested_node 결정론 소스. cost_tier 값은 D3 cost.rs 사후 실측이 진실 — 이건 라우팅 힌트일 뿐 강제 아님. heavy=항상 Opus 불변(강등 경로 없음).",
+    "trivial":  { "node": "worker",  "rsi": "min",  "note": "워커 위임·라운드 최소(단순 작업)" },
+    "standard": { "node": "worker",  "rsi": "std",  "note": "워커 위임 + 외부 리뷰 라운드(기본)" },
+    "heavy":    { "node": "master",  "rsi": "full", "note": "master 직접 주도 + full RSI 라운드(고난도·heavy=항상 Opus 불변)" }
+  }
+}

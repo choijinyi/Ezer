@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
           EXPECTED_BUNDLE_SHA256: ${{ inputs.release_bundle_sha256 }}
-          SRC_REPO: idoforgod/cys-terminal
+          SRC_REPO: choijinyi/Ezer
         shell: bash
         run: |
           set -euo pipefail
@@ -62,5 +62,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
-          SRC_REPO: idoforgod/cys-terminal
+          SRC_REPO: choijinyi/Ezer
         run: gh release edit "$TAG" -R "$SRC_REPO" --draft=false --latest

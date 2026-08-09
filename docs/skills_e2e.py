@@ -14,11 +14,11 @@ import sqlite3
 import subprocess
 import time
 
-DIR = f"/tmp/cys-e3-{os.getpid()}"
+DIR = f"/tmp/ezer-e3-{os.getpid()}"
 os.makedirs(DIR, exist_ok=True)
-SOCK = os.path.join(DIR, "cys.sock")
-CYSD = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "cysd")
-ENV = dict(os.environ, CYS_SOCKET=SOCK, CYS_PACK_DIR=os.path.join(DIR, "pack"))
+SOCK = os.path.join(DIR, "ezer.sock")
+EZERD = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "ezerd")
+ENV = dict(os.environ, EZER_SOCKET=SOCK, EZER_PACK_DIR=os.path.join(DIR, "pack"))
 DBP = os.path.join(DIR, "analytics.db")
 FAIL = []
 
@@ -44,7 +44,7 @@ def rpc(method, params):
 
 
 def start_daemon():
-    p = subprocess.Popen([CYSD], env=ENV, stdout=open(os.path.join(DIR, "cysd.log"), "a"), stderr=subprocess.STDOUT)
+    p = subprocess.Popen([EZERD], env=ENV, stdout=open(os.path.join(DIR, "ezerd.log"), "a"), stderr=subprocess.STDOUT)
     for _ in range(50):
         try:
             if rpc("system.ping", {}):

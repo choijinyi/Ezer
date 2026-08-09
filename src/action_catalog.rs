@@ -4,11 +4,11 @@
 //! penpot `PenpotMcpServer.ts:136` `instructions.replace('$api_types', apiDocs.getTypeNames())`
 //! (런타임 플레이스홀더 치환) + `:215` `PenpotApiInfoTool` (on-demand 단건 상세)의 **구조만**
 //! 클린룸 차용한다(penpot 도메인 텍스트 미복사 · MPL-2.0). v1은 penpot처럼 단일 플레이스홀더
-//! (`$action_catalog`)만 둔다($skill_index는 후속 — cys-design, penpot-attested 아님).
+//! (`$action_catalog`)만 둔다($skill_index는 후속 — ezer-design, penpot-attested 아님).
 //!
 //! ★Max 토큰효율: 전체 산문을 정적 본문에 하드코딩하지 않고 런타임에 카탈로그를 *치환*해 주입,
 //! 단건 상세는 `editor.action_info(name)`로 on-demand. 단 핵심 가치는 토큰절감(그건 RTK 차선)이
-//! 아니라 **반-드리프트/반-환각** — 카탈로그를 실제 cysd 레지스트리(`edit_kinds::EditKind`)에서
+//! 아니라 **반-드리프트/반-환각** — 카탈로그를 실제 ezerd 레지스트리(`edit_kinds::EditKind`)에서
 //! *기계적으로 파생*해 정적 본문과 실제 표면이 절대 어긋날 수 없게 한다(단일진실).
 //!
 //! penpot 정직성(propmap T4-3.revision): penpot은 $api_types를 *정적* 타입명 목록
@@ -23,7 +23,7 @@ pub const ACTION_CATALOG_PLACEHOLDER: &str = "$action_catalog";
 /// 카탈로그 1행 — 액션 이름(kebab serde 리터럴)과 한 줄 요지.
 fn action_summary(kind: EditKind) -> &'static str {
     // ★no-wildcard match(edit_kinds 가드① 정신) — 새 EditKind 추가 시 여기 미처리면 빌드 차단.
-    // 요지는 cys 도메인 어휘(penpot 텍스트 미복사). 카탈로그 *구조*만 차용.
+    // 요지는 ezer 도메인 어휘(penpot 텍스트 미복사). 카탈로그 *구조*만 차용.
     match kind {
         EditKind::Avatar => "아바타 발화 트랙 — 화자 영상 합성",
         EditKind::Broll => "b-roll 트랙 — 보조 영상 인서트",
@@ -60,7 +60,7 @@ pub fn substitute_catalog(body: &str) -> String {
 }
 
 /// (3) on-demand 단건 조회 — 액션 이름 하나의 상세를 반환(전체 미주입). 미지의 이름은 None.
-/// penpot `PenpotApiInfoTool(name)` 등가. cysd `editor.action_info` RPC가 이걸 호출.
+/// penpot `PenpotApiInfoTool(name)` 등가. ezerd `editor.action_info` RPC가 이걸 호출.
 pub fn action_info(name: &str) -> Option<serde_json::Value> {
     EditKind::ALL.iter().copied().find(|k| action_name(*k) == name).map(|k| {
         serde_json::json!({
@@ -70,7 +70,7 @@ pub fn action_info(name: &str) -> Option<serde_json::Value> {
     })
 }
 
-/// 전체 카탈로그를 구조화 JSON으로 — cysd `editor.action_catalog` RPC용(레지스트리 파생).
+/// 전체 카탈로그를 구조화 JSON으로 — ezerd `editor.action_catalog` RPC용(레지스트리 파생).
 pub fn catalog_json() -> serde_json::Value {
     let items: Vec<serde_json::Value> = EditKind::ALL
         .iter()

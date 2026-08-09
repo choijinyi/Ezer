@@ -1,7 +1,7 @@
 # 오피스 3D 직원 상태 디테일 12종 — 월드 계약 v1.1 (2026-07-12 오너 승인)
 
 > 원천 지시: "직원들이 일하는 상태를 더 디테일하게 — 제안 12개 모두 구현."
-> 이 문서가 백엔드(javis_hud_bridge.py)와 프론트엔드(office3d.html) 간 **단일 인터페이스 계약**이다.
+> 이 문서가 백엔드(ezer_hud_bridge.py)와 프론트엔드(office3d.html) 간 **단일 인터페이스 계약**이다.
 > 계약 버전: `"v": 1` 유지(전 필드 additive — 구 프론트가 새 필드를 무시해도 동작 불변).
 
 ## 1. 기능 → 계층 매핑
@@ -16,8 +16,8 @@
 | 6 | 진행률 링 | `node.progress` (신규) | EVT spool `task_progress` | 머리 위 링(pct)+stage 텍스트 |
 | 7 | 작업 카드 | `node.run` (신규) + fx `runcard` | EVT spool `run.*` | 인박스 트레이 카드 스택·실패 빨간 카드 |
 | 8 | 의존 화살표 | `world.blocked[]` (신규) + fx `blocked/unblocked` | EVT spool `task.blocked/unblocked` | 노드 간 점선(양측 귀속 시)·부서 보드 표기 |
-| 9 | 칸반 벽면 | `world.kanban` (신규) | `$JAVIS_ROOT/_round/tasks/*.json` 스캔 | 부서 층 벽 3열 보드 |
-| 10 | 리뷰 라운드 | `world.review` (신규) + fx `verdict` | `$JAVIS_ROOT/_round/*VERDICT*.md` 워치 | 회의 테이블 집결+판정색 |
+| 9 | 칸반 벽면 | `world.kanban` (신규) | `$EZER_ROOT/_round/tasks/*.json` 스캔 | 부서 층 벽 3열 보드 |
+| 10 | 리뷰 라운드 | `world.review` (신규) + fx `verdict` | `$EZER_ROOT/_round/*VERDICT*.md` 워치 | 회의 테이블 집결+판정색 |
 | 11 | 배달 모션 | fx `doc` (기존) | — | from→to 보행 배달(보행 오버라이드 재사용) |
 | 12 | 전광판 | `world.board` (신규) | presence 히트 누적+비용 best-effort | 로비 전광판(24h 히트맵·오늘 비용) |
 
@@ -52,12 +52,12 @@
 ## 3. EVT spool (신규 수송로)
 
 - 경로: `$HUD_STATE_DIR/evt_spool.jsonl` (기본 `<pack>/state/`). 한 줄 = `{"ts":…,"type":"<EVT enum>","payload":{…},"key":"surface:N"(선택)}`.
-- 방출: `javis_event.py emit … --spool` 이 wire 출력에 **더해** spool에 append(O_APPEND 원자 줄쓰기). `--surface <ref>` 로 key 귀속(선택).
+- 방출: `ezer_event.py emit … --spool` 이 wire 출력에 **더해** spool에 append(O_APPEND 원자 줄쓰기). `--surface <ref>` 로 key 귀속(선택).
 - 소비: 브리지가 1s 폴링 tail(오프셋 STATE_DIR 영속·truncate 감지 시 0부터). 노드 귀속: `key` 명시 > `payload.agent`==role 유일 일치 > 미귀속(부서 보드로만).
 - 이유: EVT wire는 surface stdin 텍스트로 흘러 데몬 이벤트 스트림에 안 잡힘 — 데몬 무변경 원칙상 파일 spool이 최소 결합.
 
 ## 4. 불변 제약
 
-- 데몬(cysd)·CC(ui/src) 무변경. `"v":1` 유지. 기존 필드 의미 불변(`feedback_shared_field_semantic_contract`).
+- 데몬(ezerd)·CC(ui/src) 무변경. `"v":1` 유지. 기존 필드 의미 불변(`feedback_shared_field_semantic_contract`).
 - office3d: refitCam·fit 카메라 로직 수정 금지(56933bd Directive). embed 모드·타임라인 리플레이·기존 presence 애니 유지. sprite 텍스트 갱신 ≥1s 스로틀, per-frame 할당 금지.
-- 브리지: 순수 로직은 함수 분리 + stdlib unittest(`cysjavis-pack/tests/`). transcripts.db는 read-only(URI mode=ro)·실패 시 null(비용은 best-effort).
+- 브리지: 순수 로직은 함수 분리 + stdlib unittest(`ezer-pack/tests/`). transcripts.db는 read-only(URI mode=ro)·실패 시 null(비용은 best-effort).

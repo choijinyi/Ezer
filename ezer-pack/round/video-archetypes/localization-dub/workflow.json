@@ -1,0 +1,116 @@
+{
+  "name": "localization-dub",
+  "version": "1.0",
+  "description": "전사-우선 로컬라이제이션: 기존 소스영상을 번역 자막·더빙 오디오·선택적 립싱크 로케일 변형으로 만든다. transcription→translation→tts(더빙)→립싱크. provider는 ezer_select 위임(무료 whisperx 전사·로컬 piper 더빙 바닥), 구조 보존(CTA·법적 문구가 번역 후에도 생존).",
+  "phases": [
+    {
+      "id": "idea",
+      "skill": "youtube-video-pipeline",
+      "produces": ["brief.md"],
+      "success_criteria": {
+        "statement": "소스/타깃 언어·더빙 모드·용어집(glossary)·보호 용어를 캡처한다(범위·언어·용어집 섹션 포함).",
+        "checks": [
+          {"kind": "section_present", "value": "언어", "statement": "소스/타깃 언어 섹션 존재"},
+          {"kind": "section_present", "value": "범위", "statement": "범위 섹션 존재"}
+        ]
+      },
+      "review_focus": ["language-pair-clear", "glossary-defined"],
+      "human_approval_default": true,
+      "max_revisions": 3,
+      "budget_minutes": 15
+    },
+    {
+      "id": "script",
+      "skill": "transcription",
+      "produces": ["transcript_translated.json"],
+      "success_criteria": {
+        "statement": "ezer_select로 전사 provider 선택 후 전사하고, 용어집/보호 용어를 보존하며 타깃 언어로 번역한다. 타임스탬프는 소스 경계 안.",
+        "checks": [
+          {"kind": "json_valid", "statement": "transcript_translated.json 파싱(원문+번역+타임스탬프)"},
+          {"kind": "field_present", "value": "segments", "statement": "전사+번역 세그먼트 필드 존재"},
+          {"kind": "min_items", "value": {"field": "segments", "min": 1}, "statement": "세그먼트 ≥1(빈 전사·번역 차단)"}
+        ]
+      },
+      "review_focus": ["glossary-preserved", "timing-aligned", "no-machine-mistranslation"],
+      "human_approval_default": true,
+      "max_revisions": 3,
+      "budget_minutes": 25
+    },
+    {
+      "id": "scene-plan",
+      "skill": "video-stitch",
+      "produces": ["scene_plan.json"],
+      "success_criteria": {
+        "statement": "변형별 로컬라이제이션 처리(타이밍 드리프트·온스크린 텍스트 매핑·립싱크 실현가능성 게이팅)를 계획한다.",
+        "checks": [
+          {"kind": "json_valid", "statement": "scene_plan.json 파싱"}
+        ]
+      },
+      "review_focus": ["timing-drift-handled", "lipsync-feasibility"],
+      "human_approval_default": false,
+      "max_revisions": 3,
+      "budget_minutes": 15
+    },
+    {
+      "id": "assets",
+      "skill": "voice-clone-elevenlabs",
+      "produces": ["asset_manifest.json"],
+      "success_criteria": {
+        "statement": "더빙 오디오(tts·ezer_select로 provider 선택, 무키 piper 바닥)·자막·선택적 립싱크·오디오 강화를 준비한다. 립싱크 미가용 시 정직하게 자막+더빙으로 강등.",
+        "checks": [
+          {"kind": "json_valid", "statement": "asset_manifest.json 파싱"}
+        ]
+      },
+      "review_focus": ["dub-naturalness", "subtitle-timing", "honest-lipsync-pivot"],
+      "human_approval_default": false,
+      "max_revisions": 3,
+      "budget_minutes": 30
+    },
+    {
+      "id": "edit",
+      "skill": "video-stitch",
+      "produces": ["edit_decisions.json"],
+      "success_criteria": {
+        "statement": "언어 변형별 구조 보존 편집 결정을 산출한다(CTA·법적 문구가 번역을 넘어 생존).",
+        "checks": [
+          {"kind": "json_valid", "statement": "edit_decisions.json 파싱"}
+        ]
+      },
+      "review_focus": ["structure-preserved", "cta-survives-translation"],
+      "human_approval_default": false,
+      "max_revisions": 3,
+      "budget_minutes": 15
+    },
+    {
+      "id": "compose",
+      "skill": "video-verify",
+      "produces": ["render_report.json"],
+      "success_criteria": {
+        "statement": "언어별 합성·오디오믹스 후 render_report를 산출한다. 자막/더빙 타이밍 일치·버전 라벨링·ffprobe 통과 기록(render_runtime 무음 swap=위반).",
+        "checks": [
+          {"kind": "json_valid", "statement": "render_report.json 파싱(로케일별 결과)"},
+          {"kind": "field_present", "value": "render_runtime", "statement": "사용 런타임 기록(무음 swap 검출·SF-RENDER-RUNTIME-SWAP)"}
+        ]
+      },
+      "review_focus": ["subtitle-dub-sync", "version-labeled", "playable"],
+      "human_approval_default": true,
+      "max_revisions": 5,
+      "budget_minutes": 30
+    },
+    {
+      "id": "publish",
+      "skill": "youtube-video-pipeline",
+      "produces": ["publish_log.json"],
+      "success_criteria": {
+        "statement": "로케일별 익스포트 패키지(메타데이터+리뷰 노트 첨부)를 산출한다.",
+        "checks": [
+          {"kind": "json_valid", "statement": "publish_log.json 파싱"}
+        ]
+      },
+      "review_focus": ["per-locale-metadata"],
+      "human_approval_default": false,
+      "max_revisions": 2,
+      "budget_minutes": 10
+    }
+  ]
+}

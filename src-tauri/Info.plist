@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- 음성 자비스(voice-jarvis): 이 선언이 없으면 macOS가 앱 내 모든 프로세스의
+  <!-- 음성 에제르(voice-jarvis): 이 선언이 없으면 macOS가 앱 내 모든 프로세스의
        마이크 접근을 프롬프트 없이 SIGABRT로 차단한다. -->
   <key>NSMicrophoneUsageDescription</key>
   <string>음성 지시를 듣기 위해 마이크를 사용합니다 (voice-jarvis 음성 대화 모드).</string>

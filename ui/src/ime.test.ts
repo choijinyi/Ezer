@@ -178,12 +178,12 @@ describe("구멍① — keydown keyCode≠229 프로필(자모 유출 방어)", 
   });
 });
 
-describe("Profile D — cys-neo(신규 실기기 버그): xterm _inputEvent insertText 자모 유출(이중 전송)", () => {
+describe("Profile D — ezer-neo(신규 실기기 버그): xterm _inputEvent insertText 자모 유출(이중 전송)", () => {
   // 근본 원인: macOS 26.5.1 WKWebView에서 음절은 insertText(첫 자모 커밋) → insertReplacementText
   // (조합 진행)로 pending에 버퍼되는데(표준 composition 이벤트 없음), xterm의 Terminal._inputEvent가
   // inputType==='insertText'인 그 첫 자모를 triggerDataEvent로 onData에 그대로 흘려보낸다.
   // → 완성 음절은 리듀서 input 경로가(pending flush) 보내고, 첫 자모는 onData가 또 보내 이중 전송.
-  // 관측된 실기기 트레이스($TMPDIR/cys-ime.log)의 각 FLUSH(onData)는 '다음 음절의 유출 onData'가
+  // 관측된 실기기 트레이스($TMPDIR/ezer-ime.log)의 각 FLUSH(onData)는 '다음 음절의 유출 onData'가
   // 직전 음절 pending을 flush한 것이다(유출 onData는 현재 음절 자모를 나르며 직전 pending을 확정).
   //
   // event.data 확정 근거:

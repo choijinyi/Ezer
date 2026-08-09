@@ -26,7 +26,7 @@ esac
 [ "${#files[@]}" -gt 0 ] || { echo "✓ secret-scan: 스캔 대상 없음"; exit 0; }
 
 # 스캔 제외(노이즈·바이너리·잠금파일): 시크릿이 살지 않고 오탐만 만드는 파일들
-# 스캐너 자신과 형제 스캐너(scan-pack-secrets.sh)는 제외 — 둘 다 자기 패턴/정책 정의에 /Users/cys·
+# 스캐너 자신과 형제 스캐너(scan-pack-secrets.sh)는 제외 — 둘 다 자기 패턴/정책 정의에 /Users/ezer·
 # 토큰 형식·개인 핸들(ysfuture)이 리터럴로 들어 자기-오탐을 만든다(린터 관례)
 skip_re='\.(lock|png|jpe?g|gif|ico|svg|woff2?|ttf|wasm|pdf|zip|dmg|msi|exe)$|(^|/)Cargo\.lock$|(^|/)LICENSE$|(^|/)secret-scan\.sh$|(^|/)scan-pack-secrets\.sh$'
 # 더미 username(제네릭화된 테스트 픽스처) — 그 외 /Users/<name>은 개인경로로 차단
@@ -49,7 +49,7 @@ for f in "${files[@]}"; do
   grep -nE '/Users/[A-Za-z0-9._-]+' "$f" 2>/dev/null | grep -vE "$dummy_user_re" \
     | sed "s|^|PATH\t$f:|" >> "$findings" || true
   # 2) 개인 프로필/홈 디렉터리명 (제네릭화 대상)
-  grep -nE '\.claude-(ysfuture|cysinsight|cysfuturist)|/Users/cys' "$f" 2>/dev/null \
+  grep -nE '\.claude-(ysfuture|cysinsight|ezerfuturist)|/Users/ezer' "$f" 2>/dev/null \
     | sed "s|^|PROFILE\t$f:|" >> "$findings" || true
   # 3) 이메일 (허용 문서·오탐 제외)
   if ! printf '%s' "$f" | grep -qE "$email_allow_re"; then

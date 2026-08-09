@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# scan-pack-secrets.sh — cysjavis-pack 콘텐츠 발행 hard-gate (Task 1, 2026-06-29).
+# scan-pack-secrets.sh — ezer-pack 콘텐츠 발행 hard-gate (Task 1, 2026-06-29).
 #
-# 목적: pack 전체통합으로 git-추적 cysjavis-pack 전 트리가 바이너리/DMG에 자동 임베드되므로,
+# 목적: pack 전체통합으로 git-추적 ezer-pack 전 트리가 바이너리/DMG에 자동 임베드되므로,
 #       gitignore가 못 잡는 *콘텐츠 누출*(개인 홈경로·이메일·키토큰)을 발행 전에 fail-closed로
 #       차단한다. 계정 핸들(ysfuture·cysinsight)·placeholder 경로(/Users/x/ 등)는 아키텍처
 #       식별자로 허용한다(오너 결정). 본 주석의 /Users/x/ 표기는 placeholder 예시다.
 #
-# 스캔 대상: `git ls-files cysjavis-pack` 전수(추적 파일만 — untracked 개인파일은 임베드 안 됨).
+# 스캔 대상: `git ls-files ezer-pack` 전수(추적 파일만 — untracked 개인파일은 임베드 안 됨).
 # 차단 규칙(비0 종료):
 #   - 실홈경로 /Users/<실유저> (placeholder x·you·NAME 제외) · /home/<user> (동일 placeholder 제외)
 #   - 이메일 (example.com·noreply·anthropic 제외)
@@ -18,10 +18,10 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "git repo 아님" >&2; exit 2; }
 
-# 스캔 대상 — git-추적 cysjavis-pack 전수 (NUL 구분, bash 3.2 호환 read 루프)
+# 스캔 대상 — git-추적 ezer-pack 전수 (NUL 구분, bash 3.2 호환 read 루프)
 files=()
-while IFS= read -r -d '' f; do files+=("$f"); done < <(git ls-files -z cysjavis-pack)
-[ "${#files[@]}" -gt 0 ] || { echo "scan 대상 0건 — git 인덱스 부재? (cysjavis-pack 미추적)" >&2; exit 2; }
+while IFS= read -r -d '' f; do files+=("$f"); done < <(git ls-files -z ezer-pack)
+[ "${#files[@]}" -gt 0 ] || { echo "scan 대상 0건 — git 인덱스 부재? (ezer-pack 미추적)" >&2; exit 2; }
 
 # 바이너리·잠금파일 노이즈 제외(시크릿이 살지 않고 오탐만 만드는 파일)
 skip_re='\.(lock|png|jpe?g|gif|ico|svg|woff2?|ttf|wasm|pdf|zip|gz|tar|dmg|exe)$|(^|/)\.DS_Store$'

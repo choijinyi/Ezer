@@ -1,10 +1,10 @@
-//! CYSJavis Pack: cys 터미널에 임베드된 멀티에이전트 운영체계 템플릿.
+//! Ezer Pack: ezer 터미널에 임베드된 멀티에이전트 운영체계 템플릿.
 
 use std::path::{Path, PathBuf};
 
-pub const ENV_PACK_DIR: &str = "CYS_PACK_DIR";
-/// cys 전용 CLAUDE_CONFIG_DIR 오버라이드(주로 테스트 격리용). 미설정 시 pack_dir 형제(~/.cys/claude).
-pub const ENV_CONFIG_DIR: &str = "CYS_CONFIG_DIR";
+pub const ENV_PACK_DIR: &str = "EZER_PACK_DIR";
+/// ezer 전용 CLAUDE_CONFIG_DIR 오버라이드(주로 테스트 격리용). 미설정 시 pack_dir 형제(~/.ezer/claude).
+pub const ENV_CONFIG_DIR: &str = "EZER_CONFIG_DIR";
 
 /// pack-update 종료코드: 디스크 팩은 반영됐으나 라이브 노드 reinject에 실패가 있어 일부 노드가
 /// 미각성 상태(이전 지침으로 동작)임을 의미한다. 디스크 반영 자체는 성공이라 롤백하지 않되,
@@ -15,30 +15,30 @@ pub const EXIT_REINJECT_DEGRADED: i32 = 3;
 /// 브리지)가 failed/deferred를 정확히 파싱하도록 사람용 메시지와 별개의 안정 토큰으로 둔다.
 pub const REINJECT_RESULT_PREFIX: &str = "PACK_UPDATE_RESULT";
 
-// cysjavis-pack의 git-추적 전체 트리는 build.rs가 `git ls-files cysjavis-pack` 소싱으로
+// ezer-pack의 git-추적 전체 트리는 build.rs가 `git ls-files ezer-pack` 소싱으로
 // 컴파일 타임 자동 임베드한다(PACK_ALL — README·directives·bin·hooks·schemas·skills 등 전체). 새
-// 파일은 cysjavis-pack/ 아래에 두고 git add 하면 재빌드 시 자동 통합 — 수동 목록 갱신 불필요. 추적
+// 파일은 ezer-pack/ 아래에 두고 git add 하면 재빌드 시 자동 통합 — 수동 목록 갱신 불필요. 추적
 // 집합이 SOT이므로 gitignore(개인정보) 경계가 구조적으로 강제되고 untracked 개인파일은 임베드되지 않는다.
 include!(concat!(env!("OUT_DIR"), "/pack_all.rs"));
 
-/// 하위호환 별칭 — 전체 트리는 PACK_ALL 단일 소스다. 외부 호출처(src/bin/cys.rs의 pack-manifest
+/// 하위호환 별칭 — 전체 트리는 PACK_ALL 단일 소스다. 외부 호출처(src/bin/ezer.rs의 pack-manifest
 /// 산출)가 `PACK.iter().chain(PACK_SKILLS.iter())`로 참조하므로 심볼을 보존한다: PACK은 PACK_ALL
 /// 그대로, 옛 skills 전용 PACK_SKILLS는 전체 트리에 흡수돼 빈 슬라이스다(이중 카운트 0).
 pub const PACK: &[(&str, &str)] = PACK_ALL;
 pub const PACK_SKILLS: &[(&str, &str)] = &[];
 
-/// ★W1 identity(3중 대조): phoenix ↔ cysd/cys 실행 신뢰원이 같은 빌드인지 교차대조하는 3필드 단일 SOT.
-/// 폴백 cys 채택 시 python 이 이 3필드를 self-report(cys) vs daemon(cysd status) 로 대조한다(§5-1②).
+/// ★W1 identity(3중 대조): phoenix ↔ ezerd/ezer 실행 신뢰원이 같은 빌드인지 교차대조하는 3필드 단일 SOT.
+/// 폴백 ezer 채택 시 python 이 이 3필드를 self-report(ezer) vs daemon(ezerd status) 로 대조한다(§5-1②).
 /// ① build_id = git HEAD SHA(build.rs 임베드) ② embedded_pack_hash = 임베드 팩 트리 해시 ③ protocol version.
 pub const PHOENIX_PROTOCOL_VERSION: &str = "1";
 
-/// 빌드 식별자(git HEAD 짧은 SHA · build.rs 가 CYS_BUILD_ID 로 주입). 같은 빌드의 cys·cysd 동일.
+/// 빌드 식별자(git HEAD 짧은 SHA · build.rs 가 EZER_BUILD_ID 로 주입). 같은 빌드의 ezer·ezerd 동일.
 pub fn build_id() -> &'static str {
-    option_env!("CYS_BUILD_ID").unwrap_or("unknown")
+    option_env!("EZER_BUILD_ID").unwrap_or("unknown")
 }
 
 /// 임베드 팩 매니페스트 해시 — PACK_ALL(rel+content, build.rs 가 이미 정렬)을 sha256 스트리밍 해시.
-/// 같은 소스로 빌드된 cys·cysd 는 동일 값(둘 다 동일 PACK_ALL 임베드). 팩 내용이 다르면 값이 갈린다.
+/// 같은 소스로 빌드된 ezer·ezerd 는 동일 값(둘 다 동일 PACK_ALL 임베드). 팩 내용이 다르면 값이 갈린다.
 pub fn embedded_pack_hash() -> String {
     use sha2::{Digest, Sha256};
     let mut h = Sha256::new();
@@ -51,12 +51,12 @@ pub fn embedded_pack_hash() -> String {
     format!("{:x}", h.finalize())
 }
 
-/// 설치 위치: $CYS_PACK_DIR (구 JAVIS_PACK_DIR·AITERM_JARVIS_DIR 폴백) 또는 ~/.cys/pack
+/// 설치 위치: $EZER_PACK_DIR (구 EZER_PACK_DIR·AITERM_JARVIS_DIR 폴백) 또는 ~/.ezer/pack
 pub fn pack_dir() -> PathBuf {
     if let Some(d) = crate::env_compat(ENV_PACK_DIR) {
         return PathBuf::from(d);
     }
-    for legacy in ["JAVIS_PACK_DIR", "AITERM_JARVIS_DIR"] {
+    for legacy in ["EZER_PACK_DIR", "AITERM_JARVIS_DIR"] {
         if let Ok(d) = std::env::var(legacy) {
             if !d.is_empty() {
                 return PathBuf::from(d);
@@ -65,7 +65,7 @@ pub fn pack_dir() -> PathBuf {
     }
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join(".cys/pack")
+        .join(".ezer/pack")
 }
 
 /// SessionStart hook 등록 명령을 OS별로 조립하는 **공용 함수**(RC-2 · 순수 함수·회귀 핀).
@@ -73,16 +73,16 @@ pub fn pack_dir() -> PathBuf {
 ///   띄운다(anthropics/claude-code #21847·#24097). Claude Code가 Windows에서 찾는 인터프리터는
 ///   Git Bash의 `bash`이므로 `bash`로 명시 호출한다(맨 이름 `sh`는 Git Bash가 `bash.exe`만 보장 → 회피).
 /// Unix: 기존과 동일 `sh <path>`(제로 회귀).
-/// cys.rs::hook_command(init-pack 경로)와 setup_isolated_config_dir(격리 config dir 경로)가 **둘 다**
+/// ezer.rs::hook_command(init-pack 경로)와 setup_isolated_config_dir(격리 config dir 경로)가 **둘 다**
 /// 이 함수를 써서 두 경로의 인터프리터가 일치한다(구: 격리 경로만 `sh` 하드코딩 → Windows 불일치).
 pub fn session_start_hook_command(pack_dir: &Path) -> String {
     let script = pack_dir.join("hooks/session-start.sh");
     if cfg!(windows) {
-        // RC-2 잔여(T2.1·codex CONFIRMED): 공백 포함 경로(C:\Users\John Doe\.cys\pack\...) 대응 — Windows만
+        // RC-2 잔여(T2.1·codex CONFIRMED): 공백 포함 경로(C:\Users\John Doe\.ezer\pack\...) 대응 — Windows만
         // quote로 감싼다. unix는 **무변경**(기존 install에 등록된 미quote 문자열과 install_claude_hook의
         // already-매칭이 유지돼야 중복 등록이 안 생긴다 — quote 추가 시 불일치→매 기동 중복 append 회귀).
         // ★역슬래시→정슬래시 정규화(RC-3): git-bash가 C:\ 역슬래시를 escape/미해석해 경로를 파괴하는
-        // 것(C:\Users\...→C:Users...→No such file) 방지. javis_preflight._cys_hook_cmd 의 Windows 형태와
+        // 것(C:\Users\...→C:Users...→No such file) 방지. ezer_preflight._ezer_hook_cmd 의 Windows 형태와
         // **동일 문자열**을 방출 → 두 writer 간 중복 등록 0(matcher 일치).
         format!("bash \"{}\"", script.display().to_string().replace('\\', "/"))
     } else {
@@ -90,10 +90,10 @@ pub fn session_start_hook_command(pack_dir: &Path) -> String {
     }
 }
 
-/// cys 전용 CLAUDE_CONFIG_DIR — 사용자 ~/.claude(외부 터미널 체계·구 지침 오염 가능)와 **격리**한다.
-/// cys가 띄우는 claude는 이 디렉터리만 읽으므로, 사용자 프로필이 오염돼 있어도 영향받지 않고
+/// ezer 전용 CLAUDE_CONFIG_DIR — 사용자 ~/.claude(외부 터미널 체계·구 지침 오염 가능)와 **격리**한다.
+/// ezer가 띄우는 claude는 이 디렉터리만 읽으므로, 사용자 프로필이 오염돼 있어도 영향받지 않고
 /// 사용자 프로필을 건드리지도(읽지도·지우지도) 않는다. macOS 인증은 계정 단위 Keychain이라
-/// 격리해도 로그인이 유지된다(우리 DMG는 macOS 전용). pack_dir 형제(~/.cys/claude).
+/// 격리해도 로그인이 유지된다(우리 DMG는 macOS 전용). pack_dir 형제(~/.ezer/claude).
 pub fn config_dir() -> PathBuf {
     if let Some(d) = crate::env_compat(ENV_CONFIG_DIR) {
         return PathBuf::from(d);
@@ -101,10 +101,10 @@ pub fn config_dir() -> PathBuf {
     pack_dir()
         .parent()
         .map(|p| p.join("claude"))
-        .unwrap_or_else(|| PathBuf::from(".cys/claude"))
+        .unwrap_or_else(|| PathBuf::from(".ezer/claude"))
 }
 
-/// 격리 config dir 셋업: cys 라우터(CLAUDE.md)와 SessionStart hook(settings.json)을 설치한다.
+/// 격리 config dir 셋업: ezer 라우터(CLAUDE.md)와 SessionStart hook(settings.json)을 설치한다.
 /// ★보존 모드 — 기존 파일은 덮지 않는다(사용자 커스터마이즈 불가침). best-effort(실패해도
 /// pack 설치 자체는 유효). 사용자 ~/.claude 는 절대 건드리지 않는다(격리의 핵심).
 fn setup_isolated_config_dir() {
@@ -112,7 +112,7 @@ fn setup_isolated_config_dir() {
     if std::fs::create_dir_all(&cfg).is_err() {
         return;
     }
-    // 라우터: 임베드 CLAUDE.md.template → <cfg>/CLAUDE.md (없을 때만 — 역할선언→~/.cys/pack 라우팅)
+    // 라우터: 임베드 CLAUDE.md.template → <cfg>/CLAUDE.md (없을 때만 — 역할선언→~/.ezer/pack 라우팅)
     let claude_md = cfg.join("CLAUDE.md");
     if !claude_md.exists() {
         if let Some((_, tmpl)) = PACK_ALL.iter().find(|(rel, _)| *rel == "CLAUDE.md.template") {
@@ -224,11 +224,11 @@ fn channel_guard_and_heal(dir: &Path) -> Option<String> {
         PackStateRead::Absent => None, // 부재 = free/0 (구 설치 자연 마이그레이션)
         PackStateRead::Corrupt(e) => Some(format!(
             "PACK_CHANNEL_PRESERVED ⚠ .pack-state.json 손상({e}) → 보존 모드(pro 간주)·내장 팩 미반영. \
-             복구: cys pack-repair-channel"
+             복구: ezer pack-repair-channel"
         )),
         PackStateRead::Valid(st) if st.channel == "pro" => Some(
             "PACK_CHANNEL_PRESERVED channel=pro — 내장 팩 미반영(pro 팩 보존). \
-             free 복귀는 cys pack-downgrade-to-free 전용"
+             free 복귀는 ezer pack-downgrade-to-free 전용"
                 .to_string(),
         ),
         PackStateRead::Valid(st) => {
@@ -249,7 +249,7 @@ fn channel_guard_and_heal(dir: &Path) -> Option<String> {
                 Ok(Some((channel, _, _))) if channel == "pro" => {
                     return Some(
                         "PACK_CHANNEL_PRESERVED state=free이나 accepted 기록=pro(거짓 free 의심) \
-                         → 보존·내장 팩 미반영. 복구: cys pack-repair-channel"
+                         → 보존·내장 팩 미반영. 복구: ezer pack-repair-channel"
                             .to_string(),
                     )
                 }
@@ -257,7 +257,7 @@ fn channel_guard_and_heal(dir: &Path) -> Option<String> {
                     // accepted 손상 = 증거 판독 불가 → fail-closed(보존).
                     return Some(
                         "PACK_CHANNEL_PRESERVED accepted 기록 손상 — 증거 판독 불가 → 보존. \
-                         복구: cys pack-repair-channel"
+                         복구: ezer pack-repair-channel"
                             .to_string(),
                     );
                 }
@@ -266,7 +266,7 @@ fn channel_guard_and_heal(dir: &Path) -> Option<String> {
             if pro_file_evidence(dir) {
                 return Some(
                     "PACK_CHANNEL_PRESERVED state=free이나 pro 전용 파일 실재(거짓 free 의심) \
-                     → 보존·내장 팩 미반영. 복구: cys pack-repair-channel"
+                     → 보존·내장 팩 미반영. 복구: ezer pack-repair-channel"
                         .to_string(),
                 );
             }
@@ -318,7 +318,7 @@ fn content_hash(content: &str) -> String {
     format!("{:x}", Sha256::digest(content.as_bytes()))
 }
 
-/// ★B1: 외부(cysd)가 디스크 폴백 phoenix 의 stale 여부(임베드 해시 대조)를 판정할 때 쓰는 공개 래퍼.
+/// ★B1: 외부(ezerd)가 디스크 폴백 phoenix 의 stale 여부(임베드 해시 대조)를 판정할 때 쓰는 공개 래퍼.
 pub fn content_hash_pub(content: &str) -> String {
     content_hash(content)
 }
@@ -327,7 +327,7 @@ pub fn content_hash_pub(content: &str) -> String {
 /// 해시 불일치 시 강제 갱신), **user 는 화이트리스트만**(사용자 수정 보존). 화이트리스트를 좁게 유지해
 /// '조용한 탈락'(system 인데 user 로 오분류돼 스큐가 동결)을 방지한다.
 ///   user(preserve)  = 디렉티브(*_DIRECTIVE.md)·헌법(soul.md)·CLAUDE.md — CEO/사용자 커스텀 대상.
-///   system(update)  = bin/*.py·hooks/*·skills·schemas·templates 등 그 외 전부(cysd 소유·스큐 금지).
+///   system(update)  = bin/*.py·hooks/*·skills·schemas·templates 등 그 외 전부(ezerd 소유·스큐 금지).
 /// P0-4 수리: 과거 `_ =>` catch-all 이 매니페스트 부재·읽기 실패까지 'user 수정'으로 오판해 phoenix(system)를
 /// 영구 동결시켜 배포 스큐를 냈다 — 이 분류가 그 근원을 대체한다(CLAUDE.md.template 은 .template 이라 system).
 pub(crate) fn is_user_owned(rel: &str) -> bool {
@@ -373,9 +373,9 @@ pub(crate) fn ownership(rel: &str) -> Ownership {
         || rel.ends_with("/soul.md")
         || rel == "CLAUDE.md"
         || rel.ends_with("/CLAUDE.md")
-        // ★B2-1(W3): schedule.json 은 사용자가 `cys schedule add` 로 편집하는 혼합 파일 — 팩 강제갱신이 덮으면
+        // ★B2-1(W3): schedule.json 은 사용자가 `ezer schedule add` 로 편집하는 혼합 파일 — 팩 강제갱신이 덮으면
         // 사용자 잡이 소실(비가역 데이터 손실)된다. user 소유로 보존하고, built-in 잡(phoenix-*)은 데몬 부트 시
-        // 코드가 idempotent ensure 한다(cysd schedule::ensure_builtin_jobs). 기본 잡 드리프트(복구 가능) < 사용자 잡 소실.
+        // 코드가 idempotent ensure 한다(ezerd schedule::ensure_builtin_jobs). 기본 잡 드리프트(복구 가능) < 사용자 잡 소실.
         || rel == "schedule.json"
     {
         return Ownership::User;
@@ -391,7 +391,7 @@ pub(crate) fn ownership(rel: &str) -> Ownership {
 //     - user-owned 수정본 + 임베드 신버전 변경 → 보존 유지 + `<rel>.new` 병치(병합 대기)
 //     - system 수정본 치유 → 덮어쓰기 **전에** `<rel>.user` 로 사용자본 보존(파괴 0)
 //     - `.pristine/<rel>` = 마지막으로 디스크에 적용된 vendor 원본(3-way 병합의 공통 조상)
-//     - `.merge-pending.json` = 병합 대기 원장 — `cys pack-merge` 가 소비
+//     - `.merge-pending.json` = 병합 대기 원장 — `ezer pack-merge` 가 소비
 //   판정은 decide_file_action(순수)로 추출해 install_into(쓰기)와 plan_install(드라이런)이
 //   같은 논리를 공유한다(플랜≠실제 드리프트 차단).
 
@@ -402,9 +402,9 @@ pub const PRISTINE_DIR: &str = ".pristine";
 
 /// 사용자 로컬 오버레이 루트(⑤①) — 업데이터·치유·prune 이 **존재 자체를 모르는** 사용자 전용 영역.
 /// directives/*_DIRECTIVE.local.md(디렉티브 append)·skills/(동명 shadowing)·hooks/<event>.d/(후행 실행)·notes/.
-/// 테스트 오버라이드: CYS_LOCAL_DIR. 기본 = pack_dir 형제 `local`(~/.cys/local).
+/// 테스트 오버라이드: EZER_LOCAL_DIR. 기본 = pack_dir 형제 `local`(~/.ezer/local).
 pub fn local_dir() -> PathBuf {
-    if let Some(d) = crate::env_compat("CYS_LOCAL_DIR") {
+    if let Some(d) = crate::env_compat("EZER_LOCAL_DIR") {
         return PathBuf::from(d);
     }
     let pd = pack_dir();
@@ -494,7 +494,7 @@ pub fn save_merge_pending(dir: &Path, pending: &serde_json::Map<String, serde_js
     }
 }
 
-/// install 드라이런 리포트(④ 투명성) — `cys pack-plan` 이 설치 **전에** 사용자에게 보여준다.
+/// install 드라이런 리포트(④ 투명성) — `ezer pack-plan` 이 설치 **전에** 사용자에게 보여준다.
 #[derive(Debug, Default)]
 pub struct InstallPlan {
     pub create: Vec<String>,              // 신규 생성
@@ -608,7 +608,7 @@ pub fn parse_semver(v: &str) -> Option<(u32, u32, u32)> {
 /// 무중단 채널 반영 판정(§7-④): remote 팩 버전이 디스크 버전보다 새것인가.
 /// ★fail-CLOSED 반영거부: **둘 다 파싱 성공 AND remote > disk**일 때만 true. 어느 한쪽이라도
 /// 파싱 실패면 false(반영 거부)다 — version_gt(disk-vs-embed 보존용, 파싱 실패=보존=true)와 안전
-/// 방향이 반대다. P4 `cys pack-update`의 version_gates(반영 판정 축)가 호출한다.
+/// 방향이 반대다. P4 `ezer pack-update`의 version_gates(반영 판정 축)가 호출한다.
 pub fn remote_is_newer(remote: &str, disk: &str) -> bool {
     match (parse_semver(remote), parse_semver(disk)) {
         (Some(r), Some(d)) => r > d,
@@ -617,9 +617,9 @@ pub fn remote_is_newer(remote: &str, disk: &str) -> bool {
 }
 
 /// 부트 스윕 조기 반환 게이트 — 디스크 팩이 `binary_version` 이상으로 커밋됐고(.pack-version)
-/// 매니페스트가 실재하면 true(스윕 불요). 사용처 = **cysd 부트**(cysd/main.rs 온보딩②) 단독.
-/// (v3에서 GUI 온보딩도 이 술어를 썼으나, cysd가 GUI보다 먼저 돈 머신에서 게이트가 선점돼
-/// hook 미설치 회귀(0.12.52 cys-neo) → GUI는 자체 완료 마커(.gui-onboarded·main.rs)로 분리(v4).
+/// 매니페스트가 실재하면 true(스윕 불요). 사용처 = **ezerd 부트**(ezerd/main.rs 온보딩②) 단독.
+/// (v3에서 GUI 온보딩도 이 술어를 썼으나, ezerd가 GUI보다 먼저 돈 머신에서 게이트가 선점돼
+/// hook 미설치 회귀(0.12.52 ezer-neo) → GUI는 자체 완료 마커(.gui-onboarded·main.rs)로 분리(v4).
 /// GUI 게이트로 재사용하지 마라 — 팩 최신 ≠ GUI 온보딩(hook·schtasks) 완료.)
 /// - 디스크>바이너리(무중단 pack-update 전진)도 true — 스윕해봐야 install의 다운그레이드
 ///   차단에 막히므로 스킵이 동치·저렴하다(lame-duck 스큐의 매 부트 차단 로그 소음도 제거).
@@ -639,16 +639,16 @@ pub fn pack_current_in(dir: &Path, binary_version: &str) -> bool {
     }
 }
 
-/// pack_current_in의 실경로 래퍼 — 호출부(GUI setup·cysd main)가 pack_dir 해석에 재결합하지 않게 한다.
+/// pack_current_in의 실경로 래퍼 — 호출부(GUI setup·ezerd main)가 pack_dir 해석에 재결합하지 않게 한다.
 /// ★게이트는 반드시 **부트 호출부**에 두고 install() 내부에 넣지 마라 — 내부에 넣으면 수동
-/// `cys init-pack`·pack-update·pack-downgrade(치유의 정식 경로)까지 게이트되어 치유가 불구가 된다.
+/// `ezer init-pack`·pack-update·pack-downgrade(치유의 정식 경로)까지 게이트되어 치유가 불구가 된다.
 pub fn pack_current_for(binary_version: &str) -> bool {
     pack_current_in(&pack_dir(), binary_version)
 }
 
 /// 원자적 파일 쓰기(§7-⑤): 같은 디렉터리 temp 파일에 쓰고 fsync → rename으로 원자 교체 →
 /// 디렉터리 fsync(best-effort). 쓰는 도중 crash 시 부분 파일이 최종 경로에 남지 않는다
-/// (std::fs::write는 비원자라 부분 쓰기 노출). cysd governance의 write_json_atomic과 동형.
+/// (std::fs::write는 비원자라 부분 쓰기 노출). ezerd governance의 write_json_atomic과 동형.
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     let parent = path.parent().ok_or_else(|| {
@@ -705,7 +705,7 @@ pub fn install(force: bool) -> Result<(usize, usize), String> {
         PACK_ALL.iter().map(|(r, c)| (*r, *c)),
         force,
         env!("CARGO_PKG_VERSION"),
-        false, // embed/cysd 경로(비트랜잭션): .pack-version 직접 기록 + 매니페스트 best-effort(외부 동작 불변).
+        false, // embed/ezerd 경로(비트랜잭션): .pack-version 직접 기록 + 매니페스트 best-effort(외부 동작 불변).
     )
 }
 
@@ -717,7 +717,7 @@ pub fn install(force: bool) -> Result<(usize, usize), String> {
 /// system 파일은 임베드로 치유**(사용자본 `<rel>.user` 보존), 비수정 파일은 입력 신버전으로 자동 갱신.
 /// ("사용자 수정 파일 불가침" 구 문구는 user-owned 등급에만 참인데 전체로 읽혀 배포 현장의 오판을
 /// 낳았다 — 2026-07-12 치유 원복 사고 시정.) 반환: (written, kept).
-/// `transactional`: false면 embed/cysd/init-pack 경로 — 종전대로 마지막에 `.pack-version`을
+/// `transactional`: false면 embed/ezerd/init-pack 경로 — 종전대로 마지막에 `.pack-version`을
 /// best-effort 기록하고 `.install-manifest.json` 영속도 best-effort(외부 동작 불변). true면
 /// 무중단 pack-update 트랜잭션(apply_pack_transactional) 경로 — ⓐ`.pack-version`을 여기서
 /// 기록하지 않는다(record_accepted **이후** apply_pack_transactional이 마지막 hard commit
@@ -751,7 +751,7 @@ pub fn install_into<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
     .ok()
     .and_then(|s| serde_json::from_str(&s).ok())
     .unwrap_or_default();
-    // 다운그레이드 차단: 디스크 팩 버전이 입력 버전(target_version)보다 새것이면(구버전 cys로 롤백/오설치)
+    // 다운그레이드 차단: 디스크 팩 버전이 입력 버전(target_version)보다 새것이면(구버전 ezer로 롤백/오설치)
     // 비강제 install이 비수정 파일·prune으로 신기능을 구 내용으로 후퇴시키는 사일런트 회귀를 막는다.
     // force(수동 init-pack --force)면 우회 — 의도적 재설치는 허용.
     if !force {
@@ -873,7 +873,7 @@ pub fn install_into<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
     }
     if !pending.is_empty() {
         println!(
-            "[init-pack] 커스터마이즈 병합 대기 {}건 — `cys pack-merge` 로 검토 (신버전 .new 병치 / 치유 전 사용자본 .user 보존)",
+            "[init-pack] 커스터마이즈 병합 대기 {}건 — `ezer pack-merge` 로 검토 (신버전 .new 병치 / 치유 전 사용자본 .user 보존)",
             pending.len()
         );
     }
@@ -918,7 +918,7 @@ pub fn install_into<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
         }
     }
     // 매니페스트 영속:
-    // - transactional=false(embed/cysd/init-pack): 최선노력 — 직렬화·write 실패해도 설치 자체는
+    // - transactional=false(embed/ezerd/init-pack): 최선노력 — 직렬화·write 실패해도 설치 자체는
     //   유효하고 다음 판정은 보존(안전측)으로 떨어진다(외부 동작 불변).
     // - transactional=true(pack-update): fail-closed — write 실패를 Err로 승격해
     //   apply_pack_transactional이 rollback_journal를 타게 한다. 매니페스트가 손상/구상태로 남으면
@@ -966,8 +966,8 @@ pub fn install_into<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
             ),
         }
     }
-    // cys 전용 CLAUDE_CONFIG_DIR 격리 셋업(오너 2026-06-15) — 사용자 ~/.claude 오염으로부터
-    // cys 마스터를 분리한다. best-effort·보존 모드라 깨끗한 환경에서도 회귀 0.
+    // ezer 전용 CLAUDE_CONFIG_DIR 격리 셋업(오너 2026-06-15) — 사용자 ~/.claude 오염으로부터
+    // ezer 마스터를 분리한다. best-effort·보존 모드라 깨끗한 환경에서도 회귀 0.
     // ★staging 경로(install_staged)는 setup_config=false로 여기서 건너뛰고, atomic swap 후 실
     // pack_dir에 대해 한 번 셋업한다(격리 config는 pack_dir 형제라 staging 대상이 아님).
     if setup_config {
@@ -1159,14 +1159,14 @@ pub fn install_staged(force: bool) -> Result<(usize, usize), String> {
 // ─────────────────────────────────────────────────────────────────────────────
 // 무중단 pack-update 적용 트랜잭션(§7-⑤ 옵션 b — 오너 결정 ⑤ 확정: 심링크 마이그레이션 안 함).
 // backup journal + rollback + `.pack-version` = 마지막 hard commit marker로 전체 팩 적용에
-// all-or-nothing(부분적용 0)을 부여한다. ★install()/cysd 자동설치·init-pack 경로는 이 트랜잭션을
+// all-or-nothing(부분적용 0)을 부여한다. ★install()/ezerd 자동설치·init-pack 경로는 이 트랜잭션을
 // 거치지 않는다(install_from_iter를 transactional=false로 직접 호출 — 외부 동작 불변).
 // pack-update만 apply_pack_transactional로 감싼다. R2CODE HIGH #1 해소.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PACK_JOURNAL_DIR: &str = ".pack-journal";
 
-/// 백업 저널 디렉터리(~/.cys/.pack-journal) — pack_dir 형제(staging·lock·accepted와 동일 루트).
+/// 백업 저널 디렉터리(~/.ezer/.pack-journal) — pack_dir 형제(staging·lock·accepted와 동일 루트).
 pub fn pack_journal_dir() -> PathBuf {
     pack_dir()
         .parent()
@@ -1281,7 +1281,7 @@ pub fn rollback_journal() -> Result<(), String> {
 /// 목표 버전과 대조한다. 같으면 커밋은 성공했고 저널 정리 중 crash였으므로 저널만 삭제(롤백 금지).
 /// 다르면 미커밋(부분적용)이므로 rollback으로 pre-state 자가치유. 인덱스 부재(백업 도중 crash)는
 /// 원본 미변경이므로 잔존 저널만 폐기. 저널 완전 부재면 no-op. 반환: 복구를 수행했으면 true.
-/// ★pack-update 착수 시·cysd 기동 시(install(false) 전)에 호출해 부분적용을 선치유한다.
+/// ★pack-update 착수 시·ezerd 기동 시(install(false) 전)에 호출해 부분적용을 선치유한다.
 pub fn recover_pack_journal() -> Result<bool, String> {
     let jdir = pack_journal_dir();
     let index_path = jdir.join("index.json");
@@ -1439,7 +1439,7 @@ mod tests {
     /// 매니페스트 부재는 전부 false(=스윕 실행)여야 한다.
     #[test]
     fn pack_current_gate_only_closes_when_provably_current() {
-        let td = std::env::temp_dir().join(format!("cys-pack-current-test-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("ezer-pack-current-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::fs::create_dir_all(&td).unwrap();
 
@@ -1571,7 +1571,7 @@ mod tests {
             let want = format!("skills/{skill}/SKILL.md");
             assert!(names.iter().any(|p| *p == want), "임베드 누락: {skill}");
         }
-        // cys-video-creator 영상 자동제작 스킬 32종(오너 제작 · preflight C26 VIDEO_SKILLS와
+        // ezer-video-creator 영상 자동제작 스킬 32종(오너 제작 · preflight C26 VIDEO_SKILLS와
         // 동기) — pack 임베드로 기본 배포됨을 박제. 새 스킬 추가 시 양쪽을 함께 갱신한다.
         for skill in [
             "youtube-video-pipeline", "suite-runtime-keys", "cost-preview-confirm",
@@ -1624,15 +1624,15 @@ mod tests {
     }
 
     /// ★불변식 박제: 빈 디렉터리(신규 머신)에 install()만으로 코어 pack + 채택 스킬이
-    /// 전부 설치된다 — "cysjavis 설치 = 기본 스킬 자동 설치" 계약의 기계 검증.
+    /// 전부 설치된다 — "ezer 설치 = 기본 스킬 자동 설치" 계약의 기계 검증.
     #[test]
     fn install_writes_core_and_skills_to_fresh_dir() {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let td = std::env::temp_dir().join(format!("cys-pack-install-test-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("ezer-pack-install-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
-        let cfgdir = td.join("cysclaude"); // 격리 config dir(테스트 밀폐 — td와 함께 정리)
+        let cfgdir = td.join("ezerclaude"); // 격리 config dir(테스트 밀폐 — td와 함께 정리)
         std::env::set_var(ENV_PACK_DIR, &td);
         std::env::set_var(ENV_CONFIG_DIR, &cfgdir);
         let result = install(false);
@@ -1647,11 +1647,11 @@ mod tests {
         let (written, kept) = result.expect("install 실패");
         assert_eq!(kept, 0, "빈 디렉터리인데 kept>0");
         assert_eq!(written, PACK_ALL.len(), "임베드 전수 설치 아님");
-        // ★격리 config dir 셋업(오너 2026-06-15): cys 라우터+hook이 전용 dir에 설치되고,
-        // 사용자 ~/.claude 와 분리된다. 라우터는 ~/.cys/pack 디렉티브로 라우팅해야 한다.
+        // ★격리 config dir 셋업(오너 2026-06-15): ezer 라우터+hook이 전용 dir에 설치되고,
+        // 사용자 ~/.claude 와 분리된다. 라우터는 ~/.ezer/pack 디렉티브로 라우팅해야 한다.
         let router = std::fs::read_to_string(cfgdir.join("CLAUDE.md")).expect("격리 CLAUDE.md 미설치");
-        assert!(router.contains("~/.cys/pack/directives"), "격리 라우터가 pack 디렉티브로 안 보냄");
-        assert!(router.contains("cys 터미널 전용"), "격리 라우터에 cys 환경선언 부재");
+        assert!(router.contains("~/.ezer/pack/directives"), "격리 라우터가 pack 디렉티브로 안 보냄");
+        assert!(router.contains("ezer 터미널 전용"), "격리 라우터에 ezer 환경선언 부재");
         let cfg_settings = std::fs::read_to_string(cfgdir.join("settings.json")).expect("격리 settings.json 미설치");
         assert!(cfg_settings.contains("SessionStart") && cfg_settings.contains("session-start.sh"),
                 "격리 settings.json에 SessionStart hook 부재");
@@ -1659,7 +1659,7 @@ mod tests {
             "skills/korean-humanizer/SKILL.md",
             "skills/kosis-stats/scripts/run_kosis_stats.py",
             "skills/THIRD_PARTY.md",
-            "bin/javis_route.py",
+            "bin/ezer_route.py",
             "directives/MASTER_DIRECTIVE.md",
         ] {
             assert!(td.join(probe).is_file(), "설치 누락: {probe}");
@@ -1713,16 +1713,16 @@ mod tests {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let td = std::env::temp_dir().join(format!("cys-pack-downgrade-test-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("ezer-pack-downgrade-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::env::set_var(ENV_PACK_DIR, &td);
-        std::env::set_var(ENV_CONFIG_DIR, td.join("cysclaude"));
+        std::env::set_var(ENV_CONFIG_DIR, td.join("ezerclaude"));
 
         let embed = env!("CARGO_PKG_VERSION");
         // 1) 정상 설치 → .pack-version = embed 기록
         install(false).expect("최초 install 실패");
         let disk_v1 = std::fs::read_to_string(td.join(PACK_VERSION_FILE)).unwrap();
-        // 2) 디스크 .pack-version을 더 새 버전으로 위조(구버전 cys 롤백/오설치 시뮬)
+        // 2) 디스크 .pack-version을 더 새 버전으로 위조(구버전 ezer 롤백/오설치 시뮬)
         std::fs::write(td.join(PACK_VERSION_FILE), "99.0.0").unwrap();
         // 3) install(false) → 다운그레이드 차단 → (0,0), .pack-version 유지(embed로 안 덮음)
         let blocked = install(false).expect("install 실패");
@@ -1797,10 +1797,10 @@ mod tests {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let td = std::env::temp_dir().join(format!("cys-pack-threeway-test-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("ezer-pack-threeway-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::env::set_var(ENV_PACK_DIR, &td);
-        std::env::set_var(ENV_CONFIG_DIR, td.join("cysclaude"));
+        std::env::set_var(ENV_CONFIG_DIR, td.join("ezerclaude"));
 
         let get = |rel: &str| PACK_ALL.iter().find(|(r, _)| *r == rel).map(|(_, c)| *c)
             .unwrap_or_else(|| panic!("팩에 {rel} 부재"));
@@ -1855,10 +1855,10 @@ mod tests {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let td = std::env::temp_dir().join(format!("cys-pack-plan-test-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("ezer-pack-plan-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::env::set_var(ENV_PACK_DIR, &td);
-        std::env::set_var(ENV_CONFIG_DIR, td.join("cysclaude"));
+        std::env::set_var(ENV_CONFIG_DIR, td.join("ezerclaude"));
 
         std::fs::create_dir_all(&td).unwrap();
         std::fs::write(td.join("README.md"), "OLD-INSTALLED").unwrap();
@@ -1893,10 +1893,10 @@ mod tests {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let td = std::env::temp_dir().join(format!("cys-pack-ownership-test-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("ezer-pack-ownership-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::env::set_var(ENV_PACK_DIR, &td);
-        std::env::set_var(ENV_CONFIG_DIR, td.join("cysclaude")); // 격리(밀폐)
+        std::env::set_var(ENV_CONFIG_DIR, td.join("ezerclaude")); // 격리(밀폐)
 
         let get = |rel: &str| PACK_ALL.iter().find(|(r, _)| *r == rel).map(|(_, c)| *c)
             .unwrap_or_else(|| panic!("팩에 {rel} 부재"));
@@ -1955,13 +1955,13 @@ mod tests {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let td = std::env::temp_dir().join(format!("cys-sched-owner-test-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("ezer-sched-owner-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::env::set_var(ENV_PACK_DIR, &td);
-        std::env::set_var(ENV_CONFIG_DIR, td.join("cysclaude"));
+        std::env::set_var(ENV_CONFIG_DIR, td.join("ezerclaude"));
         std::fs::create_dir_all(&td).unwrap();
 
-        // 사용자가 `cys schedule add` 로 넣은 잡이 담긴 schedule.json(임베드와 상이).
+        // 사용자가 `ezer schedule add` 로 넣은 잡이 담긴 schedule.json(임베드와 상이).
         let user_schedule = r#"{"jobs":[{"id":"my-daily-brief","every_minutes":1440,"action":"push","to":"master","text":"USER JOB"}]}"#;
         std::fs::write(td.join("schedule.json"), user_schedule).unwrap();
 
@@ -1991,7 +1991,7 @@ mod tests {
                   "sub/dir/CSO_DIRECTIVE.md", "some/soul.md", "schedule.json"] {
             assert!(is_user_owned(u), "user 여야: {u}");
         }
-        for s in ["bin/javis_phoenix.py", "hooks/session_start.sh", "README.md",
+        for s in ["bin/ezer_phoenix.py", "hooks/session_start.sh", "README.md",
                   "acl.json", "CLAUDE.md.template", "skills/x/SKILL.md",
                   "directives/CEO_TEMPLATE.md", "sub/schedule.json"] {
             assert!(!is_user_owned(s), "system 여야: {s}");
@@ -2006,7 +2006,7 @@ mod tests {
             assert!(is_seed_once(st), "seed-once 여야: {st}");
         }
         for s in ["round/TOOL_RESULT_VOCAB.md", "round/capability_catalog.json",
-                  "round/video-archetypes/cinematic/workflow.json", "bin/javis_memory.py"] {
+                  "round/video-archetypes/cinematic/workflow.json", "bin/ezer_memory.py"] {
             assert!(!is_seed_once(s), "system 여야: {s}");
         }
         // ★행동 박제(치유 원복 사고 회귀 핀): 존재하는 seed-once 상태는
@@ -2039,11 +2039,11 @@ mod tests {
         // 등급 대표 핀.
         assert_eq!(ownership("soul.md"), Ownership::User);
         assert_eq!(ownership("round/SESSION_STATE.md"), Ownership::SeedOnce);
-        assert_eq!(ownership("bin/javis_phoenix.py"), Ownership::System);
+        assert_eq!(ownership("bin/ezer_phoenix.py"), Ownership::System);
         // 술어 래퍼 배타성: 단일 SOT 의 배타 등급이므로 어떤 rel 에서도 동시 참 불가.
         for rel in ["memory/CLAUDE.md", "memory/MEMORY.md", "soul.md", "CLAUDE.md",
                     "round/SESSION_STATE.md", "round/capability_catalog.json",
-                    "schedule.json", "bin/javis_phoenix.py"] {
+                    "schedule.json", "bin/ezer_phoenix.py"] {
             assert!(!(is_user_owned(rel) && is_seed_once(rel)), "이중 등급: {rel}");
         }
     }
@@ -2051,16 +2051,16 @@ mod tests {
     #[test]
     fn pack_dir_env_precedence_and_legacy_fallbacks() {
         // ★불변식 박제: pack_dir의 4단 폴백 우선순위.
-        //   1) CYS_PACK_DIR (env_compat: CYS_ → JAVIS_ → AITERM_PACK_DIR 까지 본다)
-        //   2) JAVIS_PACK_DIR (명시 레거시 루프)
+        //   1) EZER_PACK_DIR (env_compat: EZER_ → EZER_ → AITERM_PACK_DIR 까지 본다)
+        //   2) EZER_PACK_DIR (명시 레거시 루프)
         //   3) AITERM_JARVIS_DIR (명시 레거시 루프 — env_compat은 AITERM_PACK_DIR를
         //      만들지 AITERM_JARVIS_DIR가 아니므로 '오직 이 루프'로만 도달 가능)
-        //   4) ~/.cys/pack (기본)
+        //   4) ~/.ezer/pack (기본)
         // 마이그레이션 경로라 순서가 뒤집히면 구 설치본을 조용히 못 찾는다.
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let keys = [
-            "CYS_PACK_DIR",
-            "JAVIS_PACK_DIR",
+            "EZER_PACK_DIR",
+            "EZER_PACK_DIR",
             "AITERM_PACK_DIR",
             "AITERM_JARVIS_DIR",
         ];
@@ -2070,29 +2070,29 @@ mod tests {
             std::env::remove_var(k);
         }
 
-        // 셋 다 없으면 기본 ~/.cys/pack (홈 끝 2요소가 .cys/pack)
+        // 셋 다 없으면 기본 ~/.ezer/pack (홈 끝 2요소가 .ezer/pack)
         let def = pack_dir();
         assert!(
-            def.ends_with(".cys/pack"),
-            "기본 경로는 .cys/pack: {def:?}"
+            def.ends_with(".ezer/pack"),
+            "기본 경로는 .ezer/pack: {def:?}"
         );
 
         // AITERM_JARVIS_DIR만 → 3순위로 도달 (env_compat이 못 만드는 키, 루프 전용 경로)
         std::env::set_var("AITERM_JARVIS_DIR", "/legacy/aiterm");
         assert_eq!(pack_dir(), PathBuf::from("/legacy/aiterm"));
 
-        // JAVIS_PACK_DIR 추가 → AITERM_JARVIS_DIR보다 우선 (2순위)
-        std::env::set_var("JAVIS_PACK_DIR", "/legacy/javis");
-        assert_eq!(pack_dir(), PathBuf::from("/legacy/javis"));
+        // EZER_PACK_DIR 추가 → AITERM_JARVIS_DIR보다 우선 (2순위)
+        std::env::set_var("EZER_PACK_DIR", "/legacy/ezer");
+        assert_eq!(pack_dir(), PathBuf::from("/legacy/ezer"));
 
-        // CYS_PACK_DIR 추가(env_compat primary) → 최우선 (1순위)
-        std::env::set_var("CYS_PACK_DIR", "/modern/cys");
-        assert_eq!(pack_dir(), PathBuf::from("/modern/cys"));
+        // EZER_PACK_DIR 추가(env_compat primary) → 최우선 (1순위)
+        std::env::set_var("EZER_PACK_DIR", "/modern/ezer");
+        assert_eq!(pack_dir(), PathBuf::from("/modern/ezer"));
 
-        // env_compat 폴백: CYS_PACK_DIR 비우면 JAVIS_PACK_DIR로(=2순위와 동일 키지만
+        // env_compat 폴백: EZER_PACK_DIR 비우면 EZER_PACK_DIR로(=2순위와 동일 키지만
         // env_compat 경로) — 빈 문자열은 미설정 취급이라 다음 후보로 넘어간다
-        std::env::set_var("CYS_PACK_DIR", "");
-        assert_eq!(pack_dir(), PathBuf::from("/legacy/javis"));
+        std::env::set_var("EZER_PACK_DIR", "");
+        assert_eq!(pack_dir(), PathBuf::from("/legacy/ezer"));
 
         // 복원
         for (k, v) in saved {
@@ -2133,7 +2133,7 @@ mod tests {
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
         let base =
-            std::env::temp_dir().join(format!("cys-pack-equiv-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("ezer-pack-equiv-test-{}", std::process::id()));
         let td_a = base.join("a"); // install(false)
         let td_b = base.join("b"); // install_from_iter
         let _ = std::fs::remove_dir_all(&base);
@@ -2175,7 +2175,7 @@ mod tests {
         // 핵심 파일 존재 + 전 파일 핑거프린트 동등
         for probe in [
             "skills/korean-humanizer/SKILL.md",
-            "bin/javis_route.py",
+            "bin/ezer_route.py",
             "directives/MASTER_DIRECTIVE.md",
             PACK_VERSION_FILE,
             INSTALL_MANIFEST,
@@ -2215,7 +2215,7 @@ mod tests {
     #[test]
     fn write_atomic_roundtrip_and_replace() {
         let td =
-            std::env::temp_dir().join(format!("cys-write-atomic-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("ezer-write-atomic-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::fs::create_dir_all(&td).unwrap();
         let p = td.join("sub").join("file.txt");
@@ -2258,7 +2258,7 @@ mod tests {
     }
 
     fn txn_prestate(tag: &str, files: &[(&str, &str)], version: &str) -> (PathBuf, PathBuf) {
-        let base = std::env::temp_dir().join(format!("cys-journal-{tag}-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-journal-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let pd = base.join("pack");
         std::fs::create_dir_all(&pd).unwrap();
@@ -2504,7 +2504,7 @@ mod tests {
         assert!(!journal_exists, "rollback 후 저널 잔존");
     }
 
-    /// ★대조(외부 동작 불변): embed/cysd/init-pack 경로(transactional=false)는 .install-manifest.json이
+    /// ★대조(외부 동작 불변): embed/ezerd/init-pack 경로(transactional=false)는 .install-manifest.json이
     /// 디렉터리여도 매니페스트 영속을 best-effort로 무시하고 설치를 진행한다 — 파일 반영·.pack-version
     /// 기록이 종전대로 일어난다(fail-closed는 pack-update 트랜잭션 전용).
     #[test]
@@ -2537,7 +2537,7 @@ mod tests {
 
     #[test]
     fn pack_state_read_three_way() {
-        let base = std::env::temp_dir().join(format!("cys-state3-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-state3-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         std::fs::create_dir_all(&base).unwrap();
         // 부재 = Absent (구 설치 자연 마이그레이션 = free/0)
@@ -2725,7 +2725,7 @@ mod tests {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let base = std::env::temp_dir().join(format!("cys-vfault-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-vfault-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let pd = base.join("pack");
         std::fs::create_dir_all(&pd).unwrap();
@@ -2751,7 +2751,7 @@ mod tests {
     /// 실패 loud 분기(Err 수신)가 실재 오류를 받는다는 보장.
     #[test]
     fn write_pack_state_failure_is_reported() {
-        let base = std::env::temp_dir().join(format!("cys-sfault-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-sfault-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         std::fs::create_dir_all(base.join(PACK_STATE_FILE).join("child")).unwrap();
         assert!(write_pack_state(&base, &test_free_state("1.0.0")).is_err());
@@ -2763,7 +2763,7 @@ mod tests {
     /// 성공 교체: staging→pack_dir, 기존 pack_dir→.prev(1세대 보존), staging 소진.
     #[test]
     fn atomic_swap_success_creates_prev() {
-        let base = std::env::temp_dir().join(format!("cys-swap-ok-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-swap-ok-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let dir = base.join("pack");
         let staging = base.join("staging");
@@ -2787,7 +2787,7 @@ mod tests {
     /// 교체 전 abort(2번째 rename 실패: staging 부재) → 역rename으로 기존 팩 온전 복구.
     #[test]
     fn atomic_swap_reverses_on_failure_keeps_old_pack() {
-        let base = std::env::temp_dir().join(format!("cys-swap-rev-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-swap-rev-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let dir = base.join("pack");
         std::fs::create_dir_all(&dir).unwrap();
@@ -2809,7 +2809,7 @@ mod tests {
     /// 검증 실패 = 임베드 파일 누락 시 Err(교체 전 차단 방어선).
     #[test]
     fn verify_staging_detects_missing_file() {
-        let base = std::env::temp_dir().join(format!("cys-verify-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-verify-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         std::fs::create_dir_all(&base).unwrap();
         std::fs::write(base.join("present.txt"), "x").unwrap();
@@ -2830,7 +2830,7 @@ mod tests {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let base = std::env::temp_dir().join(format!("cys-staged-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-staged-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let pd = base.join("pack");
         std::env::set_var(ENV_PACK_DIR, &pd);
@@ -2859,7 +2859,7 @@ mod tests {
         let _g = PACK_ENV_LOCK.lock().unwrap();
         let saved = std::env::var(ENV_PACK_DIR).ok();
         let saved_cfg = std::env::var(ENV_CONFIG_DIR).ok();
-        let base = std::env::temp_dir().join(format!("cys-staged-pres-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("ezer-staged-pres-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let pd = base.join("pack");
         std::env::set_var(ENV_PACK_DIR, &pd);

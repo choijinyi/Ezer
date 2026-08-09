@@ -1,8 +1,8 @@
 [package]
-name = "cys-app"
+name = "ezer-app"
 version = "0.12.64"
 edition = "2021"
-description = "cys UI shell (Tauri 2) — thin client over the cysd socket"
+description = "ezer UI shell (Tauri 2) — thin client over the ezerd socket"
 license = "MIT"
 
 [build-dependencies]
@@ -18,7 +18,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["net", "io-util", "time"] }
 base64 = "0.22"
-cys = { package = "cys-terminal", path = ".." }
+ezer = { package = "ezer-agent", path = ".." }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

@@ -783,11 +783,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52560adf09603e58c9a7ee1fe1dcb95a16927b17c127f0ac02d6e768a0e25bc1"
 
 [[package]]
-name = "cys-app"
+name = "ezer-app"
 version = "0.12.64"
 dependencies = [
  "base64 0.22.1",
- "cys-terminal",
+ "ezer-agent",
  "libc",
  "serde",
  "serde_json",
@@ -801,7 +801,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cys-terminal"
+name = "ezer-agent"
 version = "0.12.64"
 dependencies = [
  "base64 0.22.1",

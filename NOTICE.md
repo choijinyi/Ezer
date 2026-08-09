@@ -1,21 +1,29 @@
 # NOTICE — Third-Party Attributions
 
-cys-terminal is licensed under the MIT License (see `LICENSE`).
+ezer-agent is licensed under the MIT License (see `LICENSE`).
 This file consolidates third-party attributions for discoverability.
+
+## Upstream
+
+Ezer agent is a rebranded derivative of **cys-terminal**
+(https://github.com/idoforgod/cys-terminal), MIT — Copyright (c) 2026 CYSJavis.
+The upstream copyright notice is retained in `LICENSE` as the MIT License requires.
+All `cys`/`CYSJavis` identifiers were renamed to `ezer`/`Ezer`; the architecture,
+core mechanics, and pack contents originate upstream.
 
 ## Vendored code
 
 | Component | Path | Upstream | License |
 |---|---|---|---|
 | portable-pty (patched) | `vendor/portable-pty/` | wezterm (Wez Furlong) | MIT — original copyright preserved in `vendor/portable-pty/LICENSE.md` |
-| insane-search | `cysjavis-pack/skills/insane-search/` | fivetaku/insane-search | MIT — see `cysjavis-pack/skills/THIRD_PARTY.md` |
-| skill collections (32 skills) | `cysjavis-pack/skills/` | NomaDamas/k-skill · obra/superpowers · mattpocock/skills | MIT — commit-pinned attributions in `cysjavis-pack/skills/THIRD_PARTY.md` |
+| insane-search | `ezer-pack/skills/insane-search/` | fivetaku/insane-search | MIT — see `ezer-pack/skills/THIRD_PARTY.md` |
+| skill collections (32 skills) | `ezer-pack/skills/` | NomaDamas/k-skill · obra/superpowers · mattpocock/skills | MIT — commit-pinned attributions in `ezer-pack/skills/THIRD_PARTY.md` |
 
 ## Design-only references (no code vendored)
 
 Voicebox (MIT) and TimesFM (Apache-2.0) informed designs; no code was copied.
 Clean-room reimplementation notes are embedded at the referencing sites
-(`cysjavis-pack/bin/javis_*.py` headers) and in `cysjavis-pack/skills/THIRD_PARTY.md`.
+(`ezer-pack/bin/ezer_*.py` headers) and in `ezer-pack/skills/THIRD_PARTY.md`.
 
 ## Dependencies
 
