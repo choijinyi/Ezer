@@ -213,8 +213,8 @@ def v_quote_binding(depts, doc_text, catalog, dept_level=True):
                     errs.append(f"{tag}: 신규 key '{key}'는 오너 승인 플래그(new_dept_approved) 필요 — account 유효성만으로 통과 불가")
             # cwd 규약 경로
             cwd = d.get("cwd", "")
-            if disp and not cwd.replace("\\", "/").endswith(f"Desktop/EZERezer/{disp}"):
-                errs.append(f"{tag}: cwd가 규약 경로($HOME/Desktop/EZERezer/{disp}) 불일치")
+            if disp and not cwd.replace("\\", "/").endswith(f"Desktop/Ezer/{disp}"):
+                errs.append(f"{tag}: cwd가 규약 경로($HOME/Desktop/Ezer/{disp}) 불일치")
     return errs
 
 def intake_ok(surfaces, idle_max=600):
@@ -399,7 +399,7 @@ def self_test():
     # Task별로 케이스가 여기 누적된다.
     # --- Task2: v_schema ---
     good_dept = {"key":"future-research","display":"미래연구부","account":"cysinsight",
-                 "cwd":"$HOME/Desktop/EZERezer/미래연구부","mission_md":"# m","source_quote":"x"}
+                 "cwd":"$HOME/Desktop/Ezer/미래연구부","mission_md":"# m","source_quote":"x"}
     m_ok = {"manifest_version":1,"kind":"org-manifest","reconcile_mode":"additive",
             "source":{"design_doc":"/d","design_doc_sha256":"a"},
             "departments":[good_dept],"tasks":[]}
@@ -419,7 +419,7 @@ def self_test():
              "future-research":{"display":"미래연구부","account":"cysinsight"},
              "authoring":{"display":"저술콘텐츠부","account":"owner"}}}
     d_ok = {"key":"future-research","display":"미래연구부","account":"cysinsight",
-            "cwd":"$HOME/Desktop/EZERezer/미래연구부",
+            "cwd":"$HOME/Desktop/Ezer/미래연구부",
             "source_quote":"미래연구부는 모든 통찰의 원천 엔진이다."}
     chk("f1-ok", v_quote_binding([d_ok], doc, cat) == [], f"errs={v_quote_binding([d_ok],doc,cat)}")
     # 오귀속: 실재(미래연구부) 문장을 엉뚱한 key/account(authoring/cysinsight)에 붙임 → FAIL
@@ -427,7 +427,7 @@ def self_test():
     chk("f1-misattr", v_quote_binding([d_mis], doc, cat) != [], "오귀속 미검출")
     # key↔account 불일치 (authoring은 owner여야)
     d_acct = {"key":"authoring","display":"저술콘텐츠부","account":"cysinsight",
-              "cwd":"$HOME/Desktop/EZERezer/저술콘텐츠부",
+              "cwd":"$HOME/Desktop/Ezer/저술콘텐츠부",
               "source_quote":"저술콘텐츠부는 통찰을 칼럼과 책으로 대중에 전파한다."}
     chk("f1-account", any("account" in e for e in v_quote_binding([d_acct], doc, cat)), "계정 오배정 미검출")
     # quote가 부서정체 토큰 미포함
@@ -467,9 +467,9 @@ def self_test():
     cpath = os.path.join(td, "catalog.json")
     json.dump({"version":1,"accounts":{"cysinsight":"x","owner":"y"},"departments":{}}, open(cpath,"w"))
     catalog_upsert(cpath, {"key":"authoring","display":"저술콘텐츠부","account":"owner",
-                           "cwd":"$HOME/Desktop/EZERezer/저술콘텐츠부"})
+                           "cwd":"$HOME/Desktop/Ezer/저술콘텐츠부"})
     catalog_upsert(cpath, {"key":"authoring","display":"저술콘텐츠부","account":"owner",
-                           "cwd":"$HOME/Desktop/EZERezer/저술콘텐츠부"})  # 멱등
+                           "cwd":"$HOME/Desktop/Ezer/저술콘텐츠부"})  # 멱등
     c2 = json.load(open(cpath))
     chk("cat-upsert", "authoring" in c2["departments"], "upsert 미반영")
     chk("cat-idem", len(c2["departments"])==1, "멱등 위반(중복)")
@@ -490,25 +490,25 @@ def self_test():
         "정확 basename 일치인데 backfill 안 됨")
     # --- R3-1: 한글-display 레거시 cwd backfill 소급 성공 (라이브 규약 커버 — over-correction 해소) ---
     # 라이브 cwd 전건이 한글 display로 끝남(.../미래연구부) → 영문 key(future-research)와 영영 불일치였음
-    json.dump({"depts":{"d3":{"cwd":"$HOME/Desktop/EZERezer/미래연구부","socket":"s3"}}}, open(dpath,"w"))
+    json.dump({"depts":{"d3":{"cwd":"$HOME/Desktop/Ezer/미래연구부","socket":"s3"}}}, open(dpath,"w"))
     backfill_mission_key(dpath, "future-research", "future-research", "미래연구부")
     r3 = json.load(open(dpath))
     chk("backfill-hangul-display", r3["depts"]["d3"].get("mission_key") == "future-research",
         "한글 display 레거시 cwd backfill 소급 실패(over-correction)")
     # 한글 display여도 부분문자열 오탐은 여전 차단(정확일치라 suffix-bleed 회귀 없음)
-    json.dump({"depts":{"d4":{"cwd":"$HOME/Desktop/EZERezer/구미래연구부","socket":"s4"}}}, open(dpath,"w"))
+    json.dump({"depts":{"d4":{"cwd":"$HOME/Desktop/Ezer/구미래연구부","socket":"s4"}}}, open(dpath,"w"))
     backfill_mission_key(dpath, "future-research", "future-research", "미래연구부")
     r4 = json.load(open(dpath))
     chk("backfill-hangul-no-bleed", r4["depts"]["d4"].get("mission_key") != "future-research",
         "한글 display 부분문자열(구미래연구부) 오탐")
     # --- R3-2: catalog display/cwd drift 거부 (기존 key 재할당 위장 차단) ---
     cat_drift = {"accounts":{"cysinsight":"x"},
-                 "departments":{"future-research":{"display":"미래연구부","account":"cysinsight","cwd":"$HOME/Desktop/EZERezer/미래연구부"}}}
-    d_drift = [{"key":"future-research","display":"위장된딴부서","account":"cysinsight","cwd":"$HOME/Desktop/EZERezer/미래연구부"}]
+                 "departments":{"future-research":{"display":"미래연구부","account":"cysinsight","cwd":"$HOME/Desktop/Ezer/미래연구부"}}}
+    d_drift = [{"key":"future-research","display":"위장된딴부서","account":"cysinsight","cwd":"$HOME/Desktop/Ezer/미래연구부"}]
     chk("catalog-drift-display", any("display" in e for e in v_catalog_consistency(d_drift, cat_drift)), "display drift 미검출")
-    d_cwd_drift = [{"key":"future-research","display":"미래연구부","account":"cysinsight","cwd":"$HOME/Desktop/EZERezer/딴경로"}]
+    d_cwd_drift = [{"key":"future-research","display":"미래연구부","account":"cysinsight","cwd":"$HOME/Desktop/Ezer/딴경로"}]
     chk("catalog-drift-cwd", any("cwd" in e for e in v_catalog_consistency(d_cwd_drift, cat_drift)), "cwd drift 미검출")
-    d_consistent = [{"key":"future-research","display":"미래연구부","account":"cysinsight","cwd":"$HOME/Desktop/EZERezer/미래연구부"}]
+    d_consistent = [{"key":"future-research","display":"미래연구부","account":"cysinsight","cwd":"$HOME/Desktop/Ezer/미래연구부"}]
     chk("catalog-consistent", v_catalog_consistency(d_consistent, cat_drift) == [], f"정합인데 오탐: {v_catalog_consistency(d_consistent, cat_drift)}")
     chk("catalog-newkey-skip", v_catalog_consistency([{"key":"brand-new","display":"신규","cwd":"x"}], cat_drift) == [], "신규key를 drift로 오탐")
     # --- Task6: apply 분해(부수효과 없는 plan 생성) ---

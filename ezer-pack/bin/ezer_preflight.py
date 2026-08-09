@@ -131,7 +131,7 @@ ROLES = ["master", "worker", "cso", "reviewer"]
 # Harness Creator 툴체인(오너 제작) 핀 — 2026-06-12 통합 시점 커밋.
 # 스킬(pack/skills/harness-creator)은 임베드 배포되지만 이미터·검증기·게놈 툴체인은
 # 6MB+ 개발 저장소라 클론 설치한다. 해석 순서: $EZER_HARNESS_HOME → ~/.ezer/harness-creator
-# → ~/Desktop/EZERezer/ezer-harness-creator(로컬 원본).
+# → ~/Desktop/Ezer/ezer-harness-creator(로컬 원본).
 HARNESS_REPO = "https://github.com/choijinyi/ezer-harness-creator"
 HARNESS_PIN = "98a36f4b9aee761f208aa559c2e1f7c755f7c9a6"
 HARNESS_KEY_FILES = ("emit_orchestrator.py", "validate_harness.py", "warrant.py",
@@ -160,7 +160,7 @@ SERENA_PKG     = "serena-agent"
 SERENA_PIN     = "serena-agent==1.5.3"   # server.json 공개판(uvx 해석). 1.5.4.dev0(로컬 dev·PyPI 미배포) 금지
 SERENA_PYTHON  = "3.13"                   # server.json runtimeArguments -p 3.13 (requires-python >=3.11,<3.15)
 SERENA_CONTEXT = "claude-code"            # Claude 노드용 shipped context(무료 심볼-tool steering). desktop-app 디폴트는 오답
-SERENA_PROJECT = os.environ.get("EZER_SERENA_PROJECT") or os.path.expanduser("~/Desktop/EZERezer")  # 절대경로(노드 spawn·cwd 미보장)·env override·배포 SOT 개인경로 0
+SERENA_PROJECT = os.environ.get("EZER_SERENA_PROJECT") or os.path.expanduser("~/Desktop/Ezer")  # 절대경로(노드 spawn·cwd 미보장)·env override·배포 SOT 개인경로 0
 # stdio per-node 런치 args — S1+S2 등록 + S8 메모리격리(no-onboarding/no-memories) +
 # S4 stray-dashboard 차단(--enable/open-web-dashboard false)을 한 entry로 통합.
 SERENA_STDIO_ARGS = [
@@ -1957,7 +1957,7 @@ class Preflight:
             self.add(cid, FAIL,
                      "uvx 미발견 — Serena 심볼 네비게이션 불가. uv/uvx 설치 후 재시도")
             return
-        # (b) MCP 등록 — 등록 .mcp.json 디렉터리 = enable-key root 일치 필수(§1.4). EZERezer는
+        # (b) MCP 등록 — 등록 .mcp.json 디렉터리 = enable-key root 일치 필수(§1.4). Ezer는
         #     NOT git(실측)이라 c24의 .git 게이트만으론 영영 미등록 → cwd가 SERENA_PROJECT면
         #     .git 없이도 등록(P0.5 결정: 등록 스코프를 SERENA_PROJECT cwd로 확장, 무관 cwd는 제외).
         mcp_note = ""
@@ -2319,7 +2319,7 @@ class Preflight:
             cands.append(env)
         home = os.path.expanduser("~")
         cands.append(os.path.join(home, ".ezer/harness-creator"))
-        cands.append(os.path.join(home, "Desktop/EZERezer/ezer-harness-creator"))
+        cands.append(os.path.join(home, "Desktop/Ezer/ezer-harness-creator"))
         for d in cands:
             if all(os.path.isfile(os.path.join(d, f)) for f in HARNESS_KEY_FILES):
                 return d
@@ -3214,7 +3214,7 @@ class Preflight:
     #   CLAUDE.md의 ezer 마커 토큰) 보유 project 항목만. 마커 없는 항목·stale 경로는 무변경.
     # C43과 독립(MCP 활성 무관). trust는 가역 로컬 변경이라 may_mutate(비가역 외부설치) 게이트가
     # 아니라 self.fix 게이트로 집행(dry/safe에선 self.fix=False → 탐지만). C57 다음 free id = C58.
-    EZER_WS_CLAUDEMD_MARKERS = ("ezer ", "EZERezer", "ezer", "claim-role")
+    EZER_WS_CLAUDEMD_MARKERS = ("ezer ", "Ezer", "ezer", "claim-role")
 
     def _is_ezer_workspace(self, path):
         """결정론 판정 — 이 워크스페이스 경로가 ezer 관리 대상인가.

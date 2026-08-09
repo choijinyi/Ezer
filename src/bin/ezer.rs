@@ -8307,7 +8307,7 @@ mod tests {
     fn workflow_title_embeds_folder_name() {
         let some = |s: &str| Some(s.to_string());
         assert_eq!(
-            workflow_title("worker", "claude", &some("/Users/x/Desktop/EZERezer/ezer-agent")),
+            workflow_title("worker", "claude", &some("/Users/x/Desktop/Ezer/ezer-agent")),
             "worker-claude · ezer-agent"
         );
         // 후행 슬래시 정규화
@@ -9117,7 +9117,7 @@ mod tests {
         let base = std::env::temp_dir().join(format!("ezer-w1-gate-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         // 워커의 실제 cwd — 이 값이 munge되어 projects/<comp>가 된다.
-        let cwd = "/home/x/Desktop/EZERezer-wf";
+        let cwd = "/home/x/Desktop/Ezer-wf";
         let comp = ezer::claude_project_component(cwd);
         let sid = "ses-abc-123";
         // (권위) discover 스캔이 못 보는 ~/.ezer/claude 모사 경로.

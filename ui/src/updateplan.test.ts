@@ -41,7 +41,7 @@ describe("updatePlan — 옵션 2 분기 판정(문자열 핀 = 회귀 0 증명)
     expect(p.badge).toBe("!");
     expect(p.title).toBe("팩 0.12.58: 본체 업데이트 필요 (홈페이지에서 다운로드)");
     expect(p.toastMsg).toBe(
-      "새 팩 0.12.58은 더 새로운 본체를 요구합니다 — 홈페이지(www.cysinsight.com)에서 본체 업데이트 후 적용됩니다.",
+      "새 팩 0.12.58은 더 새로운 본체를 요구합니다 — 홈페이지(www.kaea.ai.kr)에서 본체 업데이트 후 적용됩니다.",
     );
   });
 

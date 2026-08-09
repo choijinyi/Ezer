@@ -1436,10 +1436,10 @@ mod tests {
 
     #[test]
     fn munge_matches_observed_directory_names() {
-        // 실측: /Users/user/Desktop/EZERezer/ezer-agent → -Users-user-Desktop-EZERezer-ezer-agent
+        // 실측: /Users/user/Desktop/Ezer/ezer-agent → -Users-user-Desktop-Ezer-ezer-agent
         assert_eq!(
-            claude_project_component("/Users/user/Desktop/EZERezer/ezer-agent"),
-            "-Users-user-Desktop-EZERezer-ezer-agent"
+            claude_project_component("/Users/user/Desktop/Ezer/ezer-agent"),
+            "-Users-user-Desktop-Ezer-ezer-agent"
         );
         // 비ASCII·특수문자는 각각 '-' (보수 구현 — 휴리스틱 폴백 전용)
         assert_eq!(claude_project_component("/tmp/a.b_c"), "-tmp-a-b-c");

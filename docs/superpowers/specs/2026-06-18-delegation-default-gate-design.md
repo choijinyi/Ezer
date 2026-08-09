@@ -72,7 +72,7 @@ DENY   src/ · ui/ · ezer-pack/bin/ · src-tauri/ 등 소스 Edit/Write
 ## 7. 구현 대상 파일 (워커 조사로 최종 확정)
 
 - `~/CEO 프로필/settings.json` — UserPromptSubmit hook 추가(예방층), PreToolUse 매처 확인
-- `~/Desktop/EZERezer/ezer-arp/_round/autopilot/guard.sh` — LOOSE 모드에 master 역할 한정 개발 도구 deny-by-default + allowlist + 토큰 + 안내 메시지
+- `~/Desktop/Ezer/ezer-arp/_round/autopilot/guard.sh` — LOOSE 모드에 master 역할 한정 개발 도구 deny-by-default + allowlist + 토큰 + 안내 메시지
 - `ezer-pack/bin/ezer_route.py`(소스) → `~/.ezer/pack/bin/`(배포) — 개발 의도 트리거 보강(필요 시), UserPromptSubmit 자동 실행 호환
 - 역할 판별 helper — `ezer identify`/claim-role 매핑 조회 (기존 인프라 활용)
 

@@ -69,7 +69,7 @@ def _ezer_root():
     v = os.environ.get("EZER_ROOT", "").strip()
     if v:
         return v
-    return os.path.join(os.path.expanduser("~"), "Desktop", "EZERezer")
+    return os.path.join(os.path.expanduser("~"), "Desktop", "Ezer")
 
 
 def _surface_id():

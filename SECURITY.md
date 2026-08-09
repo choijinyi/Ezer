@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report security issues privately to **cysinsight@gmail.com**.
+Please report security issues privately to **ezer.agent@gmail.com**.
 Do not open public issues for vulnerabilities. You should receive a response
 within a few days; coordinated disclosure is appreciated.
 

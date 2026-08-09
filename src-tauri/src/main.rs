@@ -509,7 +509,7 @@ fn url_host_allowed(url: &str) -> Result<(), String> {
 
 /// 순수 판정(테스트 핀) — 기본 allowlist + 사용자 확장 도메인, 정확일치 또는 서브도메인.
 fn host_in_allowlist(host: &str, extras: &[String]) -> bool {
-    const ALLOW: &[&str] = &["notebooklm.google.com", "github.com", "cysinsight.com"];
+    const ALLOW: &[&str] = &["notebooklm.google.com", "github.com", "kaea.ai.kr"];
     ALLOW
         .iter()
         .map(|d| *d)
@@ -2489,8 +2489,8 @@ mod tests {
     fn open_url_whitelist_blocks_spoofed_and_nonhttps() {
         assert!(url_host_allowed("https://notebooklm.google.com/notebook/abc").is_ok());
         assert!(url_host_allowed("https://github.com/ezer/repo").is_ok());
-        assert!(url_host_allowed("https://www.cysinsight.com/").is_ok(), "홈페이지(본체 다운로드) 허용");
-        assert!(url_host_allowed("https://cysinsight.com/download").is_ok(), "홈페이지 apex 허용");
+        assert!(url_host_allowed("https://www.kaea.ai.kr/").is_ok(), "홈페이지(본체 다운로드) 허용");
+        assert!(url_host_allowed("https://kaea.ai.kr/download").is_ok(), "홈페이지 apex 허용");
         assert!(url_host_allowed("http://notebooklm.google.com/").is_err(), "http 차단");
         assert!(url_host_allowed("https://evil.com/notebooklm.google.com").is_err(), "경로 사칭 차단");
         assert!(url_host_allowed("https://notebooklm.google.com.evil.com/").is_err(), "서브도메인 사칭 차단");

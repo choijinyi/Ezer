@@ -113,4 +113,4 @@ documented in the Korean [README.md](README.md) and the
 ## Contributing · License
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [NOTICE.md](NOTICE.md) (third-party attributions).
-MIT License ([LICENSE](LICENSE)) · Contact: **cysinsight@gmail.com**
+MIT License ([LICENSE](LICENSE)) · Contact: **ezer.agent@gmail.com**

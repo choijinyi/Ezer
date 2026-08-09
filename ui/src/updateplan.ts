@@ -63,7 +63,7 @@ export function updatePlan(i: UpdateInputs): UpdatePlan {
       title: `팩 ${i.packVersion}: 본체 업데이트 필요 (홈페이지에서 다운로드)`,
       toastMsg:
         `새 팩 ${i.packVersion}은 더 새로운 본체를 요구합니다 — ` +
-        `홈페이지(www.cysinsight.com)에서 본체 업데이트 후 적용됩니다.`,
+        `홈페이지(www.kaea.ai.kr)에서 본체 업데이트 후 적용됩니다.`,
     };
   }
   if (!i.binCheckFailed && !i.packCheckFailed) {

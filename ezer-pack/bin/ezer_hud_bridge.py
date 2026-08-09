@@ -44,7 +44,7 @@ BACKLOG_FX_SECS = 90.0   # 이보다 오래된 이벤트는 상태만 반영, fx
 CMD_MAX_LEN = 2000       # 조작 지시 텍스트 상한
 
 # 오피스 디테일 v1.1 (§DESIGN-office-detail-v11) — EVT spool·칸반·verdict·전광판 데이터
-EZER_ROOT = os.environ.get("EZER_ROOT") or os.path.expanduser("~/Desktop/EZERezer")
+EZER_ROOT = os.environ.get("EZER_ROOT") or os.path.expanduser("~/Desktop/Ezer")
 TASKS_DIR = os.path.join(EZER_ROOT, "_round", "tasks")
 ROUND_DIR = os.path.join(EZER_ROOT, "_round")
 TRANSCRIPTS_DB = os.path.expanduser("~/.ezer/transcripts.db")

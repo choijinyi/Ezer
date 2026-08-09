@@ -17,7 +17,7 @@ import sys
 import time
 
 SOCK = os.environ.get("EZER_E2E_SOCK", "/tmp/ezer-e2e-usage-r3.sock")
-ROOT = "/Users/user/Desktop/EZERezer/ezer-agent"
+ROOT = "/Users/user/Desktop/Ezer/ezer-agent"
 CLAUDE_TX = "/tmp/ezer-e2e-claude.jsonl"
 CODEX_TX = "/tmp/ezer-e2e-rollout.jsonl"
 

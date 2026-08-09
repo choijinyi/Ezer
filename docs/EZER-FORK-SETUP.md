@@ -28,16 +28,22 @@ bunx @tauri-apps/cli signer generate -w ~/.ezer-updater.key
 `pubkey` 필드는 공개 저장소에서 비어 있고 릴리스 시 주입되는 구조다. 자체 팩 채널을
 운영하려면 minisign 키페어를 만들어 `key_id`·`pubkey`를 교체하고 `not_after`를 정한다.
 
-## 3. 홈페이지·연락처 참조 (의도적 보존)
+## 3. 저작자·연락처·홈페이지 (반영 완료)
 
-다음은 **업스트림 값 그대로 남겨 두었다** — 바꿀 값이 정해지지 않았기 때문이다.
+오너 지정값으로 교체했다 — 저작자 **Choi jinyi**, 연락처 이메일 `ezer.agent` (gmail),
+홈페이지 **www.kaea.ai.kr**.
 
-| 위치 | 값 | 조치 필요 |
-|---|---|---|
-| `LICENSE` | 원저작자 이메일 | **변경 금지** — MIT 원저작권 고지 |
-| `SECURITY.md` | 원저작자 이메일 | 취약점 신고처를 Ezer 담당자 주소로 교체 |
-| `src-tauri/src/main.rs` 허용목록 | `cysinsight.com` | Ezer 홈페이지가 생기면 교체 |
-| `ui/src/main.ts`·`updateplan.ts` | `www.cysinsight.com` 안내 문구 | 본체 수동 다운로드 안내 — GitHub Releases 주소로 교체 권장 |
+| 위치 | 반영 내용 |
+|---|---|
+| `LICENSE` | Choi jinyi 저작권을 첫 줄에, 업스트림 CYSJavis 고지를 그 아래 유지(MIT 의무) |
+| `README.md` · `README.en.md` · `SECURITY.md` | 연락처·취약점 신고처를 Ezer 주소로 교체 |
+| `src-tauri/src/main.rs` 호스트 허용목록 | `kaea.ai.kr` (정확일치 + 서브도메인이라 `www.` 포함) |
+| `ui/src/main.ts`·`updateplan.ts`·`updateplan.test.ts` | 본체 수동 다운로드 안내를 `www.kaea.ai.kr`로 |
+| `docs/RELEASE.md` | 배지 안내 문구의 홈페이지 주소 교체 |
+
+남아 있는 `cysinsight` 문자열은 두 종류뿐이며 **연락처가 아니다**: ①`ezer-pack/bin/ezer_org.py`
+등의 **테스트 픽스처 계정 핸들** ②`scripts/secret-scan.sh`의 **개인 프로필 탐지 패턴**.
+둘 다 브랜드 표기가 아니라 동작 요소라 건드리지 않았다.
 
 > 이 문서에 이메일 주소를 문자 그대로 적지 마라 — `scripts/secret-scan.sh`가 PUBLIC 발행 전
 > 하드 게이트로 차단한다(허용은 `README.md`·`README.en.md`·`SECURITY.md`뿐).

@@ -95,7 +95,7 @@ accumulate_heat·set_flag/live_flags 등 소비처 동기).
 **P2-4 emitter 이관**: 생산자 호출부 grep 실측 0곳 — 이관 = ①`ezer_event.py emit --surface auto`
 신설: EZER_SOCKET env(부재=main) → depts.json socket 매칭으로 slug 해석 + `ezer identify`로
 surface_ref → 정식 키 자동 조립(해석 실패 시 미귀속 폴백·fail-open 금지) ②EVENT_CONTRACT
-가이드에 `--spool --surface auto` 표준 방출 규약 추가(EZERezer측 — master 직접).
+가이드에 `--spool --surface auto` 표준 방출 규약 추가(Ezer측 — master 직접).
 
 **P2 검증**: 슈퍼바이저 reconcile(부서 추가/소멸 fixture)·동번호 hook 무충돌(두 데몬 sid 5 훅
 → 해당 노드만 active)·line_rate 격리·apply_usage slug 스코프·--surface auto 해석 3분기 —

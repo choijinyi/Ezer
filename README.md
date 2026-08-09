@@ -326,4 +326,4 @@ UI 재시작·앱 재설치에도 세션 유지(재attach).
 ## 기여 · 라이선스
 
 기여는 [CONTRIBUTING.md](CONTRIBUTING.md), 서드파티 귀속은 [NOTICE.md](NOTICE.md) 참조.
-MIT License ([LICENSE](LICENSE)) · 문의: **cysinsight@gmail.com**
+MIT License ([LICENSE](LICENSE)) · 문의: **ezer.agent@gmail.com**
