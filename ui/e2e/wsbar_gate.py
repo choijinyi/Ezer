@@ -3,7 +3,7 @@
 
 검증 항목 (2026-07-12 오너 요청):
   1. #wsbar 폭이 --wsbar-w 변수로 구동(기본 216px)·#wsbar-drag 핸들 존재.
-  2. 핸들 드래그로 폭이 변하고 localStorage(ezer-wsbar-w) 영속·리로드 복원.
+  2. 핸들 드래그로 폭이 변하고 localStorage(EZERagent-wsbar-w) 영속·리로드 복원.
   3. 더블클릭=기본폭 복귀.
   4. A−/A＋ 버튼으로 --wsbar-font 배율 증감·영속·클램프(0.8~2.2).
   5. 콘솔 에러 0.
@@ -75,7 +75,7 @@ def main() -> int:
             pg.wait_for_timeout(200)
             w1 = pg.evaluate("document.getElementById('wsbar').getBoundingClientRect().width")
             check(abs(w1 - (w0 + 140)) < 4, f"드래그 후 폭 {w0}+140≈{w1}")
-            saved = pg.evaluate("localStorage.getItem('ezer-wsbar-w')")
+            saved = pg.evaluate("localStorage.getItem('EZERagent-wsbar-w')")
             check(saved and abs(int(saved) - w1) < 4, f"폭 영속 (localStorage={saved})")
 
             # 리로드 복원
@@ -94,7 +94,7 @@ def main() -> int:
                 pg.click("#btn-ws-font-plus")
             f1 = pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--wsbar-font').trim()")
             check(f1 == "1.3", f"A＋×3 → --wsbar-font=1.3 (got {f1})")
-            check(pg.evaluate("localStorage.getItem('ezer-wsbar-font')") == "1.3", "배율 영속")
+            check(pg.evaluate("localStorage.getItem('EZERagent-wsbar-font')") == "1.3", "배율 영속")
             for _ in range(20):
                 pg.click("#btn-ws-font-plus")
             f2 = pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--wsbar-font').trim()")

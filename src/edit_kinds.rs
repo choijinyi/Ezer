@@ -1,12 +1,12 @@
 //! T1-2 · 다중 출력 경로 '누락0' 컴파일타임 3중 가드 — 단일진실 enum + no-wildcard 전수 match.
 //!
-//! ezer의 다중 소비 경로(미래 인-프로세스 Rust 편집기 ↔ 현존 Python 검증기 `check_timeline.py`
-//! ↔ 워크플로우 게이트 `ezer_manifest.py`)가 공유하는 "종류 집합"(track kind·mode·transition)을
+//! EZERagent의 다중 소비 경로(미래 인-프로세스 Rust 편집기 ↔ 현존 Python 검증기 `check_timeline.py`
+//! ↔ 워크플로우 게이트 `EZERagent_manifest.py`)가 공유하는 "종류 집합"(track kind·mode·transition)을
 //! **단일 Rust enum**으로 단일진실화한다. penpot `rendering_architecture.md:90-119`의 3-가드 *패턴*만
 //! 산문에서 클린룸 재유도한다(코드복사 0 · MPL-2.0 — penpot 트레이트 메서드명·match arm 미전사).
 //!
 //! 스코프(정직): penpot이 두 Rust 렌더 경로(`render_shape`↔`render_leaf_content`) 사이를 봉인하는 것과
-//! 달리 ezer엔 *통합할 두 번째 Rust 렌더 경로 자체가 아직 없다*. 따라서 v1 가드는 **누락0만** 보장한다
+//! 달리 EZERagent엔 *통합할 두 번째 Rust 렌더 경로 자체가 아직 없다*. 따라서 v1 가드는 **누락0만** 보장한다
 //! (프레임/의미 패리티는 별도 raster-diff 하네스 소관 — 본 모듈은 보장하지 않음).
 //!
 //! 가드 ①(Type guard): 아래 enum은 `#[non_exhaustive]` 금지 + `dispatch_kind`가 `_ =>` 없는 전수
@@ -14,8 +14,8 @@
 //! 가드 ②(Capability guard): `SurfaceRenderer` 트레이트가 렌더 능력의 단일 선언(시그니처만 동결).
 //! 가드 ③(Order guard): 단일 순서 함수는 인-프로세스 렌더러가 계획될 때 착륙(과조기 도입 금지).
 //!
-//! 리터럴은 `ezer-pack/schemas/edit_decisions.schema.json`·`bin/check_timeline.py:83/86/87`과
-//! **글자 단위 일치**해야 하며, build.rs가 `OUT_DIR/ezer_kinds.json`을 생성해 그 일치를 박제한다.
+//! 리터럴은 `EZERagent-pack/schemas/edit_decisions.schema.json`·`bin/check_timeline.py:83/86/87`과
+//! **글자 단위 일치**해야 하며, build.rs가 `OUT_DIR/EZERagent_kinds.json`을 생성해 그 일치를 박제한다.
 //! 3자 파리티(enum codegen ↔ schema ↔ check_timeline)는 preflight C44.kind-enum-parity가 검증한다.
 
 use serde::{Deserialize, Serialize};
@@ -65,7 +65,7 @@ impl EditKind {
 
 /// 가드 ①(Type guard) — 각 `EditKind`를 *반드시* 처리한다. `dispatch_kind`의 match는 `_ =>`가
 /// 없어 새 변형 추가 시 이 트레이트를 구현하는 모든 처리부가 빌드 차단된다(누락0). penpot Type-guard
-/// 패턴의 클린룸 등가 — 식별자는 ezer 도메인 어휘로 독립 명명(penpot match arm 미전사).
+/// 패턴의 클린룸 등가 — 식별자는 EZERagent 도메인 어휘로 독립 명명(penpot match arm 미전사).
 pub trait KindHandler {
     type Out;
     fn on_avatar(&self) -> Self::Out;
@@ -117,12 +117,12 @@ mod tests {
         assert_eq!(serde_json::to_string(&Transition::Dissolve).unwrap(), "\"dissolve\"");
     }
 
-    // build.rs 산출 ezer_kinds.json의 집합 == enum 전수 변형 집합(diff0). build.rs 리터럴 목록과
+    // build.rs 산출 EZERagent_kinds.json의 집합 == enum 전수 변형 집합(diff0). build.rs 리터럴 목록과
     // edit_kinds.rs enum이 어긋나면 이 테스트가 fail(이중 잠금 — 드리프트 컴파일/테스트 차단).
     #[test]
     fn t1_2_kind_enum_roundtrip() {
         let gen: serde_json::Value =
-            serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/ezer_kinds.json"))).unwrap();
+            serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/EZERagent_kinds.json"))).unwrap();
         let all_kinds: Vec<String> = EditKind::ALL
             .iter()
             .map(|k| serde_json::to_value(k).unwrap().as_str().unwrap().to_owned())
@@ -133,7 +133,7 @@ mod tests {
             .iter()
             .map(|v| v.as_str().unwrap().to_owned())
             .collect();
-        assert_eq!(gen_kinds, all_kinds, "ezer_kinds.json edit_kind == enum 전수 변형");
+        assert_eq!(gen_kinds, all_kinds, "EZERagent_kinds.json edit_kind == enum 전수 변형");
     }
 
     // no-wildcard dispatch_kind가 전수 변형을 처리함을 런타임에서도 확인(컴파일러가 누락0을 강제하나

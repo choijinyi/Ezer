@@ -13,7 +13,7 @@
 #   export APPLE_SIGNING_IDENTITY="Developer ID Application: NAME (TEAMID)"
 #   export APPLE_ID="you@example.com" APPLE_PASSWORD="xxxx-xxxx-xxxx-xxxx" APPLE_TEAM_ID="TEAMID"
 #   #   (또는 API key: APPLE_API_KEY_PATH=AuthKey_XXXX.p8 · APPLE_API_KEY=KEYID · APPLE_API_ISSUER=ISSUER)
-#   export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/ezer-updater.key)" TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
+#   export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/EZERagent-updater.key)" TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
 #   scripts/build-macos-signed.sh
 # exit 0=서명·공증·검증 통과 / 1=공증 검증 실패 / 2=자격증명·환경 미비
 set -euo pipefail
@@ -40,9 +40,9 @@ esac
 HOST_ARCH_TARGET=$([ "$(uname -m)" = "arm64" ] && echo aarch64-apple-darwin || echo x86_64-apple-darwin)
 if [ "$TARGET" != "$HOST_ARCH_TARGET" ]; then
   TAURI_TARGET_ARGS=(--target "$TARGET"); BUNDLE_BASE="target/$TARGET/release/bundle"
-  # 크로스 빌드: bundle-prep.sh(beforeBuildCommand)가 사이드카 ezer/ezerd를 이 타깃으로
-  # 크로스 빌드하도록 EZER_TARGET 전파 — 없으면 host(arm64) 사이드카가 실려 x64 앱이 깨진다.
-  export EZER_TARGET="$TARGET"
+  # 크로스 빌드: bundle-prep.sh(beforeBuildCommand)가 사이드카 EZERagent/EZERagentd를 이 타깃으로
+  # 크로스 빌드하도록 EZERAGENT_TARGET 전파 — 없으면 host(arm64) 사이드카가 실려 x64 앱이 깨진다.
+  export EZERAGENT_TARGET="$TARGET"
 else
   TAURI_TARGET_ARGS=(); BUNDLE_BASE="target/release/bundle"
 fi
@@ -70,7 +70,7 @@ fi
 # 20분 낭비 대신 여기서 3초 만에 명확히 실패시킨다(다른 자격증명 검증과 동형).
 if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
   echo "✗ TAURI_SIGNING_PRIVATE_KEY 미설정 — tauri build가 updater 아티팩트 서명에서 실패한다(빌드 말미 hard-fail)." >&2
-  echo "  설정: export TAURI_SIGNING_PRIVATE_KEY=\"\$(cat ~/.tauri/ezer-updater.key)\" TAURI_SIGNING_PRIVATE_KEY_PASSWORD=\"\"" >&2
+  echo "  설정: export TAURI_SIGNING_PRIVATE_KEY=\"\$(cat ~/.tauri/EZERagent-updater.key)\" TAURI_SIGNING_PRIVATE_KEY_PASSWORD=\"\"" >&2
   exit 2
 fi
 
@@ -124,8 +124,8 @@ echo "== 앱 번들 빌드(서명만·공증 보류) v$VERSION =="
 env -u APPLE_ID -u APPLE_PASSWORD -u APPLE_TEAM_ID -u APPLE_API_KEY -u APPLE_API_ISSUER \
   bun x @tauri-apps/cli build ${TAURI_TARGET_ARGS[@]+"${TAURI_TARGET_ARGS[@]}"} --bundles app
 
-APP="$BUNDLE_BASE/macos/ezer.app"
-DMG="$BUNDLE_BASE/dmg/ezer_${VERSION}_${DMG_ARCH}.dmg"
+APP="$BUNDLE_BASE/macos/EZERagent.app"
+DMG="$BUNDLE_BASE/dmg/EZERagent_${VERSION}_${DMG_ARCH}.dmg"
 
 # ── git-core 빌트인 dedup (Tauri 역참조 되돌리기) — 공유 스크립트로 통일 ──
 # 로직·기준점(libexec/git-core/git)·자기제외·동일디렉토리 링크·잔존 중복본 가드는
@@ -166,20 +166,20 @@ xcrun notarytool submit "$APPZIP" "${NOTARY_ARGS[@]}" --wait
 xcrun stapler staple "$APP"
 rm -f "$APPZIP"
 
-# 업데이터 아티팩트 재생성(dedup 반영): Tauri가 만든 fat ezer.app.tar.gz(447MB)를 dedup·staple된 앱으로
+# 업데이터 아티팩트 재생성(dedup 반영): Tauri가 만든 fat EZERagent.app.tar.gz(447MB)를 dedup·staple된 앱으로
 # 다시 tar(심볼릭링크 보존 → 다운로드 축소)하고 업데이터 키로 재서명. make-update-manifest.sh가 이 .sig를 읽는다.
 # (주의: Tauri 업데이터 *클라이언트*의 심볼릭링크 보존은 버전의존 #7480 — 다운로드는 축소되나 설치 후 on-disk
 #  크기는 클라이언트 tauri 동작에 좌우될 수 있음. 신규 설치 경로인 DMG는 확실히 축소된다.)
 if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
   echo "== 업데이터 tar.gz 재생성(dedup 반영) + 재서명 =="
-  ( cd "$(dirname "$APP")" && tar czf ezer.app.tar.gz ezer.app )
+  ( cd "$(dirname "$APP")" && tar czf EZERagent.app.tar.gz EZERagent.app )
   bun x @tauri-apps/cli signer sign --private-key "$TAURI_SIGNING_PRIVATE_KEY" --password "" "$APP.tar.gz"
 fi
 
 echo "== dedup·staple된 앱으로 UDZO DMG 생성(hdiutil — Tauri 기본 포맷과 동일) =="
-DMGSTAGE="$(mktemp -d)"; ditto "$APP" "$DMGSTAGE/ezer.app"; ln -s /Applications "$DMGSTAGE/Applications"
+DMGSTAGE="$(mktemp -d)"; ditto "$APP" "$DMGSTAGE/EZERagent.app"; ln -s /Applications "$DMGSTAGE/Applications"
 mkdir -p "$(dirname "$DMG")"
-hdiutil create -volname "ezer" -srcfolder "$DMGSTAGE" -ov -format UDZO "$DMG"
+hdiutil create -volname "EZERagent" -srcfolder "$DMGSTAGE" -ov -format UDZO "$DMG"
 rm -rf "$DMGSTAGE"
 # DMG 자체도 Developer ID 서명 — 구 Tauri 흐름과 패리티. 서명 없으면 spctl -t open(primary-signature)
 # 이 'no usable signature'로 거부한다(2026-07-04 실측). 서명은 반드시 notarytool 제출 전(CDHash 결속).
@@ -206,7 +206,7 @@ fi
 
 echo "== 배포본 정리 + 자동업데이트 매니페스트 =="
 mkdir -p dist-mac
-cp "$DMG" "dist-mac/ezer-${VERSION}-macos-${DIST_ARCH}.dmg"
-sh scripts/make-update-manifest.sh "$VERSION" choijinyi ezer-agent >/dev/null 2>&1 || true
-echo "✓ 공증 빌드 완료: dist-mac/ezer-${VERSION}-macos-${DIST_ARCH}.dmg"
+cp "$DMG" "dist-mac/EZERagent-${VERSION}-macos-${DIST_ARCH}.dmg"
+sh scripts/make-update-manifest.sh "$VERSION" choijinyi EZERagent >/dev/null 2>&1 || true
+echo "✓ 공증 빌드 완료: dist-mac/EZERagent-${VERSION}-macos-${DIST_ARCH}.dmg"
 echo "  → ad-hoc 재서명·xattr 우회 불필요. gh release 발행은 오너 승인 후."

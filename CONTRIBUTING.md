@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in ezer-agent.
+Thanks for your interest in EZERagent.
 
 ## Ground rules
 
@@ -13,8 +13,8 @@ Thanks for your interest in ezer-agent.
 ## Checks that must pass
 
 ```bash
-cargo test --bin ezerd            # daemon unit tests
-cargo check -p ezer-app           # desktop app
+cargo test --bin EZERagentd            # daemon unit tests
+cargo check -p EZERagent-app           # desktop app
 bash ui/build.sh                 # UI bundle
 bash scripts/secret-scan.sh --all  # secret/PII gate (fail-closed)
 sh scripts/version-check.sh      # version SOT consistency (release PRs only)
@@ -24,4 +24,4 @@ sh scripts/version-check.sh      # version SOT consistency (release PRs only)
 
 By contributing you agree your contributions are licensed under the MIT License.
 Third-party code must be MIT/Apache-2.0-compatible and attributed in `NOTICE.md`
-(and `ezer-pack/skills/THIRD_PARTY.md` for pack skills).
+(and `EZERagent-pack/skills/THIRD_PARTY.md` for pack skills).

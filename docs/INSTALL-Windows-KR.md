@@ -1,4 +1,4 @@
-# ezer 터미널 — Windows 설치 안내 (v0.6.0)
+# EZERagent 터미널 — Windows 설치 안내 (v0.6.0)
 
 > 버전 **0.6.0 확정**(오너 승인). 정식 발행은 master가 수행합니다.
 > WINFIX(Windows 배포본 전 에러 수정) 반영본 — 이전 안내(MSI·수동 init-pack)와 크게 달라졌습니다.
@@ -6,26 +6,26 @@
 ## 한눈에 (WINFIX로 바뀐 점)
 - **자기완결 설치파일 하나면 끝**입니다. Git·Python을 따로 설치하지 않아도 됩니다 —
   설치파일 안에 필요한 실행환경(Git Bash + Python)이 함께 들어 있습니다.
-- **처음 실행하면 자동으로 준비됩니다.** 예전에는 설치 후 사람이 `ezer init-pack`을 직접 쳐야
+- **처음 실행하면 자동으로 준비됩니다.** 예전에는 설치 후 사람이 `EZERagent init-pack`을 직접 쳐야
   했지만, 이제 앱을 처음 켜면 팩 설치·역할 각성 hook 등록·로그온 자동기동 등록이 **자동**으로 됩니다.
 - 그래서 **"너는 마스터다" 부트스트랩**과 **＋부서 버튼**이 순정 Windows에서도 바로 동작합니다
   (이 두 가지가 이전 버전에서 안 되던 증상이었고, 이번에 고쳤습니다).
 
 ## 설치 (사람)
-1. 릴리스에서 **`ezer_0.6.0_x64-setup.exe`** (NSIS 설치파일)를 내려받아 실행합니다.
+1. 릴리스에서 **`EZERagent_0.6.0_x64-setup.exe`** (NSIS 설치파일)를 내려받아 실행합니다.
    - 내려받는 곳: GitHub 릴리스 `choijinyi/Ezer` (오너이 발행한 정식본).
    - 설치파일 안에 실행환경이 동봉돼 있어(설치 폴더 `\runtime\` 아래 Git Bash·Python) 인터넷이나
      추가 설치 없이 첫 기동에 바로 작동합니다.
-2. 설치가 끝나면 **ezer 앱을 한 번 실행**합니다.
-   - 이때 자동으로: ①운영 팩(`%USERPROFILE%\.ezer\pack`) 설치 ②Claude Code 역할 각성 hook 등록
+2. 설치가 끝나면 **EZERagent 앱을 한 번 실행**합니다.
+   - 이때 자동으로: ①운영 팩(`%USERPROFILE%\.EZERagent\pack`) 설치 ②Claude Code 역할 각성 hook 등록
      ③로그온 시 데몬 자동 기동 등록(작업 스케줄러). — **사람이 따로 명령을 칠 필요가 없습니다.**
-3. 앱에서 터미널 pane을 열고 `ezer list`를 실행해 데몬이 뜨는지 확인합니다(자동 기동됩니다).
+3. 앱에서 터미널 pane을 열고 `EZERagent list`를 실행해 데몬이 뜨는지 확인합니다(자동 기동됩니다).
 
 ## 확인 (설치가 잘 됐는지)
 ```
-dir %USERPROFILE%\.ezer\pack               (팩이 설치돼 있으면 파일들이 보입니다)
+dir %USERPROFILE%\.EZERagent\pack               (팩이 설치돼 있으면 파일들이 보입니다)
 type %USERPROFILE%\.claude\settings.json  (SessionStart hook 이 bash 로 등록돼 있으면 정상)
-schtasks /Query /TN ezerd                  (로그온 자동기동이 등록돼 있으면 정상)
+schtasks /Query /TN EZERagentd                  (로그온 자동기동이 등록돼 있으면 정상)
 ```
 - pane에서 Claude Code를 켜고 **"너는 마스터다"**라고 입력하면 역할 부트스트랩이 뜹니다(자동 각성).
 - **＋부서** 버튼을 누르면 새 부서가 생성됩니다(부서별 독립 폴더·로그로 격리됩니다).
@@ -33,13 +33,13 @@ schtasks /Query /TN ezerd                  (로그온 자동기동이 등록돼 
 ## 수동으로 다시 준비하고 싶을 때 (선택)
 자동 온보딩이 어떤 이유로 빠졌다면 아래를 직접 실행할 수 있습니다(모두 여러 번 실행해도 안전).
 ```
-ezer.exe init-pack        (팩 + 역할 각성 hook 재설치)
-ezer.exe daemon install   (로그온 자동기동 재등록)
-ezer.exe daemon status    (등록 상태 확인)
+EZERagent.exe init-pack        (팩 + 역할 각성 hook 재설치)
+EZERagent.exe daemon install   (로그온 자동기동 재등록)
+EZERagent.exe daemon status    (등록 상태 확인)
 ```
 
 ## 참고
-- 이전 안내에 있던 **MSI(ezer-0.2.x)** 는 구버전 방식입니다. 현재 소비자 배포본은 위 **NSIS
+- 이전 안내에 있던 **MSI(EZERagent-0.2.x)** 는 구버전 방식입니다. 현재 소비자 배포본은 위 **NSIS
   setup.exe(runtime 동봉)** 이며, 로컬 개발 폴더 `dist-win\`의 옛 파일은 배포본이 아닙니다.
 - 부서·업데이트·역할 노드 등 세부 동작은 앱 내 안내와 `docs/INSTALL.md`(공통)를 함께 참고하세요.
 

@@ -1,8 +1,8 @@
-# Ezer agent
+# EZERagent
 
 **AI 에이전트 함대를 지휘하는 오케스트레이션 터미널.** macOS · Windows 크로스플랫폼.
 
-터미널 멀티플렉서 + 로컬 데몬 + 관제 대시보드 + 멀티에이전트 운영체계(Ezer 팩)가
+터미널 멀티플렉서 + 로컬 데몬 + 관제 대시보드 + 멀티에이전트 운영체계(EZERagent 팩)가
 한 몸입니다. Claude Code·Codex 같은 CLI 에이전트 여러 개를 역할(마스터·워커·CSO·리뷰어)로
 나눠 동시에 굴리고, 서로 소켓으로 대화시키고, 비용·컨텍스트·하드웨어를 실시간 관제합니다.
 
@@ -25,23 +25,23 @@
 
 기존 터미널·멀티플렉서는 "사람이 명령을 치는 곳"입니다. AI 에이전트를 여러 개 띄우면
 곧바로 한계가 옵니다 — pane끼리 서로 말을 걸 수 없고, 에이전트가 남긴 고아 서버가 쌓여
-시스템이 마비되고, 누가 얼마나 쓰는지 보이지 않습니다. ezer-agent은 그 문제들을
+시스템이 마비되고, 누가 얼마나 쓰는지 보이지 않습니다. EZERagent은 그 문제들을
 1급 기능으로 해결하기 위해 처음부터 새로 작성한 독자 구현입니다.
 
 그리고 네 번째 문제 — **에이전트들을 어떻게 조직으로 묶을 것인가** — 를 내장 팩
-(Ezer: 역할별 절대지침 + 결정론 운영 도구)으로 해결합니다.
+(EZERagent: 역할별 절대지침 + 결정론 운영 도구)으로 해결합니다.
 
 ## 설계 원칙 (ABSOLUTE)
 
 1. **양방향 소켓통신** — 단방향 send + capture 폴링을 쓰지 않는다.
    같은 소켓에 물린 모든 pane은 surface ID만 알면 서로에게 능동 push하는 **동등 노드**다.
-   `ezer send --surface surface:31 "..."` + `send-key Return` → 대상 pane의 **PTY stdin에 직접 주입** → 새 user turn 도착.
-   서버→클라이언트 방향은 `ezer events` 푸시 스트림(시퀀스 번호·재접속 이어받기).
+   `EZERagent send --surface surface:31 "..."` + `send-key Return` → 대상 pane의 **PTY stdin에 직접 주입** → 새 user turn 도착.
+   서버→클라이언트 방향은 `EZERagent events` 푸시 스트림(시퀀스 번호·재접속 이어받기).
 2. **자원 거버넌스 1급 기능** — 고아 서버 누적 → load 폭주 → 401·hang을 원천 차단하는 완화책 내장.
-3. **코어/UI 분리** — 데몬(ezerd)은 UI와 무관하게 동작. UI가 hang이어도 소켓 제어 채널은 항상 살아있다(OOB 회생).
+3. **코어/UI 분리** — 데몬(EZERagentd)은 UI와 무관하게 동작. UI가 hang이어도 소켓 제어 채널은 항상 살아있다(OOB 회생).
 4. **fail-closed 서명** — 앱은 Tauri updater 서명, 팩은 minisign(공개키 바이너리 핀).
    검증에 실패하면 설치·전개 자체가 거부된다.
-5. **지침과 기계의 한 몸** — 역할별 절대지침·운영 도구·스킬(Ezer 팩)이 터미널과 함께
+5. **지침과 기계의 한 몸** — 역할별 절대지침·운영 도구·스킬(EZERagent 팩)이 터미널과 함께
    빌드·서명·배포되고, 노드 기동 시 자동 주입된다.
 
 ## 설치
@@ -49,11 +49,11 @@
 [Releases](https://github.com/choijinyi/Ezer/releases/latest)에서 받으세요.
 받는 사람은 **데몬을 따로 설치할 필요가 없습니다** — 앱이 자동 기동하고 팩도 자동 설치됩니다.
 
-- **macOS**: `ezer_<버전>_aarch64.dmg` (Apple Silicon) — 드래그 설치 후 앱 실행이면 끝.
-- **Windows**: `ezer_<버전>_x64-setup.exe` — 데몬·CLI·런타임 동봉(자기완결 설치).
+- **macOS**: `EZERagent_<버전>_aarch64.dmg` (Apple Silicon) — 드래그 설치 후 앱 실행이면 끝.
+- **Windows**: `EZERagent_<버전>_x64-setup.exe` — 데몬·CLI·런타임 동봉(자기완결 설치).
   상세: [docs/INSTALL-Windows-KR.md](docs/INSTALL-Windows-KR.md)
-- 24/365 상시 가동(선택): `ezer daemon install` (launchd KeepAlive / 작업 스케줄러).
-- 외부 터미널에서 `ezer` 명령 쓰기: 앱 Control Center → **"셸에 ezer 설치"** 1클릭.
+- 24/365 상시 가동(선택): `EZERagent daemon install` (launchd KeepAlive / 작업 스케줄러).
+- 외부 터미널에서 `EZERagent` 명령 쓰기: 앱 Control Center → **"셸에 EZERagent 설치"** 1클릭.
 
 설치·제거 상세는 [docs/INSTALL.md](docs/INSTALL.md), 사용법 전체는
 [User Manual](USER-MANUAL.md).
@@ -61,41 +61,41 @@
 ## 빠른 시작
 
 ```bash
-ezer identify                                  # 내 surface 주소 확인
-ezer launch-agent --role worker --agent claude # 역할 노드 기동(절대지침 자동 주입)
-ezer send --to worker "상태 보고해줘"            # 역할 주소로 push
-ezer send-key --to worker Return               # 전송 확정
-ezer status --json                             # 전 노드 1콜 스냅샷
-ezer events --reconnect                        # 이벤트 푸시 구독 (폴링 대체)
-ezer run --scoped -- python -m http.server     # 생명주기 관리되는 스코프드 실행
-ezer boot                                      # 표준 노드 세트 일괄 기동(설치된 CLI 자동 감지)
+EZERagent identify                                  # 내 surface 주소 확인
+EZERagent launch-agent --role worker --agent claude # 역할 노드 기동(절대지침 자동 주입)
+EZERagent send --to worker "상태 보고해줘"            # 역할 주소로 push
+EZERagent send-key --to worker Return               # 전송 확정
+EZERagent status --json                             # 전 노드 1콜 스냅샷
+EZERagent events --reconnect                        # 이벤트 푸시 구독 (폴링 대체)
+EZERagent run --scoped -- python -m http.server     # 생명주기 관리되는 스코프드 실행
+EZERagent boot                                      # 표준 노드 세트 일괄 기동(설치된 CLI 자동 감지)
 ```
 
 ## 구조
 
 ```
-ezer.app  Tauri 데스크톱 앱: 터미널 UI(xterm.js) + Control Center — 데몬의 thin client
-ezerd     헤드리스 코어 데몬: NDJSON 소켓 서버(UDS / win named pipe), PTY(portable-pty:
+EZERagent.app  Tauri 데스크톱 앱: 터미널 UI(xterm.js) + Control Center — 데몬의 thin client
+EZERagentd     헤드리스 코어 데몬: NDJSON 소켓 서버(UDS / win named pipe), PTY(portable-pty:
          macOS openpty·Windows ConPTY), vt100 화면 재구성, 이벤트 버스, watchdog,
          프로세스 원장, 사용량/비용 수집기, 영속 분석(SQLite), 스케줄러
-ezer      CLI: pane 안의 AI가 쓰는 동등 노드 클라이언트 (60+ 서브커맨드 — `ezer actions`)
-pack     ezer-pack/: 절대지침 6·결정론 도구 56·훅 18·스킬 102·스키마 3
+EZERagent      CLI: pane 안의 AI가 쓰는 동등 노드 클라이언트 (60+ 서브커맨드 — `EZERagent actions`)
+pack     EZERagent-pack/: 절대지침 6·결정론 도구 56·훅 18·스킬 102·스키마 3
          (빌드 시 임베드 · minisign 서명 배포 · 사용자 수정 파일 불가침)
 ```
 
-모든 pane 프로세스에 `EZER_SURFACE_ID`·`EZER_SURFACE_REF`·`EZER_SOCKET` 자동 주입 —
-pane 안의 AI는 `ezer identify`로 자기 주소를 즉시 안다. PTY는 데몬 소유라서 앱을
+모든 pane 프로세스에 `EZERAGENT_SURFACE_ID`·`EZERAGENT_SURFACE_REF`·`EZERAGENT_SOCKET` 자동 주입 —
+pane 안의 AI는 `EZERagent identify`로 자기 주소를 즉시 안다. PTY는 데몬 소유라서 앱을
 재시작·재설치·업데이트해도 세션은 살아 있다(재attach).
 
-## Ezer 팩 — 내장 멀티에이전트 운영체계
+## EZERagent 팩 — 내장 멀티에이전트 운영체계
 
 터미널을 설치하고 AI CLI를 연결하면 **master–worker–CSO–reviewer 멀티에이전트 운영체계**가
 바로 구동됩니다. 시스템은 3층입니다:
 
 | 층 | 내용 | 출처 |
 |---|---|---|
-| 코어 (기계 기능) | 양방향 소켓·승인 Feed·watchdog/원장·이벤트 push·세션 영속 | ezer-agent 코어 |
-| Ezer 팩 | 역할별 절대지침·결정론 운영 도구·훅·스킬 | `ezer init-pack` |
+| 코어 (기계 기능) | 양방향 소켓·승인 Feed·watchdog/원장·이벤트 push·세션 영속 | EZERagent 코어 |
+| EZERagent 팩 | 역할별 절대지침·결정론 운영 도구·훅·스킬 | `EZERagent init-pack` |
 | 개인 층 | soul.md(우선순위·금지선)·장기기억 | **사용자가 사용하며 축적** |
 
 soul.md와 memory/는 **의도적으로 비어 있는 골격**입니다 — "운영 취향과 장기기억은 빌려
@@ -108,18 +108,18 @@ soul.md와 memory/는 **의도적으로 비어 있는 골격**입니다 — "운
 
 ## 세 가지 사용 구성 비교 — 온보딩 없이도 무엇을 얻는가
 
-ezer-agent은 에제르 온보딩 없이 **그냥 claude만 연결해도** 전통 터미널과 다른 경험을 제공합니다.
+EZERagent은 에제르 온보딩 없이 **그냥 claude만 연결해도** 전통 터미널과 다른 경험을 제공합니다.
 세 구성을 33항목 × 6영역으로 비교한 결과입니다 (2026-07-17 신선 기계 E2E 실측 + 배포 코드 v0.12.77 추적 기반):
 
 - **①** 전통 터미널(iTerm 등) + claude CLI
-- **②** ezer-agent + 순정 claude (에제르 온보딩 없이 일상 사용)
-- **③** ezer-agent + 에제르 온보딩 ("너는 마스터다" 선언 → 5노드 풀 시스템, **기준**)
+- **②** EZERagent + 순정 claude (에제르 온보딩 없이 일상 사용)
+- **③** EZERagent + 에제르 온보딩 ("너는 마스터다" 선언 → 5노드 풀 시스템, **기준**)
 
 기호: **✕** 없음/불가 · **△** 부분/조건부 · **○** 제공 · **◎** 강화 체계 · **[실측]** 신선 기계 E2E 직접 확인
 
 ### A. 설치·시작 경험
 
-| 항목 | ① 전통 터미널 + claude | ② ezer + 순정 claude | ③ ezer + 에제르 (기준) |
+| 항목 | ① 전통 터미널 + claude | ② EZERagent + 순정 claude | ③ EZERagent + 에제르 (기준) |
 |---|---|---|---|
 | 자동 배치 | ✕ | ○ 팩 334파일+격리 config [실측] | ○ 동일 + preflight 전체 배선 |
 | 개인 `~/.claude` 보호 | — (직접 사용) | ○ 불가침 [실측] | △ base 온보딩 시 계장 가능 |
@@ -129,28 +129,28 @@ ezer-agent은 에제르 온보딩 없이 **그냥 claude만 연결해도** 전�
 
 ### B. 세션 컨텍스트 — claude가 알고 시작하는 것
 
-| 항목 | ① 전통 터미널 | ② ezer + 순정 | ③ ezer + 에제르 |
+| 항목 | ① 전통 터미널 | ② EZERagent + 순정 | ③ EZERagent + 에제르 |
 |---|---|---|---|
-| 자동 주입 지침 | ✕ | ○ ezer 치트시트+4대 지침+품질 게이트 | ◎ 디렉티브+soul 전문 |
+| 자동 주입 지침 | ✕ | ○ EZERagent 치트시트+4대 지침+품질 게이트 | ◎ 디렉티브+soul 전문 |
 | 시작 주입량 | 0 | ~1.4KB [실측] | ~134KB [실측] |
 | 등록 훅 수 | 0 | 2개 [실측] | 10개+ [실측] |
 | 권한 모드 | 사용자 선택 | 사용자 선택 | bypass + guard 짝 |
 
 ### C. 에이전트 능력 — claude가 할 수 있는 것
 
-| 항목 | ① 전통 터미널 | ② ezer + 순정 | ③ ezer + 에제르 |
+| 항목 | ① 전통 터미널 | ② EZERagent + 순정 | ③ EZERagent + 에제르 |
 |---|---|---|---|
-| 타 pane 관측 | ✕ 서로 존재 모름 | ○ `ezer list`·`read-screen` 자발 사용 실증 [실측] | ◎ 능동 모니터링 체계 |
-| pane 간 메시지 | ✕ | ○ `ezer send --surface` 자발 사용 실증 [실측] | ◎ 역할 주소·양방향 소켓 |
-| GUI 승인 요청 | ✕ 터미널 프롬프트뿐 | ○ `ezer feed push --wait` | ◎ 승인 자동화 체계 |
-| 이벤트 push 구독 | ✕ 폴링뿐 | ○ `ezer events` | ◎ EVT v1 계약 12종 |
-| 서버 생명주기 | ✕ 수동 | ○ `ezer run --scoped` | ◎ + 사전 자원 게이트 |
-| 예약·웨이크업 | ✕ OS cron 수동 | ○ `ezer schedule` | ◎ 자율주행 웨이크업 |
+| 타 pane 관측 | ✕ 서로 존재 모름 | ○ `EZERagent list`·`read-screen` 자발 사용 실증 [실측] | ◎ 능동 모니터링 체계 |
+| pane 간 메시지 | ✕ | ○ `EZERagent send --surface` 자발 사용 실증 [실측] | ◎ 역할 주소·양방향 소켓 |
+| GUI 승인 요청 | ✕ 터미널 프롬프트뿐 | ○ `EZERagent feed push --wait` | ◎ 승인 자동화 체계 |
+| 이벤트 push 구독 | ✕ 폴링뿐 | ○ `EZERagent events` | ◎ EVT v1 계약 12종 |
+| 서버 생명주기 | ✕ 수동 | ○ `EZERagent run --scoped` | ◎ + 사전 자원 게이트 |
+| 예약·웨이크업 | ✕ OS cron 수동 | ○ `EZERagent schedule` | ◎ 자율주행 웨이크업 |
 | 역할 주소 통신 | — | ✕ | ○ master·cso·worker·reviewer |
 
 ### D. 환경 서비스 — 데몬이 묻지 않고 주는 것
 
-| 항목 | ① 전통 터미널 | ② ezer + 순정 | ③ ezer + 에제르 |
+| 항목 | ① 전통 터미널 | ② EZERagent + 순정 | ③ EZERagent + 에제르 |
 |---|---|---|---|
 | 컨텍스트% 관측 | ✕ | ○ usage-register 자동 [실측] | ◎ + 60% /clear 관리 |
 | 폭주·중복 서버 감지 | ✕ | ○ watchdog 전 surface | ◎ + 착수 전 게이트 |
@@ -161,17 +161,17 @@ ezer-agent은 에제르 온보딩 없이 **그냥 claude만 연결해도** 전�
 
 ### E. 스킬·지식 자산
 
-| 항목 | ① 전통 터미널 | ② ezer + 순정 | ③ ezer + 에제르 |
+| 항목 | ① 전통 터미널 | ② EZERagent + 순정 | ③ EZERagent + 에제르 |
 |---|---|---|---|
 | 스킬 보유 | ✕ 수동 설치 | ○ 107종 + 보드 6종 [실측] | ◎ + 프로필 설치·role 주입 |
 | 스킬 실행 | ✕ 수동 호출 | ○ 보드 → 75초 완주 [실측] | ◎ + 티켓·게이트·검증 |
 | MCP 등록 | ✕ 수동 | ✕ | ○ 자동 (serena·nlm) |
-| 장기기억 | ✕ | ✕ | ○ ezer_memory + 훅 |
+| 장기기억 | ✕ | ✕ | ○ EZERagent_memory + 훅 |
 | 박사님 SOT 연동 | ✕ | ✕ | ○ NotebookLM 의무 |
 
 ### F. 조직·자율성 — 에제르 온보딩의 고유 가치
 
-| 항목 | ① 전통 터미널 | ② ezer + 순정 | ③ ezer + 에제르 |
+| 항목 | ① 전통 터미널 | ② EZERagent + 순정 | ③ EZERagent + 에제르 |
 |---|---|---|---|
 | 팀 구성 | ✕ | ✕ (선언 1문장 승격 가능) | ○ 5노드 자동 |
 | 위임·검증 루프 | ✕ | ✕ | ○ 티켓·리뷰어·RSI·eval |
@@ -190,8 +190,8 @@ ezer-agent은 에제르 온보딩 없이 **그냥 claude만 연결해도** 전�
 
 ## Control Center (실시간 관제 + 영속 분석)
 
-앱의 전용 풀 패널 — ezerd가 단일 RPC로 플릿·사용량·시스템을 제공하고(외부 대시보드 무의존),
-영속 분석은 ezerd 내장 SQLite(`analytics.db` · open 실패 시 graceful degrade)에 쌓입니다.
+앱의 전용 풀 패널 — EZERagentd가 단일 RPC로 플릿·사용량·시스템을 제공하고(외부 대시보드 무의존),
+영속 분석은 EZERagentd 내장 SQLite(`analytics.db` · open 실패 시 graceful degrade)에 쌓입니다.
 철학: **로컬 우선**(데이터가 머신 밖으로 나가지 않음) · 추가 인프라 0 · 에이전트 0ms
 지연(hook은 fire-and-forget).
 
@@ -209,7 +209,7 @@ ezer-agent은 에제르 온보딩 없이 **그냥 claude만 연결해도** 전�
 
 그 밖에: ⌘K Command Palette(노드 점프·60% 컨텍스트 순회·승인 처리) · Glance 모드(⌘G,
 비기술자용 요약 화면) · 워크스페이스 그룹 · **부서**(독립 데몬으로 프로젝트 격리) ·
-RBAC PII 가림(`EZER_CONTROL_REDACT=1`). 상세 설계: docs/CONTROL_CENTER_DESIGN.md
+RBAC PII 가림(`EZERAGENT_CONTROL_REDACT=1`). 상세 설계: docs/CONTROL_CENTER_DESIGN.md
 
 ## 에제르 네이티브 기능 (19건)
 
@@ -218,46 +218,46 @@ RBAC PII 가림(`EZER_CONTROL_REDACT=1`). 상세 설계: docs/CONTROL_CENTER_DES
 
 | # | 기능 | 명령/이벤트 |
 |---|---|---|
-| T1-1 | **자기보고**: 에이전트가 상태·컨텍스트%·작업을 직접 신고 | `ezer set-status --state working --context 57` → `status.changed` |
-| T1-2 | **관제 보드**: 전 노드 1콜 요약 | `ezer status [--json]` · `ezer fleet`(전 부서) |
+| T1-1 | **자기보고**: 에이전트가 상태·컨텍스트%·작업을 직접 신고 | `EZERagent set-status --state working --context 57` → `status.changed` |
+| T1-2 | **관제 보드**: 전 노드 1콜 요약 | `EZERagent status [--json]` · `EZERagent fleet`(전 부서) |
 | T1-3 | **발신자 신원·ACL**: 커널 peer pid로 from 검증 + role→role 송신 정책 | `acl.json` · 거부 시 `acl.denied` |
-| T2-4 | **컨텍스트 사이클 집행기**: 저장 지시→파일 게이트→clear→지침 재주입→재개 | `ezer cycle-agent --role worker` |
-| T2-5 | **에이전트 사망 즉시 감지** (+옵션 자동 재기동, 인증 오류 시 차단) | `agent.exited/recovered` · `ezer node-recover --role X` |
-| T2-6 | **조직 복원**: 토폴로지 영속 + 일괄 재기동·재주입 | `ezer restore [--include-master]` |
-| T2-7 | **디렉티브 드리프트 감지·재주입** | `ezer reinject --role X [--check]` |
+| T2-4 | **컨텍스트 사이클 집행기**: 저장 지시→파일 게이트→clear→지침 재주입→재개 | `EZERagent cycle-agent --role worker` |
+| T2-5 | **에이전트 사망 즉시 감지** (+옵션 자동 재기동, 인증 오류 시 차단) | `agent.exited/recovered` · `EZERagent node-recover --role X` |
+| T2-6 | **조직 복원**: 토폴로지 영속 + 일괄 재기동·재주입 | `EZERagent restore [--include-master]` |
+| T2-7 | **디렉티브 드리프트 감지·재주입** | `EZERagent reinject --role X [--check]` |
 | T2-8 | **오케스트레이터 dead-man**: 단일 장애점 봉합 | `master.deadman` 이벤트 |
-| T3-9 | **todo 워치**: 역할별 TODO 파일 mtime 감시→진행률 집계 | `todo.updated` · `ezer todo-path` |
-| T3-10 | **원샷 타이머** (+fresh TTL `--close-after`) | `ezer schedule add --id x --in 20m --text ... --to role` |
-| T3-11 | **역할 글롭 브로드캐스트** | `ezer send --to 'reviewer-*' "..."` |
+| T3-9 | **todo 워치**: 역할별 TODO 파일 mtime 감시→진행률 집계 | `todo.updated` · `EZERagent todo-path` |
+| T3-10 | **원샷 타이머** (+fresh TTL `--close-after`) | `EZERagent schedule add --id x --in 20m --text ... --to role` |
+| T3-11 | **역할 글롭 브로드캐스트** | `EZERagent send --to 'reviewer-*' "..."` |
 | T3-12 | **feed aging 재알림**: pending 승인 무음 적체 차단 | `feed.item.aging` |
 | T3-13 | **입력 안전**: 타이핑 가드 · 원자 권위 전달 | `typing_guard` 거부 |
-| T3-14 | **델타 읽기·완료 대기**: 단조 라인 커서 + 데몬측 regex 감시 | `ezer read-screen --since N` · `ezer watch --until <re>` |
-| T4-15 | **kill-switch**: 큐 배달·스케줄 발화 동결 | `ezer pause/resume` · `ezer gate-check` |
+| T3-14 | **델타 읽기·완료 대기**: 단조 라인 커서 + 데몬측 regex 감시 | `EZERagent read-screen --since N` · `EZERagent watch --until <re>` |
+| T4-15 | **kill-switch**: 큐 배달·스케줄 발화 동결 | `EZERagent pause/resume` · `EZERagent gate-check` |
 | T4-16 | **승인 격상**: 화면 스캔→이벤트+feed (자동 응답 절대 없음) | `approval.request` |
-| T4-17 | **헬스룰 조치 바인딩**(opt-in): queued 배달만 일시정지 | `ezer add-health-rule n p --action pause-queue` |
-| T4-18 | **트랜스크립트 해시체인 attest**: 변조 증거성(producer≠evaluator) | `ezer attest pin/verify` |
-| T4-19 | **recall 보존 정책**: 트랜스크립트 무한 성장 차단 | `EZER_RECALL_RETAIN_DAYS` |
+| T4-17 | **헬스룰 조치 바인딩**(opt-in): queued 배달만 일시정지 | `EZERagent add-health-rule n p --action pause-queue` |
+| T4-18 | **트랜스크립트 해시체인 attest**: 변조 증거성(producer≠evaluator) | `EZERagent attest pin/verify` |
+| T4-19 | **recall 보존 정책**: 트랜스크립트 무한 성장 차단 | `EZERAGENT_RECALL_RETAIN_DAYS` |
 
 ## 자원 거버넌스 (3대 완화책)
 
 | 완화책 | 기능 | 명령/이벤트 |
 |---|---|---|
-| ① 로그인 감지 강화 | 모든 출력 라인에 헬스 룰(기본: Not logged in·401·token expired·rate limit) 매칭 → 30초 디바운스 push | `health.alert` · `ezer add-health-rule <name> <regex>` |
+| ① 로그인 감지 강화 | 모든 출력 라인에 헬스 룰(기본: Not logged in·401·token expired·rate limit) 매칭 → 30초 디바운스 push | `health.alert` · `EZERagent add-health-rule <name> <regex>` |
 | ② 짧은 작업 단위 | idle(기본 300초 무출력) 감지 push → 분할·점검 판단 | `pane.idle` 이벤트 |
-| ③ 서버 생명주기 강제 종료 | **scoped 실행**(새 프로세스 그룹+원장, 종료 시 그룹째 정리) · **close-surface**(자식 트리 전멸) · **watchdog**(load/자식 수/중복 명령 감지) | `ezer run -- <cmd>` · `ezer ps` · `ezer kill <pid>` · `watchdog.*` |
+| ③ 서버 생명주기 강제 종료 | **scoped 실행**(새 프로세스 그룹+원장, 종료 시 그룹째 정리) · **close-surface**(자식 트리 전멸) · **watchdog**(load/자식 수/중복 명령 감지) | `EZERagent run -- <cmd>` · `EZERagent ps` · `EZERagent kill <pid>` · `watchdog.*` |
 
 ## 승인 Feed · 인플라이트 큐
 
 ```bash
-ezer feed push --wait --title "git push 승인" --body "..."   # 결정까지 블록 (exit 0=allow, 2=deny, 3=timeout)
-ezer feed reply <request_id> allow                            # CLI 또는 UI Allow/Deny 버튼
+EZERagent feed push --wait --title "git push 승인" --body "..."   # 결정까지 블록 (exit 0=allow, 2=deny, 3=timeout)
+EZERagent feed reply <request_id> allow                            # CLI 또는 UI Allow/Deny 버튼
 ```
 
 자동 응답은 없습니다(HITL) — 요청 노드의 자기결재도 데몬이 거부합니다. 반복 위험 명령은
-`ezer approval sign`(master 전용, HMAC signed-prefix)으로 1회 서명해 통과시킵니다.
+`EZERagent approval sign`(master 전용, HMAC signed-prefix)으로 1회 서명해 통과시킵니다.
 
-- 기본 전송(`ezer send`)=**steer**: 즉시 stdin 주입 — 실행 중 입력을 조향으로 소화.
-- `ezer send --queued`=**followup**: 대상이 3초 이상 조용해지면 한 틱에 한 건씩 자동 배달.
+- 기본 전송(`EZERagent send`)=**steer**: 즉시 stdin 주입 — 실행 중 입력을 조향으로 소화.
+- `EZERagent send --queued`=**followup**: 대상이 3초 이상 조용해지면 한 틱에 한 건씩 자동 배달.
 
 ## 업데이트 — 이중 채널 + 무중단
 
@@ -268,19 +268,19 @@ ezer feed reply <request_id> allow                            # CLI 또는 UI Al
 
 시작 시 + 6시간마다 조용히 확인. 재설치 후 "디스크는 새 버전·프로세스는 구 데몬" 스큐가
 남으면 배지 클릭 교대 또는 유휴 자동 교대(라이브 세션 0일 때 — 무손실)로 해소됩니다.
-진단·수리는 `ezer doctor [--fix]`.
+진단·수리는 `EZERagent doctor [--fix]`.
 
 **커스터마이즈와 공존**: 사용자 수정본은 업데이트가 파괴하지 않습니다 — user-owned 파일은
-보존+신버전 `.new` 병치, system 파일은 치유 전 `.user` 보존, `~/.ezer/local/` 오버레이
+보존+신버전 `.new` 병치, system 파일은 치유 전 `.user` 보존, `~/.EZERagent/local/` 오버레이
 (디렉티브 append·스킬 shadowing·훅 후행)는 업데이트가 존재 자체를 모릅니다.
-`ezer pack-plan`(사전 미리보기) · `ezer pack-merge`(3-way/AI 병합) — 상세는
+`EZERagent pack-plan`(사전 미리보기) · `EZERagent pack-merge`(3-way/AI 병합) — 상세는
 [User Manual §12.7](USER-MANUAL.md#127-커스터마이징--업데이트와-공존하는-방법).
 
 ## 채널 브리지 (Slack·Discord)
 
 함대의 승인 요청·보고를 외부 메신저로 내보내고, 허가된 발신자의 원격 승인을 받습니다 —
 발신자 allowlist · 원격 승인 별도 허가 · 즉시 잠금(lockdown) · 모양 기반 redact 내장.
-`ezer channel status` 참조.
+`EZERagent channel status` 참조.
 
 ## 프로토콜 · 환경변수
 
@@ -292,10 +292,10 @@ NDJSON(한 줄 = JSON 하나), RPC 60여 개 + `channel.*` 13종, 이벤트 60�
 ```bash
 git clone https://github.com/choijinyi/Ezer
 cargo build --release
-./target/release/ezerd &                      # 데몬 (중복 기동 자동 거부)
+./target/release/EZERagentd &                      # 데몬 (중복 기동 자동 거부)
 
 cd ui && sh build.sh                          # 프런트엔드 번들 (bun)
-cargo build -p ezer-app                        # dev 실행: ./target/debug/ezer-app
+cargo build -p EZERagent-app                        # dev 실행: ./target/debug/EZERagent-app
 bun x @tauri-apps/cli build                   # 배포 번들
 ```
 
@@ -317,7 +317,7 @@ UI 재시작·앱 재설치에도 세션 유지(재attach).
 ## 알려진 한계
 
 - macOS에서 sysinfo가 cmdline 전체를 못 읽으면 프로세스명으로 중복 그룹핑(과탐 가능).
-- `ezer run` 중 Ctrl-C로 CLI가 죽으면 그룹 정리가 watchdog 주기(5초)로 넘어감.
+- `EZERagent run` 중 Ctrl-C로 CLI가 죽으면 그룹 정리가 watchdog 주기(5초)로 넘어감.
 - Control Center의 GPU/NPU 실시간은 현재 macOS(Apple Silicon) 전용 — Windows는 CPU/MEM만.
 - NPU는 활용률(%) 공개 API가 없어 실측 전력(W)으로 표시(macOS).
 - 단일-UID 신뢰 모델 — 승인 서명·자기결재 차단은 같은 계정 내 악성 프로세스에 대한

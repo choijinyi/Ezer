@@ -53,7 +53,7 @@ pub enum LicenseStatus {
 /// 이 목록 경유로만 배선된다(T3에서 기능 추가 시 (이름, 설명) 등재).
 pub const PRO_FEATURES: &[(&str, &str)] = &[];
 
-/// 라이선스 파일 경로 — pack_dir 부모(~/.ezer). pack 전체 교체·재설치와 독립인 위치
+/// 라이선스 파일 경로 — pack_dir 부모(~/.EZERagent). pack 전체 교체·재설치와 독립인 위치
 /// (.pack-accepted.json과 동일 base — 팩 갱신이 라이선스를 건드리지 않는다).
 fn license_paths() -> (PathBuf, PathBuf) {
     let base = crate::pack::pack_dir()
@@ -499,11 +499,11 @@ mod tests {
     #[test]
     fn install_roundtrip_and_reject_paths() {
         // 유효 열쇠 설치 성공 + 무효(만료) 열쇠 설치 거부를 임시 HOME 격리로 검증.
-        let tmp = std::env::temp_dir().join(format!("ezer-license-test-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("EZERagent-license-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).expect("tmp 생성 실패");
-        // EZER_PACK_DIR 오버라이드로 license_paths()의 base를 tmp로 격리.
-        std::env::set_var("EZER_PACK_DIR", tmp.join("pack").display().to_string());
+        // EZERAGENT_PACK_DIR 오버라이드로 license_paths()의 base를 tmp로 격리.
+        std::env::set_var("EZERAGENT_PACK_DIR", tmp.join("pack").display().to_string());
 
         let (pk, sign) = gen_key_and_signer();
         // 테스트 키링을 쓸 수 없는 install()(embed 키링 고정) 대신 evaluate_bytes 경로는 위에서
@@ -522,7 +522,7 @@ mod tests {
         assert!(err.contains("설치 거부"), "거부 사유 명시: {err}");
         assert!(!lic_dst.exists(), "실패 설치가 파일을 남기면 안 됨(무손상)");
 
-        std::env::remove_var("EZER_PACK_DIR");
+        std::env::remove_var("EZERAGENT_PACK_DIR");
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -540,7 +540,7 @@ mod tests {
             parse_issued_at(&license_json("L", "pro", "K", 12345, "never")),
             Some(12345)
         );
-        let dir = std::env::temp_dir().join(format!("ezer-lic-rb-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("EZERagent-lic-rb-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("license.json");

@@ -1,6 +1,6 @@
 //! T3-2 · directive 합성 캐스케이드 — 단일 결정론 reduce-merge.
 //!
-//! ezer directive 합성(글로벌 < 프로젝트 < 역할, 뒤 셋이 앞을 override)을 *하나의* 결정론
+//! EZERagent directive 합성(글로벌 < 프로젝트 < 역할, 뒤 셋이 앞을 override)을 *하나의* 결정론
 //! reduce 함수로 정규화한다. penpot `tokens_lib.cljc:1329-1338`의 `get-tokens-in-active-sets`
 //! (활성 셋 순서대로 reduce + merge, 뒤 셋이 같은 키를 *조용히* override = CSS 캐스케이드 동형)의
 //! **패턴만** 클린룸 재유도한다(코드복사 0 · MPL-2.0 · CSS Cascade 표준이 출처).

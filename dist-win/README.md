@@ -3,7 +3,7 @@
 > **RC-14 (T2)**: 이 디렉토리는 **로컬 개발 빌드 잔재**다. Windows **소비자 배포본이 아니다.**
 
 ## 소비자 Windows 배포본 = GitHub 릴리스 (NSIS)
-- 채널: `choijinyi/Ezer` 릴리스의 `ezer_<ver>_x64-setup.exe` (NSIS 자기완결 설치본)
+- 채널: `choijinyi/Ezer` 릴리스의 `EZERagent_<ver>_x64-setup.exe` (NSIS 자기완결 설치본)
 - 동봉: PortableGit(bash) + Python embeddable runtime (`<install>\runtime\`) — release.yml/windows-build.yml이 빌드
 - v0.5.0 setup.exe 실측: runtime 8,339 파일 동봉 확인 (T1.1 R2에서 RC-8 "미도달" 오판 기각)
 

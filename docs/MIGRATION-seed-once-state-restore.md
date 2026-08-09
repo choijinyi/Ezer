@@ -22,28 +22,28 @@ seed-once는 "지금 존재하는 파일"을 보호한다. **구버전에서 이
 
 ## 복원 절차 (설치 후 1회)
 
-1. 새 버전 설치 후 부트 ⓪(`ezer_preflight.py`)의 **C62.pack-heal-ledger** WARN을
+1. 새 버전 설치 후 부트 ⓪(`EZERagent_preflight.py`)의 **C62.pack-heal-ledger** WARN을
    확인한다 — 원복(healed) 파일 목록이 나온다.
 2. 상태 파일별로 라이브 본과 `.user` 병치본을 비교한다:
    ```bash
-   diff ~/.ezer/pack/memory/MEMORY.md      ~/.ezer/pack/memory/MEMORY.md.user
-   diff ~/.ezer/pack/round/SESSION_STATE.md ~/.ezer/pack/round/SESSION_STATE.md.user
-   diff ~/.ezer/pack/round/RECOVERY.md      ~/.ezer/pack/round/RECOVERY.md.user
+   diff ~/.EZERagent/pack/memory/MEMORY.md      ~/.EZERagent/pack/memory/MEMORY.md.user
+   diff ~/.EZERagent/pack/round/SESSION_STATE.md ~/.EZERagent/pack/round/SESSION_STATE.md.user
+   diff ~/.EZERagent/pack/round/RECOVERY.md      ~/.EZERagent/pack/round/RECOVERY.md.user
    ```
 3. 라이브 본이 아직 vendor 골격(사실상 빈 껍데기)이면 `.user`를 그대로 복원하고,
    원복 후 새로 쌓인 내용이 있으면 두 본을 **병합**한다(둘 다 보존이 원칙 —
    MEMORY.md는 색인이므로 양쪽 포인터의 합집합).
    ```bash
-   cp ~/.ezer/pack/memory/MEMORY.md.user ~/.ezer/pack/memory/MEMORY.md   # 골격일 때만
+   cp ~/.EZERagent/pack/memory/MEMORY.md.user ~/.EZERagent/pack/memory/MEMORY.md   # 골격일 때만
    ```
-4. `ezer pack-merge`로 원장 항목을 해소한다(해소 전까지 C62 WARN은 의도적으로 남는다).
+4. `EZERagent pack-merge`로 원장 항목을 해소한다(해소 전까지 C62 WARN은 의도적으로 남는다).
 5. 복원 후에는 seed-once 보호로 다시 원복되지 않는다 — 재발 확인:
-   `python3 ~/.ezer/pack/bin/ezer_preflight.py --json | grep C62`.
+   `python3 ~/.EZERagent/pack/bin/EZERagent_preflight.py --json | grep C62`.
 
 ## Windows 사용자 특이사항 (이 계열 최다 발생 플랫폼)
 
-Windows에서 이 사고가 가장 잦았던 기전(실측): 팩 python 도구(ezer_memory.py·
-ezer_memory_inject.py 등)가 상태 파일을 텍스트 모드(`open("w")`, newline 미지정)로
+Windows에서 이 사고가 가장 잦았던 기전(실측): 팩 python 도구(EZERagent_memory.py·
+EZERagent_memory_inject.py 등)가 상태 파일을 텍스트 모드(`open("w")`, newline 미지정)로
 쓰므로 Windows에서 LF→CRLF 자동 변환된다. **내용이 논리적으로 같아도 바이트가
 달라져**, 구버전에서는 노드가 색인을 재직렬화만 해도 매 스윕 '수정됨' 판정 →
 치유(원복)됐다. 게다가 Windows는 hook 경로 계열 결손으로 부트 ⓪ `--fix`의 전량 스윕
@@ -59,6 +59,6 @@ Windows의 상태·기억 원복도 이 릴리스로 봉인된다(회귀 핀: pa
 
 `bin/*.py`는 여전히 system 등급이다(배포 무결성 anti-skew — 의도된 설계). 라이브에서
 고친 코드가 `.user`로 병치돼 있다면 그 수정은 로컬에서 영속시킬 수 없다 —
-**소스 레포(ezer-pack)로 승격 제보**하는 것이 유일한 영속 경로다. 이번 릴리스에는
-그렇게 소실됐던 승인 수정분(ezer_resource_gate 동적 임계·codex 이중계수 제외,
+**소스 레포(EZERagent-pack)로 승격 제보**하는 것이 유일한 영속 경로다. 이번 릴리스에는
+그렇게 소실됐던 승인 수정분(EZERagent_resource_gate 동적 임계·codex 이중계수 제외,
 inject-context 부서 분기, RSI 추천 제목)이 이미 흡수돼 있다.

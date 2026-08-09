@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 사용자가 master/worker/cso 노드의 페르소나·운영 노브를 안전하게 튜닝하되, 안전 불변식은 잠그고 업스트림 directive 업그레이드는 계속 흐르게 하는 오버라이드 계층 + `ezer persona` CLI를 만든다.
+**Goal:** 사용자가 master/worker/cso 노드의 페르소나·운영 노브를 안전하게 튜닝하되, 안전 불변식은 잠그고 업스트림 directive 업그레이드는 계속 흐르게 하는 오버라이드 계층 + `EZERagent persona` CLI를 만든다.
 
-**Architecture:** 임베드 PACK 밖의 사용자 데이터 파일 `~/.ezer/pack/overrides/<role>.json`(install 불가침)을 신규 `ezer` 라이브러리 모듈 `src/overrides.rs`가 로드·검증한다. `compose_directive`(ezer.rs)가 정식 directive 조립 뒤 오버라이드 블록을 붙이되 **코드 박제 안전핵 재선언을 항상 최후(last-word)**로 둔다. 숫자 노브는 코드 레지스트리가 허용 범위를 정의하고, 안전 불변식 노브는 레지스트리에 부재라 구조적으로 튜닝 불가. `context_clear_pct`만 ezerd 발화점이 role별로 읽는다.
+**Architecture:** 임베드 PACK 밖의 사용자 데이터 파일 `~/.EZERagent/pack/overrides/<role>.json`(install 불가침)을 신규 `EZERagent` 라이브러리 모듈 `src/overrides.rs`가 로드·검증한다. `compose_directive`(EZERagent.rs)가 정식 directive 조립 뒤 오버라이드 블록을 붙이되 **코드 박제 안전핵 재선언을 항상 최후(last-word)**로 둔다. 숫자 노브는 코드 레지스트리가 허용 범위를 정의하고, 안전 불변식 노브는 레지스트리에 부재라 구조적으로 튜닝 불가. `context_clear_pct`만 EZERagentd 발화점이 role별로 읽는다.
 
 **Tech Stack:** Rust 2021, clap(derive) CLI, serde_json, 인라인 `#[cfg(test)]` 단위 테스트. 신규 의존 없음.
 
@@ -18,10 +18,10 @@
 |---|---|
 | `src/overrides.rs` (신규) | 노브 레지스트리(`KNOBS`)·검증(`validate_knob`)·로드(`load_overrides`)·persona sanitize·블록 렌더(`render_block`)·안전핵 const(`SAFETY_CORE_REASSERT`)·데몬 헬퍼(`context_clear_pct`) |
 | `src/lib.rs` | `pub mod overrides;` 등록 |
-| `src/bin/ezer.rs` | `compose_directive` 머지 단계 · `Persona` 서브커맨드 + `run_persona` |
-| `src/bin/ezerd/handlers.rs` | `maybe_fire_context_threshold`가 role별 `context_clear_pct` 우선 사용(단일 발화점) |
+| `src/bin/EZERagent.rs` | `compose_directive` 머지 단계 · `Persona` 서브커맨드 + `run_persona` |
+| `src/bin/EZERagentd/handlers.rs` | `maybe_fire_context_threshold`가 role별 `context_clear_pct` 우선 사용(단일 발화점) |
 
-모든 테스트는 해당 파일 인라인 `#[cfg(test)] mod tests`. ezer.rs는 기존 `COMPOSE_ENV_LOCK` 직렬화 락 재사용.
+모든 테스트는 해당 파일 인라인 `#[cfg(test)] mod tests`. EZERagent.rs는 기존 `COMPOSE_ENV_LOCK` 직렬화 락 재사용.
 
 ---
 
@@ -37,7 +37,7 @@
 ```rust
 //! 페르소나 오버라이드 계층 — 노드 페르소나·운영 노브의 안전한 사용자 튜닝.
 //! 안전 불변식(denylist·recovery·kill-switch)은 레지스트리에 부재 → 구조적 튜닝 불가.
-//! 오버라이드 파일은 임베드 PACK 밖(~/.ezer/pack/overrides/<role>.json)이라
+//! 오버라이드 파일은 임베드 PACK 밖(~/.EZERagent/pack/overrides/<role>.json)이라
 //! install() 불가침·정식 directive 무동결(업그레이드 계속).
 
 /// 튜닝 가능한 숫자 노브 1종 정의 (코드 박제 레지스트리 — 사용자 편집 불가).
@@ -166,7 +166,7 @@ pub fn override_path(role: &str) -> PathBuf {
 
 /// 노브 1개 검증 (CLI hard-reject·런타임 폴백 공용 순수함수). Ok=유효값.
 pub fn validate_knob(key: &str, value: u64, expert: bool) -> Result<u64, String> {
-    let k = knob(key).ok_or_else(|| format!("unknown param '{key}' (ezer persona list-params 참고)"))?;
+    let k = knob(key).ok_or_else(|| format!("unknown param '{key}' (EZERagent persona list-params 참고)"))?;
     let hi = if expert { k.expert_max } else { k.max };
     if value < k.min || value > hi {
         return Err(format!(
@@ -294,7 +294,7 @@ git commit -m "feat(overrides): persona sanitize — 안전핵 키워드 줄 str
 
     fn with_pack_dir<T>(write_json: Option<(&str, &str)>, role: &str, f: impl FnOnce() -> T) -> T {
         let _g = OV_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let td = std::env::temp_dir().join(format!("ezer-ov-{}-{}", std::process::id(), role));
+        let td = std::env::temp_dir().join(format!("EZERagent-ov-{}-{}", std::process::id(), role));
         let _ = std::fs::remove_dir_all(&td);
         std::fs::create_dir_all(td.join("overrides")).unwrap();
         if let Some((name, body)) = write_json {
@@ -457,10 +457,10 @@ git commit -m "feat(overrides): load_overrides + render_block + 안전핵 last-w
 ## Task 5: compose_directive 머지 + last-word 불변식 테스트
 
 **Files:**
-- Modify: `src/bin/ezer.rs:2024` (`compose_directive`의 `Ok(directive)` 직전)
-- Test: `src/bin/ezer.rs` 기존 `mod tests` (COMPOSE_ENV_LOCK 재사용)
+- Modify: `src/bin/EZERagent.rs:2024` (`compose_directive`의 `Ok(directive)` 직전)
+- Test: `src/bin/EZERagent.rs` 기존 `mod tests` (COMPOSE_ENV_LOCK 재사용)
 
-- [ ] **Step 1: 실패하는 테스트 작성** — ezer.rs `mod tests` 안, `compose_directive_includes_memory_index_after_soul` 다음에 추가
+- [ ] **Step 1: 실패하는 테스트 작성** — EZERagent.rs `mod tests` 안, `compose_directive_includes_memory_index_after_soul` 다음에 추가
 
 ```rust
     /// ★불변식 박제: 사용자 오버라이드가 있어도 안전핵 재선언이 조립 최후(last-word).
@@ -468,7 +468,7 @@ git commit -m "feat(overrides): load_overrides + render_block + 안전핵 last-w
     #[test]
     fn compose_directive_safety_core_is_last_word() {
         let _env = COMPOSE_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let td = std::env::temp_dir().join(format!("ezer-ovcompose-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("EZERagent-ovcompose-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         for sub in ["directives", "overrides"] {
             std::fs::create_dir_all(td.join(sub)).unwrap();
@@ -481,12 +481,12 @@ git commit -m "feat(overrides): load_overrides + render_block + 안전핵 last-w
         )
         .unwrap();
 
-        let saved = std::env::var(ezer::pack::ENV_PACK_DIR).ok();
-        std::env::set_var(ezer::pack::ENV_PACK_DIR, &td);
+        let saved = std::env::var(EZERagent::pack::ENV_PACK_DIR).ok();
+        std::env::set_var(EZERagent::pack::ENV_PACK_DIR, &td);
         let out = compose_directive("master").expect("compose 실패");
         match saved {
-            Some(v) => std::env::set_var(ezer::pack::ENV_PACK_DIR, v),
-            None => std::env::remove_var(ezer::pack::ENV_PACK_DIR),
+            Some(v) => std::env::set_var(EZERagent::pack::ENV_PACK_DIR, v),
+            None => std::env::remove_var(EZERagent::pack::ENV_PACK_DIR),
         }
         let _ = std::fs::remove_dir_all(&td);
 
@@ -502,18 +502,18 @@ git commit -m "feat(overrides): load_overrides + render_block + 안전핵 last-w
     #[test]
     fn compose_directive_no_override_is_noop() {
         let _env = COMPOSE_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let td = std::env::temp_dir().join(format!("ezer-ovnoop-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("EZERagent-ovnoop-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::fs::create_dir_all(td.join("directives")).unwrap();
         std::fs::write(td.join("directives/MASTER_DIRECTIVE.md"), "# MASTER 절대지침\n").unwrap();
         std::fs::write(td.join("directives/RSI_LEARNING_DIRECTIVE.md"), "# RSI 학습\n").unwrap();
 
-        let saved = std::env::var(ezer::pack::ENV_PACK_DIR).ok();
-        std::env::set_var(ezer::pack::ENV_PACK_DIR, &td);
+        let saved = std::env::var(EZERagent::pack::ENV_PACK_DIR).ok();
+        std::env::set_var(EZERagent::pack::ENV_PACK_DIR, &td);
         let out = compose_directive("master").expect("compose 실패");
         match saved {
-            Some(v) => std::env::set_var(ezer::pack::ENV_PACK_DIR, v),
-            None => std::env::remove_var(ezer::pack::ENV_PACK_DIR),
+            Some(v) => std::env::set_var(EZERagent::pack::ENV_PACK_DIR, v),
+            None => std::env::remove_var(EZERagent::pack::ENV_PACK_DIR),
         }
         let _ = std::fs::remove_dir_all(&td);
         assert!(out.find("■ 사용자 오버라이드").is_none(), "오버라이드 없는데 블록 등장");
@@ -523,51 +523,51 @@ git commit -m "feat(overrides): load_overrides + render_block + 안전핵 last-w
 
 - [ ] **Step 2: 테스트 실패 확인**
 
-Run: `cargo test --bin ezer compose_directive_safety_core_is_last_word`
+Run: `cargo test --bin EZERagent compose_directive_safety_core_is_last_word`
 Expected: FAIL — 오버라이드 블록 미병합이라 "안전핵 재선언 누락" panic.
 
-- [ ] **Step 3: 머지 구현** — `src/bin/ezer.rs`의 `compose_directive` 끝, 스킬 색인 블록 뒤 `Ok(directive)`(2024행) **직전**에 삽입
+- [ ] **Step 3: 머지 구현** — `src/bin/EZERagent.rs`의 `compose_directive` 끝, 스킬 색인 블록 뒤 `Ok(directive)`(2024행) **직전**에 삽입
 
 ```rust
     // 사용자 오버라이드(취향·운영 노브) — 스킬 색인 뒤. PACK 밖 파일이라 install 불가침·
     // 정식 directive 무동결. render_block이 SAFETY_CORE_REASSERT를 항상 최후에 둬(last-word)
     // 사용자 텍스트가 안전핵을 못 뒤집는다. 파일 부재 시 빈 문자열(회귀 0).
-    let expert = std::env::var("EZER_OVERRIDE_EXPERT").map(|v| v == "1").unwrap_or(false);
-    let ov = ezer::overrides::load_overrides(role, expert);
-    directive.push_str(&ezer::overrides::render_block(&ov));
+    let expert = std::env::var("EZERAGENT_OVERRIDE_EXPERT").map(|v| v == "1").unwrap_or(false);
+    let ov = EZERagent::overrides::load_overrides(role, expert);
+    directive.push_str(&EZERagent::overrides::render_block(&ov));
 ```
 
 - [ ] **Step 4: 테스트 통과 확인**
 
-Run: `cargo test --bin ezer compose_directive_`
+Run: `cargo test --bin EZERagent compose_directive_`
 Expected: PASS (기존 memory-index 테스트 + 신규 2 테스트).
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add src/bin/ezer.rs
-git commit -m "feat(ezer): compose_directive에 오버라이드 머지 — 안전핵 last-word 보장"
+git add src/bin/EZERagent.rs
+git commit -m "feat(EZERagent): compose_directive에 오버라이드 머지 — 안전핵 last-word 보장"
 ```
 
 ---
 
-## Task 6: `ezer persona` CLI — show/set/reset/list-params
+## Task 6: `EZERagent persona` CLI — show/set/reset/list-params
 
 **Files:**
-- Modify: `src/bin/ezer.rs` (Command enum + PersonaAction enum + main 디스패치 + `run_persona`)
-- Test: `src/bin/ezer.rs` 인라인 (`run_persona`의 핵심은 파일 IO — set→show→reset 라운드트립을 임시 pack_dir로 검증)
+- Modify: `src/bin/EZERagent.rs` (Command enum + PersonaAction enum + main 디스패치 + `run_persona`)
+- Test: `src/bin/EZERagent.rs` 인라인 (`run_persona`의 핵심은 파일 IO — set→show→reset 라운드트립을 임시 pack_dir로 검증)
 
-- [ ] **Step 1: 실패하는 테스트 작성** — ezer.rs `mod tests`에 추가. `run_persona`는 stdout만 내므로, 파일 효과를 검증한다(set이 파일을 쓰고 reset이 지운다).
+- [ ] **Step 1: 실패하는 테스트 작성** — EZERagent.rs `mod tests`에 추가. `run_persona`는 stdout만 내므로, 파일 효과를 검증한다(set이 파일을 쓰고 reset이 지운다).
 
 ```rust
     #[test]
     fn persona_set_writes_and_reset_deletes() {
         let _env = COMPOSE_ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let td = std::env::temp_dir().join(format!("ezer-persona-{}", std::process::id()));
+        let td = std::env::temp_dir().join(format!("EZERagent-persona-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&td);
         std::fs::create_dir_all(&td).unwrap();
-        let saved = std::env::var(ezer::pack::ENV_PACK_DIR).ok();
-        std::env::set_var(ezer::pack::ENV_PACK_DIR, &td);
+        let saved = std::env::var(EZERagent::pack::ENV_PACK_DIR).ok();
+        std::env::set_var(EZERagent::pack::ENV_PACK_DIR, &td);
 
         // set 유효 노브 → 파일 생성·내용 반영
         let rc = run_persona(PersonaAction::Set {
@@ -576,7 +576,7 @@ git commit -m "feat(ezer): compose_directive에 오버라이드 머지 — 안�
             persona: None,
         });
         assert_eq!(rc, 0, "유효 set이 실패");
-        let path = ezer::overrides::override_path("master");
+        let path = EZERagent::overrides::override_path("master");
         let body = std::fs::read_to_string(&path).expect("파일 미생성");
         assert!(body.contains("review_rounds"), "노브 미기록");
 
@@ -594,8 +594,8 @@ git commit -m "feat(ezer): compose_directive에 오버라이드 머지 — 안�
         assert!(!path.exists(), "reset 후 파일 잔존");
 
         match saved {
-            Some(v) => std::env::set_var(ezer::pack::ENV_PACK_DIR, v),
-            None => std::env::remove_var(ezer::pack::ENV_PACK_DIR),
+            Some(v) => std::env::set_var(EZERagent::pack::ENV_PACK_DIR, v),
+            None => std::env::remove_var(EZERagent::pack::ENV_PACK_DIR),
         }
         let _ = std::fs::remove_dir_all(&td);
     }
@@ -603,15 +603,15 @@ git commit -m "feat(ezer): compose_directive에 오버라이드 머지 — 안�
 
 - [ ] **Step 2: 테스트 실패 확인**
 
-Run: `cargo test --bin ezer persona_set_writes_and_reset_deletes`
+Run: `cargo test --bin EZERagent persona_set_writes_and_reset_deletes`
 Expected: FAIL — `run_persona`/`PersonaAction` 미정의.
 
 - [ ] **Step 3: enum + 디스패치 + 핸들러 구현**
 
-(a) `Command` enum에 변형 추가 — `src/bin/ezer.rs`의 `Skill { ... }`(320행 부근) 변형 뒤에 추가:
+(a) `Command` enum에 변형 추가 — `src/bin/EZERagent.rs`의 `Skill { ... }`(320행 부근) 변형 뒤에 추가:
 
 ```rust
-    /// 노드 페르소나·운영 노브 커스터마이즈 (안전핵은 잠김). `ezer persona list-params`로 노브 확인
+    /// 노드 페르소나·운영 노브 커스터마이즈 (안전핵은 잠김). `EZERagent persona list-params`로 노브 확인
     Persona {
         #[command(subcommand)]
         action: PersonaAction,
@@ -657,22 +657,22 @@ enum PersonaAction {
 
 ```rust
 fn run_persona(action: PersonaAction) -> i32 {
-    let expert = std::env::var("EZER_OVERRIDE_EXPERT").map(|v| v == "1").unwrap_or(false);
+    let expert = std::env::var("EZERAGENT_OVERRIDE_EXPERT").map(|v| v == "1").unwrap_or(false);
     let result: Result<(), String> = match action {
         PersonaAction::ListParams => {
             println!("튜닝 가능 노브 (안전핵 denylist·recovery·kill-switch는 잠김 — 미표시):");
-            for k in ezer::overrides::KNOBS {
+            for k in EZERagent::overrides::KNOBS {
                 println!("  {:<20} {}-{} (기본 {}) — {}", k.key, k.min, k.max, k.default, k.label);
             }
             println!(
-                "\n페르소나: ezer persona set --persona \"말투·호칭·언어 자유 텍스트\" (최대 {}자)",
-                ezer::overrides::PERSONA_MAX_LEN
+                "\n페르소나: EZERagent persona set --persona \"말투·호칭·언어 자유 텍스트\" (최대 {}자)",
+                EZERagent::overrides::PERSONA_MAX_LEN
             );
             Ok(())
         }
         PersonaAction::Show { role } => {
-            let ov = ezer::overrides::load_overrides(&role, expert);
-            let path = ezer::overrides::override_path(&role);
+            let ov = EZERagent::overrides::load_overrides(&role, expert);
+            let path = EZERagent::overrides::override_path(&role);
             println!("# role={role}  file={}", path.display());
             if ov.params.is_empty() && ov.persona.is_empty() {
                 println!("(오버라이드 없음 — 정식 기본값 사용)");
@@ -688,11 +688,11 @@ fn run_persona(action: PersonaAction) -> i32 {
                 eprintln!("  ⚠ {w}");
             }
             println!("\n--- 조립 미리보기(오버라이드 블록) ---");
-            print!("{}", ezer::overrides::render_block(&ov));
+            print!("{}", EZERagent::overrides::render_block(&ov));
             Ok(())
         }
         PersonaAction::Reset { role } => {
-            let path = ezer::overrides::override_path(&role);
+            let path = EZERagent::overrides::override_path(&role);
             match std::fs::remove_file(&path) {
                 Ok(()) => {
                     println!("삭제 — 정식 기본 복귀: {}", path.display());
@@ -709,7 +709,7 @@ fn run_persona(action: PersonaAction) -> i32 {
             if param.is_none() && persona.is_none() {
                 return Err("--param key=val 또는 --persona \"...\" 중 최소 하나 필요".into());
             }
-            let path = ezer::overrides::override_path(&role);
+            let path = EZERagent::overrides::override_path(&role);
             // 기존 파일 머지 — 검증 통과분만 갱신, 나머지 보존.
             let mut doc = std::fs::read_to_string(&path)
                 .ok()
@@ -721,11 +721,11 @@ fn run_persona(action: PersonaAction) -> i32 {
             if let Some(p) = &param {
                 let (key, val) = p.split_once('=').ok_or("--param 형식: key=value")?;
                 let n: u64 = val.trim().parse().map_err(|_| format!("값이 정수 아님: {val}"))?;
-                ezer::overrides::validate_knob(key.trim(), n, expert)?; // hard-reject
+                EZERagent::overrides::validate_knob(key.trim(), n, expert)?; // hard-reject
                 doc["params"][key.trim()] = serde_json::json!(n);
             }
             if let Some(text) = &persona {
-                let (clean, warns) = ezer::overrides::sanitize_persona(text);
+                let (clean, warns) = EZERagent::overrides::sanitize_persona(text);
                 for w in &warns {
                     eprintln!("  ⚠ {w}");
                 }
@@ -752,28 +752,28 @@ fn run_persona(action: PersonaAction) -> i32 {
 
 - [ ] **Step 4: 테스트 통과 확인**
 
-Run: `cargo test --bin ezer persona_set_writes_and_reset_deletes`
+Run: `cargo test --bin EZERagent persona_set_writes_and_reset_deletes`
 Expected: PASS.
 
 - [ ] **Step 5: 수동 스모크(선택)**
 
-Run: `cargo run --bin ezer -- persona list-params`
+Run: `cargo run --bin EZERagent -- persona list-params`
 Expected: 4개 노브 표 + 페르소나 안내 출력.
 
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add src/bin/ezer.rs
-git commit -m "feat(ezer): ezer persona CLI — show/set/reset/list-params (set hard-reject)"
+git add src/bin/EZERagent.rs
+git commit -m "feat(EZERagent): EZERagent persona CLI — show/set/reset/list-params (set hard-reject)"
 ```
 
 ---
 
-## Task 7: ezerd `context_clear_pct` role별 발화 배선
+## Task 7: EZERagentd `context_clear_pct` role별 발화 배선
 
 **Files:**
-- Modify: `src/bin/ezerd/handlers.rs` (`maybe_fire_context_threshold` :318 — 발화점 단일 수정 + 순수 헬퍼 추가)
-- Test: `src/bin/ezerd/handlers.rs` 인라인 (`threshold_from` 테스트 옆)
+- Modify: `src/bin/EZERagentd/handlers.rs` (`maybe_fire_context_threshold` :318 — 발화점 단일 수정 + 순수 헬퍼 추가)
+- Test: `src/bin/EZERagentd/handlers.rs` 인라인 (`threshold_from` 테스트 옆)
 
 - [ ] **Step 1: 실패하는 테스트 작성** — handlers.rs의 테스트 모듈에 추가 (기존 `threshold_from` 테스트와 같은 모듈)
 
@@ -799,7 +799,7 @@ git commit -m "feat(ezer): ezer persona CLI — show/set/reset/list-params (set 
 
 - [ ] **Step 2: 테스트 실패 확인**
 
-Run: `cargo test --bin ezerd pick_context_threshold_prefers_override`
+Run: `cargo test --bin EZERagentd pick_context_threshold_prefers_override`
 Expected: FAIL — `pick_context_threshold` 미정의.
 
 - [ ] **Step 3: 순수 헬퍼 추가 + 발화점 수정**
@@ -827,7 +827,7 @@ pub(crate) fn pick_context_threshold(override_pct: Option<u64>, env_pct: u8) -> 
 ```rust
     let role = surface.role.lock().unwrap().clone();
     let threshold = pick_context_threshold(
-        ezer::overrides::context_clear_pct(&role),
+        EZERagent::overrides::context_clear_pct(&role),
         context_threshold_pct(),
     );
 ```
@@ -836,14 +836,14 @@ pub(crate) fn pick_context_threshold(override_pct: Option<u64>, env_pct: u8) -> 
 
 - [ ] **Step 4: 테스트 통과 확인**
 
-Run: `cargo test --bin ezerd pick_context_threshold_prefers_override`
+Run: `cargo test --bin EZERagentd pick_context_threshold_prefers_override`
 Expected: PASS.
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add src/bin/ezerd/handlers.rs
-git commit -m "feat(ezerd): 컨텍스트 발화 임계를 role별 context_clear_pct 오버라이드로 — 단일 발화점"
+git add src/bin/EZERagentd/handlers.rs
+git commit -m "feat(EZERagentd): 컨텍스트 발화 임계를 role별 context_clear_pct 오버라이드로 — 단일 발화점"
 ```
 
 ---
@@ -865,15 +865,15 @@ Expected: 신규 코드 경고 0 (기존 경고는 불간섭).
 - [ ] **Step 3: spec 성공기준 수동 검증**
 
 ```bash
-export EZER_PACK_DIR=$(mktemp -d)/pack && mkdir -p "$EZER_PACK_DIR/directives"
-printf '# MASTER\n' > "$EZER_PACK_DIR/directives/MASTER_DIRECTIVE.md"
-printf '# RSI\n'    > "$EZER_PACK_DIR/directives/RSI_LEARNING_DIRECTIVE.md"
-cargo run --bin ezer -- persona set --role master --param review_rounds=3
-cargo run --bin ezer -- persona show --role master   # "검증 라운드: 3" + 안전핵 재확인 최후 확인
-cargo run --bin ezer -- persona set --role master --param review_rounds=99   # error(범위 밖) 확인
-cargo run --bin ezer -- persona reset --role master  # 삭제 확인
-cargo run --bin ezer -- persona show --role master   # "(오버라이드 없음)" 확인
-unset EZER_PACK_DIR
+export EZERAGENT_PACK_DIR=$(mktemp -d)/pack && mkdir -p "$EZERAGENT_PACK_DIR/directives"
+printf '# MASTER\n' > "$EZERAGENT_PACK_DIR/directives/MASTER_DIRECTIVE.md"
+printf '# RSI\n'    > "$EZERAGENT_PACK_DIR/directives/RSI_LEARNING_DIRECTIVE.md"
+cargo run --bin EZERagent -- persona set --role master --param review_rounds=3
+cargo run --bin EZERagent -- persona show --role master   # "검증 라운드: 3" + 안전핵 재확인 최후 확인
+cargo run --bin EZERagent -- persona set --role master --param review_rounds=99   # error(범위 밖) 확인
+cargo run --bin EZERagent -- persona reset --role master  # 삭제 확인
+cargo run --bin EZERagent -- persona show --role master   # "(오버라이드 없음)" 확인
+unset EZERAGENT_PACK_DIR
 ```
 Expected: spec §7 성공기준 5항 전부 충족.
 

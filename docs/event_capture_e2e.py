@@ -2,7 +2,7 @@
 """T7 E1-④ 툴 이벤트 캡처 E2E — hook→CLI→usage.event RPC→events 테이블 적재를 실측한다.
 
 검증:
-  (1) `ezer usage-event-stdin`(ezer-hook.sh가 호출하는 plumbing)에 PreToolUse Skill JSON을 물리면
+  (1) `EZERagent usage-event-stdin`(EZERagent-hook.sh가 호출하는 plumbing)에 PreToolUse Skill JSON을 물리면
       events 테이블에 is_skill=1·skill_name 파생까지 적재.
   (2) PostToolUse Bash(tool_response.is_error=true) → exit_code=1 적재(E3 반복실패 토대).
   (3) Task 툴 PreToolUse → is_agent=1·agent_type 파생.
@@ -18,13 +18,13 @@ import sqlite3
 import subprocess
 import time
 
-DIR = f"/tmp/ezer-e14-{os.getpid()}"
+DIR = f"/tmp/EZERagent-e14-{os.getpid()}"
 os.makedirs(DIR, exist_ok=True)
-SOCK = os.path.join(DIR, "ezer.sock")
+SOCK = os.path.join(DIR, "EZERagent.sock")
 ROOT = os.path.join(os.path.dirname(__file__), "..")
-EZERD = os.path.join(ROOT, "target", "debug", "ezerd")
-EZER = os.path.join(ROOT, "target", "debug", "ezer")
-ENV = dict(os.environ, EZER_SOCKET=SOCK, EZER_PACK_DIR=os.path.join(DIR, "pack"))
+EZERAGENTD = os.path.join(ROOT, "target", "debug", "EZERagentd")
+EZERAGENT = os.path.join(ROOT, "target", "debug", "EZERagent")
+ENV = dict(os.environ, EZERAGENT_SOCKET=SOCK, EZERAGENT_PACK_DIR=os.path.join(DIR, "pack"))
 FAIL = []
 
 
@@ -49,7 +49,7 @@ def rpc(method, params):
 
 
 def start_daemon():
-    p = subprocess.Popen([EZERD], env=ENV, stdout=open(os.path.join(DIR, "ezerd.log"), "a"), stderr=subprocess.STDOUT)
+    p = subprocess.Popen([EZERAGENTD], env=ENV, stdout=open(os.path.join(DIR, "EZERagentd.log"), "a"), stderr=subprocess.STDOUT)
     for _ in range(50):
         try:
             if rpc("system.ping", {}):
@@ -60,9 +60,9 @@ def start_daemon():
 
 
 def fire_hook(sid, payload):
-    """ezer-hook.sh가 하듯 hook JSON을 stdin으로 ezer usage-event-stdin에 물린다. exit code 반환."""
-    env = dict(ENV, EZER_SURFACE_ID=str(sid))
-    r = subprocess.run([EZER, "usage-event-stdin"], env=env,
+    """EZERagent-hook.sh가 하듯 hook JSON을 stdin으로 EZERagent usage-event-stdin에 물린다. exit code 반환."""
+    env = dict(ENV, EZERAGENT_SURFACE_ID=str(sid))
+    r = subprocess.run([EZERAGENT, "usage-event-stdin"], env=env,
                        input=json.dumps(payload).encode(),
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return r.returncode

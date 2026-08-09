@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""RSI 학습 루프 E2E — ezer_learn.py + rsi-gate.sh를 격리 환경에서 실측한다.
+"""RSI 학습 루프 E2E — EZERagent_learn.py + rsi-gate.sh를 격리 환경에서 실측한다.
 
 (1) 순수 로직(validate_candidates·validate_pattern·promotion_allowed·confidence_of·slugify),
-(2) 정상 경로(propose→search→extract→evaluate[→ezer_rsi]→store[→ezer_memory]→harness→status),
+(2) 정상 경로(propose→search→extract→evaluate[→EZERagent_rsi]→store[→EZERagent_memory]→harness→status),
 (3) ★봉쇄 거부 케이스 — 오너 절대명제(부분 통과 = 전체 중단)를 코드로 확인:
     출처0 hard fail · pattern 정박 실패 · store 무승인/verdict非improved/fallback confirmed ·
     rsi-gate: 복구수단 불변 · 고위험 무서명 · fallback confirmed · 출처 fetch_log0 ·
@@ -21,8 +21,8 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LEARN = os.path.join(ROOT, "ezer-pack", "bin", "ezer_learn.py")
-GATE = os.path.join(ROOT, "ezer-pack", "bin", "rsi-gate.sh")
+LEARN = os.path.join(ROOT, "EZERagent-pack", "bin", "EZERagent_learn.py")
+GATE = os.path.join(ROOT, "EZERagent-pack", "bin", "rsi-gate.sh")
 FAIL = []
 
 
@@ -44,8 +44,8 @@ def git(args, cwd):
 
 
 def run_learn(args, cwd, env_extra=None, stdin=None):
-    env = dict(os.environ, EZER_ROUND_DIR=os.path.join(cwd, "_round"),
-               EZER_PACK_DIR=os.path.join(cwd, "pack"))
+    env = dict(os.environ, EZERAGENT_ROUND_DIR=os.path.join(cwd, "_round"),
+               EZERAGENT_PACK_DIR=os.path.join(cwd, "pack"))
     if env_extra:
         env.update(env_extra)
     return subprocess.run([sys.executable, LEARN] + args, cwd=cwd, capture_output=True,
@@ -94,7 +94,7 @@ def main():
     check("slugify 슬러그 안전화", m.slugify("CSS @layer 전파!") .replace("-", "").isalnum())
 
     # ── (2) 정상 경로 (격리 git repo) ──
-    with tempfile.TemporaryDirectory(prefix="ezer-learn-") as d:
+    with tempfile.TemporaryDirectory(prefix="EZERagent-learn-") as d:
         git(["init", "-q"], d)
         git(["config", "user.email", "t@t"], d)
         git(["config", "user.name", "t"], d)
@@ -148,15 +148,15 @@ def main():
         check("extract 정상 0", r.returncode == 0, r.stderr)
 
         r = run_learn(["evaluate", "--round", "R1", "--score", "0.90", "--baseline", "--json"], d)
-        check("evaluate baseline(→ezer_rsi checkpoint) 0", r.returncode == 0, r.stderr)
+        check("evaluate baseline(→EZERagent_rsi checkpoint) 0", r.returncode == 0, r.stderr)
         r = run_learn(["evaluate", "--round", "R1", "--score", "0.95", "--json"], d)
         improved = r.returncode == 0 and '"verdict": "improved"' in r.stdout
-        check("evaluate progress improved(→ezer_rsi) ", improved, r.stdout + r.stderr)
+        check("evaluate progress improved(→EZERagent_rsi) ", improved, r.stdout + r.stderr)
 
         r = run_learn(["store", "--round", "R1", "--pattern", pat_path, "--type", "reference",
                        "--approved", "--state", "provisional", "--gate-input", gi_prov,
                        "--name", "rsi-e2e-x", "--json"], d)
-        check("store provisional+gate통과(→ezer_memory) 0", r.returncode == 0, r.stdout + r.stderr)
+        check("store provisional+gate통과(→EZERagent_memory) 0", r.returncode == 0, r.stdout + r.stderr)
         check("store가 memory 파일 생성",
               os.path.exists(os.path.join(d, "pack", "memory", "reference_rsi-e2e-x.md")), r.stderr)
 
@@ -178,7 +178,7 @@ def main():
         r = run_learn(["status", "--json"], d)
         check("status 0 + R1 기록", r.returncode == 0 and "R1" in r.stdout, r.stderr)
 
-        # ── (3a) ezer_learn 봉쇄 거부 ──
+        # ── (3a) EZERagent_learn 봉쇄 거부 ──
         bad = os.path.join(d, "bad.json")
         write(bad, [])
         r = run_learn(["search", "--topic", "T", "--candidates", bad], d)
@@ -267,7 +267,7 @@ def main():
             check(name, rr.returncode == 1, f"rc={rr.returncode} {rr.stderr}")
 
         deny("gate 복구수단 불변 DENY(1)", lambda i: i.__setitem__("target_paths", ["refs/rsi/ckpt"]))
-        deny("gate 고위험 무서명 DENY(1)", lambda i: i.__setitem__("target_paths", ["ezer-pack/bin/ezer_rsi.py"]))
+        deny("gate 고위험 무서명 DENY(1)", lambda i: i.__setitem__("target_paths", ["EZERagent-pack/bin/EZERagent_rsi.py"]))
         deny("gate fallback+confirmed DENY(1)", lambda i: i.__setitem__("fallback_mode", True))
         deny("gate 출처 fetch_log0 DENY(1)", lambda i: i["dimensions"]["source"].__setitem__("fetch_log", False))
         deny("gate 스냅샷 해시 위변조 DENY(1)", lambda i: i["snapshot"].__setitem__("sha256_expected", "deadbeef" * 8))
@@ -293,7 +293,7 @@ def main():
 
         # 고위험 + 인간서명 → allow
         signed = copy.deepcopy(base)
-        signed["target_paths"] = ["ezer-pack/bin/ezer_rsi.py"]
+        signed["target_paths"] = ["EZERagent-pack/bin/EZERagent_rsi.py"]
         signed["human_signed"] = True
         r = run_gate(signed, d)
         check("gate 고위험 인간서명 allow(0)", r.returncode == 0, r.stdout + r.stderr)

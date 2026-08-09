@@ -10,10 +10,10 @@
 1. surface 번호는 부서 데몬별 발급 — 전역 비유일(실측 9개 ref 충돌·surface:7 ×5).
 2. **diff 추적 오염**: prev_nodes/seen이 ref 단독 키 — 동번호 부서끼리 매 틱 상호 덮어씀.
 3. **프론트 엔티티 충돌**: office3d nodes Map 키 충돌 — 뒤 부서가 앞 부서 아바타를 덮음.
-4. **★/command 오배달(심각·실선 확인)**: 브리지가 소켓 미지정 `ezer send --surface key` —
+4. **★/command 오배달(심각·실선 확인)**: 브리지가 소켓 미지정 `EZERagent send --surface key` —
    부서 아바타 지시가 본부 데몬 동번호 surface로 배달(bridge:1260, 방어 없음 확인).
 5. 귀속 커버리지 0: f62aea1 유일 게이트가 오귀속은 봉쇄했으나 6부서 전중복 체제에서 사실상 전부 미귀속.
-6. (관련) `ezer events`는 본부 단일 구독 — 부서 노드 훅 연출 원래 부재(→Phase 2).
+6. (관련) `EZERagent events`는 본부 단일 구독 — 부서 노드 훅 연출 원래 부재(→Phase 2).
 
 ## 2. 목표 / 비목표 / 이득의 정직한 범위
 
@@ -21,7 +21,7 @@
 - **Phase 1 확정 체감 이득 = ②오배달 수리 + 엔티티/diff 충돌 수리** (ops-m7 반영).
   ③의 실이득은 방출자가 정식 키를 emit해야 발생 — §4d emitter 이관을 **완료 게이트**로 두고
   그 전까지 귀속은 점진(기존 유일 게이트 하위호환 경로 유지).
-- 비목표: ezerd 서버 프로토콜 변경 0(fleet 집계는 ezer CLI 클라이언트 구조 — 실선 확인) ·
+- 비목표: EZERagentd 서버 프로토콜 변경 0(fleet 집계는 EZERagent CLI 클라이언트 구조 — 실선 확인) ·
   CC(ui/src) 변경 0 · 음성/상위 소비자 변경 0.
 
 ## 3. 키 스킴 (v2.1 개정)
@@ -40,16 +40,16 @@
 
 ## 4. 변경 목록
 
-### 4a. ezer CLI (`run_fleet`) — additive (~25줄)
+### 4a. EZERagent CLI (`run_fleet`) — additive (~25줄)
 - depts 루프: 각 항목에 `"dept"`(slug=레지스트리 키)·`"socket"`(경로 문자열) 추가.
 - **하드코딩 본부 타깃에도 `"dept":"main"`,`"socket":null` 명시**(M4). surfaces 불변.
 
-### 4b. 브리지 (ezer_hud_bridge.py)
+### 4b. 브리지 (EZERagent_hud_bridge.py)
 - merge_fleet: dept마다 slug(+정규화)·socket 채택. 노드 정식 키 생성 + `dept_label`.
-  `dept` 필드 부재(구 ezer 조합) 시 display_name 정규화 폴백 + 1회 경고 로그.
+  `dept` 필드 부재(구 EZERagent 조합) 시 display_name 정규화 폴백 + 1회 경고 로그.
 - **소켓 캐리(M1 — depts.json 재독 기각)**: 노드별 socket을 World에 스냅샷 캐리
   (`self.sockets[full_key] = socket|None`). /command·/peek는 **스냅샷의 socket**으로
-  `ezer [--socket <path>] send --surface surface:N` 실행(--socket은 clap 전역 플래그 — 서브커맨드 앞 배치, 구현 정합화 v2.1.1) — 재독 레이스·3중 파서·부재 fail모드
+  `EZERagent [--socket <path>] send --surface surface:N` 실행(--socket은 clap 전역 플래그 — 서브커맨드 앞 배치, 구현 정합화 v2.1.1) — 재독 레이스·3중 파서·부재 fail모드
   3건 동시 소거. 키에 대응 socket 미존재 = unknown_target 거부(fail-closed).
 - 키 전면 전환: prev_nodes·known_keys·heat_acc·progress/run·blocked[].key.
 - **CMD_KEY_RE 교체(C2/M5)**: `^[a-z0-9_-]{1,32}@surface:\d{1,8}$` — gate_command(199)·/peek(1218)
@@ -72,7 +72,7 @@
 - 패널·근접 표기 dept_label. fx despawn/spawn 등 신규 키 그대로 Map 매칭(불투명).
 
 ### 4d. 방출자·문서 — **완료 게이트**
-- ezer_event.py `--surface` 정식 키 허용(검증 확장). EVENT_CONTRACT·office-detail-v11 v2 절 갱신.
+- EZERagent_event.py `--surface` 정식 키 허용(검증 확장). EVENT_CONTRACT·office-detail-v11 v2 절 갱신.
 - **emitter 이관 추적**: `--surface` 사용처 grep 목록화 → 정식 키 상향 완료를 goal③의
   완료 게이트로(그 전까지 귀속 점진임을 §2에 명시).
 
@@ -82,7 +82,7 @@
 집합({main:None} ∪ fleet의 dept/socket)과 실구독을 조정(reconcile) — 신규 부서 spawn·소멸
 부서 reap(terminate). 타깃 상한 12(런어웨이 방지)·재수립 백오프 2s 유지·cursor는
 `cursor-<slug>.seq` per-slug. 전 구독은 공유 Hub·공유 Coalescer(락 보유) 경유.
-`ezer [--socket S] events --reconnect --cursor-file …` (--socket 전역 플래그).
+`EZERagent [--socket S] events --reconnect --cursor-file …` (--socket 전역 플래그).
 
 **P2-2 route_event slug 문맥**: `route_event(ev, world, coal, slug)` — 키 `f"{slug}@surface:{sid}"`.
 main@ 고정을 일반화. apply_usage도 해당 slug 스코프(C3의 본부 한정을 일반화).
@@ -92,10 +92,10 @@ surface_id 단독 키 — 멀티 구독 전에도 line_hist/line_rate는 merge_f
 순회해 **부서 간 activity 오염이 현재도 실재**. 4맵 전부 정식 키로 전환(_node_view·
 accumulate_heat·set_flag/live_flags 등 소비처 동기).
 
-**P2-4 emitter 이관**: 생산자 호출부 grep 실측 0곳 — 이관 = ①`ezer_event.py emit --surface auto`
-신설: EZER_SOCKET env(부재=main) → depts.json socket 매칭으로 slug 해석 + `ezer identify`로
+**P2-4 emitter 이관**: 생산자 호출부 grep 실측 0곳 — 이관 = ①`EZERagent_event.py emit --surface auto`
+신설: EZERAGENT_SOCKET env(부재=main) → depts.json socket 매칭으로 slug 해석 + `EZERagent identify`로
 surface_ref → 정식 키 자동 조립(해석 실패 시 미귀속 폴백·fail-open 금지) ②EVENT_CONTRACT
-가이드에 `--spool --surface auto` 표준 방출 규약 추가(Ezer측 — master 직접).
+가이드에 `--spool --surface auto` 표준 방출 규약 추가(EZERagent측 — master 직접).
 
 **P2 검증**: 슈퍼바이저 reconcile(부서 추가/소멸 fixture)·동번호 hook 무충돌(두 데몬 sid 5 훅
 → 해당 노드만 active)·line_rate 격리·apply_usage slug 스코프·--surface auto 해석 3분기 —
@@ -108,16 +108,16 @@ surface_ref → 정식 키 자동 조립(해석 실패 시 미귀속 폴백·fai
 |---|---|
 | 신 브리지 + 구 프론트(열린 iframe) | 키 불투명 → 렌더 지속·재오픈 시 정합 |
 | 구 브리지 + 신 프론트 | v1 bare 키 무가정 — 불변 |
-| 신 브리지 + 구 ezer(dept 필드 없음) | display_name 정규화 폴백·경고 — 기능 유지 |
-| **배포 스왑 전이(동일 브리지가 구→신 ezer 연달아 호출)** | 키 포맷 불연속 → **1회 전량 churn(스폰/디스폰 플리커) 수용** — 직후 안정(M3) |
+| 신 브리지 + 구 EZERagent(dept 필드 없음) | display_name 정규화 폴백·경고 — 기능 유지 |
+| **배포 스왑 전이(동일 브리지가 구→신 EZERagent 연달아 호출)** | 키 포맷 불연속 → **1회 전량 churn(스폰/디스폰 플리커) 수용** — 직후 안정(M3) |
 | **롤백(구 브리지 + v2 STATE_DIR)** | presence_heat의 정식 키가 팬텀 행 잔존 위험 → **롤백 절차에 presence_heat.json 삭제 1줄**(M6) |
 | 구 spool 항목(bare key) | 유일 게이트 경유 — 오귀속 0 유지 |
 
 ## 6. 배포 런북 (M3 — 브리지 활성화 명시)
 
 1. pack sync/설치(코드 교체) — 러닝 브리지는 구코드 유지(프로세스는 파일 재로드 안 함).
-2. ezer/ezerd 교체(deploy_gate) → 데몬 재시작 → **ezerd가 브리지 자식 재스폰 = 신코드 활성**.
-   (브리지가 ezerd 자식이 아닌 비상 수동 기동 상태면 명시 kill 후 재기동.)
+2. EZERagent/EZERagentd 교체(deploy_gate) → 데몬 재시작 → **EZERagentd가 브리지 자식 재스폰 = 신코드 활성**.
+   (브리지가 EZERagentd 자식이 아닌 비상 수동 기동 상태면 명시 kill 후 재기동.)
 3. **활성 검증 게이트**: `curl /world`에서 정식 키(`@surface:`) 등장 + `main@` 본부 키 확인 후 종료.
 4. 롤백 시: pack install(force) + `STATE_DIR/presence_heat.json` 삭제(+선택 fx_archive) + 브리지 재기동.
 
@@ -140,7 +140,7 @@ surface_ref → 정식 키 자동 조립(해석 실패 시 미귀속 폴백·fai
 
 - 리스크: heat 이력 부분 소실(승격 실패분·수용) · 스왑 전이 1회 churn(수용·§5) ·
   /command 경로 변경(실기 게이트).
-- 규모: ezer.rs ~25줄 · 브리지 ~150줄 · office3d ~20줄 · 테스트 ~250줄.
+- 규모: EZERagent.rs ~25줄 · 브리지 ~150줄 · office3d ~20줄 · 테스트 ~250줄.
 - 실행: **격리 워크트리 + `feat/dept-qualified-keys-v2` 브랜치**(타 터미널이 main에서 0.12.48
   릴리스 작업 중 — 파일 겹침 0 실측·버전 0.12.48 선점 확인). base=origin/main(push된 안정점).
   main 머지·릴리스는 타 터미널 0.12.48 발행 완료 재확인 후 0.12.49로.

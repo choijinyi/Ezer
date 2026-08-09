@@ -15,9 +15,9 @@ cat _round/SESSION_STATE.md       # 현재 위치·노드 상태·다음 액션
 cat docs/USAGE_OBSERVABILITY_PHASE2_PLAN.md   # 이 문서 (Phase 2 명세)
 
 # 2) 시스템 생존 확인
-pgrep -x ezerd && ezer ping         # 데몬 살아있나
-ezer status --json | python3 -m json.tool | grep -E 'role|usage|ctx_pct'  # 배지 가동 확인
-python3 "$HOME/.ezer/pack/bin/ezer_preflight.py"   # READY 확인
+pgrep -x EZERagentd && EZERagent ping         # 데몬 살아있나
+EZERagent status --json | python3 -m json.tool | grep -E 'role|usage|ctx_pct'  # 배지 가동 확인
+python3 "$HOME/.EZERagent/pack/bin/EZERagent_preflight.py"   # READY 확인
 
 # 3) Phase 1 회귀 검증 (깨지지 않았나)
 cargo test 2>&1 | grep "test result"   # 178 passed 기대
@@ -25,7 +25,7 @@ cargo test 2>&1 | grep "test result"   # 178 passed 기대
 ```
 
 **Phase 1이 현재 무엇을 하는가** (재접속 시 이미 가동 중):
-- ezerd가 2초 틱으로 claude 트랜스크립트(`~/.claude*/projects/<munged>/<sess>.jsonl`)와
+- EZERagentd가 2초 틱으로 claude 트랜스크립트(`~/.claude*/projects/<munged>/<sess>.jsonl`)와
   codex rollout(`~/.codex/sessions/.../rollout-*.jsonl`)을 증분 tail → `Surface.observed_usage` 갱신.
 - claude: context%만 (rate limit은 로컬 파일에 없음 → **Phase 2-A가 채운다**).
 - codex: context% + rate limit 5h/7d (이미 완성).
@@ -67,11 +67,11 @@ https://code.claude.com/docs/en/statusline 의 stdin 스키마(실측·CLI 2.1.1
   계산식과 동일. 즉 statusline은 transcript tail의 **상위 호환**(rate limit까지 줌·서버 진실값).
 
 ### 1.2 설계 — 새 RPC `usage.report` + 래퍼 스크립트 + preflight 설치
-claude가 statusline을 실행할 때마다 stdin JSON을 받아 ezerd에 push하는 **tee 래퍼**를 settings에 건다.
+claude가 statusline을 실행할 때마다 stdin JSON을 받아 EZERagentd에 push하는 **tee 래퍼**를 settings에 건다.
 
 **구현 단계 (체크리스트):**
 
-- [ ] **(1) 새 RPC `usage.report`** — `src/bin/ezerd/handlers.rs`
+- [ ] **(1) 새 RPC `usage.report`** — `src/bin/EZERagentd/handlers.rs`
   - params: `{surface_id, ctx_pct, ctx_tokens, ctx_window, rate:[{label,used_pct,resets_at}], cost_usd?}`
   - 소유 게이트 = `usage.register`와 **동형 복붙**(caller_sid != sid 거부, 익명 통과).
   - `Surface.observed_usage`를 `source:"statusline"`로 직접 갱신 (transcript tail보다 우선).
@@ -90,29 +90,29 @@ claude가 statusline을 실행할 때마다 stdin JSON을 받아 ezerd에 push�
     수집을 스킵(등록된 statusline이 더 정확). **단순안 권장**: `Surface`에 statusline 보고
     시각 기록 → collect_for가 claude+신선 statusline이면 skip.
 
-- [ ] **(3) 래퍼 스크립트** `ezer-pack/hooks/ezer-statusline.sh` (pack 임베드 — `src/pack.rs` PACK 배열 추가)
+- [ ] **(3) 래퍼 스크립트** `EZERagent-pack/hooks/EZERagent-statusline.sh` (pack 임베드 — `src/pack.rs` PACK 배열 추가)
   ```sh
   #!/bin/sh
-  # Claude Code statusline: stdin JSON을 ezerd에 tee하고, 기존 statusline(있으면) 출력 위임.
+  # Claude Code statusline: stdin JSON을 EZERagentd에 tee하고, 기존 statusline(있으면) 출력 위임.
   IN=$(cat)   # statusline은 stdin 1회 — 전량 읽어도 안전(후속 소비자 없음)
-  [ -n "$EZER_SURFACE_ID" ] && command -v ezer >/dev/null 2>&1 && \
-    printf '%s' "$IN" | ezer usage-report-stdin >/dev/null 2>&1   # 새 CLI(아래)
-  # 사람이 보는 statusline 한 줄 (기존 체인 보존: EZER_PREV_STATUSLINE 있으면 위임)
-  if [ -n "$EZER_PREV_STATUSLINE" ]; then printf '%s' "$IN" | sh -c "$EZER_PREV_STATUSLINE"
+  [ -n "$EZERAGENT_SURFACE_ID" ] && command -v EZERagent >/dev/null 2>&1 && \
+    printf '%s' "$IN" | EZERagent usage-report-stdin >/dev/null 2>&1   # 새 CLI(아래)
+  # 사람이 보는 statusline 한 줄 (기존 체인 보존: EZERAGENT_PREV_STATUSLINE 있으면 위임)
+  if [ -n "$EZERAGENT_PREV_STATUSLINE" ]; then printf '%s' "$IN" | sh -c "$EZERAGENT_PREV_STATUSLINE"
   else printf '%s' "$IN" | python3 -c 'import sys,json; d=json.load(sys.stdin); cw=d.get("context_window",{}); rl=d.get("rate_limits",{}); print(f"{d.get(\"model\",{}).get(\"display_name\",\"?\")} · CTX {cw.get(\"used_percentage\",0):.0f}% · 5h {rl.get(\"five_hour\",{}).get(\"used_percentage\",0):.0f}%")' 2>/dev/null
   fi
   ```
-  - 새 CLI `ezer usage-report-stdin`: stdin JSON 파싱 → usage.report RPC. (Rust에서 파싱 —
-    `src/bin/ezer.rs`에 `UsageReportStdin` 커맨드. surface는 EZER_SURFACE_ID.)
-  - claude는 statusline command를 **셸로 실행**하므로 `$EZER_SURFACE_ID` env가 PTY에서 상속됨(확인 필요).
+  - 새 CLI `EZERagent usage-report-stdin`: stdin JSON 파싱 → usage.report RPC. (Rust에서 파싱 —
+    `src/bin/EZERagent.rs`에 `UsageReportStdin` 커맨드. surface는 EZERAGENT_SURFACE_ID.)
+  - claude는 statusline command를 **셸로 실행**하므로 `$EZERAGENT_SURFACE_ID` env가 PTY에서 상속됨(확인 필요).
 
-- [ ] **(4) preflight C28 — statusline 설치/검증** `ezer-pack/bin/ezer_preflight.py`
-  - `discover_claude_settings()`(이미 ezer.rs에 있음 — Python 포팅 or ezer 서브커맨드 호출)로
+- [ ] **(4) preflight C28 — statusline 설치/검증** `EZERagent-pack/bin/EZERagent_preflight.py`
+  - `discover_claude_settings()`(이미 EZERagent.rs에 있음 — Python 포팅 or EZERagent 서브커맨드 호출)로
     `~/.claude*/settings.json` 전부 찾아 `statusLine` 필드 설치:
     ```json
-    "statusLine": {"type":"command","command":"sh $HOME/.ezer/pack/hooks/ezer-statusline.sh"}
+    "statusLine": {"type":"command","command":"sh $HOME/.EZERagent/pack/hooks/EZERagent-statusline.sh"}
     ```
-  - **기존 statusLine 보존**: 이미 있으면 그 command를 `EZER_PREV_STATUSLINE` env로 래핑(체인).
+  - **기존 statusLine 보존**: 이미 있으면 그 command를 `EZERAGENT_PREV_STATUSLINE` env로 래핑(체인).
     덮어쓰기 금지 — hook 설치(install_claude_hook)와 동일한 보존 철학.
   - `--fix`로 설치, 무인자로 검증(설치됨 READY / 미설치 WARN). symlink 거부·백업 등 install_claude_hook 패턴 재사용.
   - ★주의: settings.json 수정은 **claude 재시작 후 적용**. preflight 출력에 "재시작 필요" 명시.
@@ -120,7 +120,7 @@ claude가 statusline을 실행할 때마다 stdin JSON을 받아 ezerd에 push�
 - [ ] **(5) 검증**
   - 단위: usage.report 소유 게이트 핀(usage_register와 동형 3종) + statusline JSON 파서 핀
     (rate_limits.five_hour/seven_day 추출, rate_limits 부재 시 ctx만).
-  - E2E: 샌드박스에 가짜 statusline JSON을 `ezer usage-report-stdin`으로 흘려 배지에 5h/7d 노출 확인.
+  - E2E: 샌드박스에 가짜 statusline JSON을 `EZERagent usage-report-stdin`으로 흘려 배지에 5h/7d 노출 확인.
   - 라이브: settings 설치 → claude 노드 재기동 → 배지에 `CTX n% · 5h n% · 7d n%` 등장 실측.
 
 ### 1.3 리스크·결정 사항
@@ -165,7 +165,7 @@ curl -s -X POST ".../RetrieveUserQuotaSummary" -H 'content-type: application/jso
   - context window는 agy가 안 주면 None (배지는 쿼터만 — `5h`/`7d` 대신 모델별 잔량).
 - [ ] **(2) graceful degrade** — 포트 미발견·RPC 실패·파싱 실패 시 `observed_usage` 미갱신(배지 없음
   유지). 절대 패닉·스팸 금지. 실패를 `usage.probe_failed`(저빈도) 이벤트로만 1회 기록.
-- [ ] **(3) HTTP 클라이언트**: ezerd에 이미 reqwest 있는지 확인(`Cargo.toml`). 없으면 ureq(경량·동기)
+- [ ] **(3) HTTP 클라이언트**: EZERagentd에 이미 reqwest 있는지 확인(`Cargo.toml`). 없으면 ureq(경량·동기)
   추가 — 수집기는 동기 컨텍스트(blocking)라 ureq가 적합. **틱 블로킹 주의**: 타임아웃 2초 강제,
   실패 시 즉시 포기(수집기 태스크가 멈추면 안 됨 — Phase 1 패닉 격리와 별개로 타임아웃 필수).
 - [ ] **(4) 검증**: 라이브 프로브 응답을 fixture로 단위 핀, agy 노드 떠 있을 때 배지 등장 실측.
@@ -193,7 +193,7 @@ pane별 배지(Phase 1)는 "지금 이 작업"용. 대시보드는 **전 계정 
   - 계정별 행: `claude  5h ▓▓▓▓░ 41%  7d ▓░ 12%` + reset 상대시각(`↻2h13m`).
   - 색상: Phase 1 sevClass 재사용(70/90). 가장 임박한 reset 강조.
 - [ ] **(3) 스타일**: `ui/src/style.css`에 `.usage-dashboard` — 사이드바 톤과 일치(헤어라인 등 기존 톤).
-- [ ] **(4) 빌드·검증**: `sh ui/build.sh` → ezer-app 재빌드 → 번들 교체 → 앱 재시작 후 육안 확인.
+- [ ] **(4) 빌드·검증**: `sh ui/build.sh` → EZERagent-app 재빌드 → 번들 교체 → 앱 재시작 후 육안 확인.
   - playwright-mcp로 스크린샷 회귀(`.playwright-mcp/` 이미 있음).
 
 ### 3.3 결정 사항 (재접속 시 오너께)
@@ -212,44 +212,44 @@ pane별 배지(Phase 1)는 "지금 이 작업"용. 대시보드는 **전 계정 
 - transcript의 `message.usage`는 이미 있음(Phase 1). tool_use는 같은 라인 content에 있음 → 파싱 확장.
 
 ### 4.2 task-prompt 잔량 게이트 (계정 라우팅)
-- `ezer_orchestra.py task-prompt`(워커 생존 게이트)에 **rate limit 잔량 게이트** 한 줄 추가:
+- `EZERagent_orchestra.py task-prompt`(워커 생존 게이트)에 **rate limit 잔량 게이트** 한 줄 추가:
   위임 직전 대상 계정의 5h 잔량이 임계(예: 90%) 초과면 경고/차단 → "여유 큰 계정으로 라우팅".
-- org.status usage를 ezer_orchestra가 읽어 판단(이미 노출됨).
+- org.status usage를 EZERagent_orchestra가 읽어 판단(이미 노출됨).
 
 ---
 
 ## 5. 회귀 자산 (재접속 시 검증용 — 영구 보존)
 
-- **E2E 스크립트**: `docs/usage_e2e.py` (원본 /tmp/ezer-e2e-usage.py — /tmp는 재부팅 소실되므로 docs로 복사).
+- **E2E 스크립트**: `docs/usage_e2e.py` (원본 /tmp/EZERagent-e2e-usage.py — /tmp는 재부팅 소실되므로 docs로 복사).
   샌드박스 데몬 기동 후 실행 → 20/20 PASS 기대. 실행법은 파일 상단 docstring + 아래.
   ```bash
-  SOCK=/tmp/ezer-e2e-$$.sock
-  EZER_SOCKET=$SOCK EZER_PACK_DIR=/tmp/ezer-e2e-pack EZER_USAGE_POLL_SECS=1 ./target/debug/ezerd &
+  SOCK=/tmp/EZERagent-e2e-$$.sock
+  EZERAGENT_SOCKET=$SOCK EZERAGENT_PACK_DIR=/tmp/EZERagent-e2e-pack EZERAGENT_USAGE_POLL_SECS=1 ./target/debug/EZERagentd &
   # docs/usage_e2e.py 상단 SOCK= 를 위 값으로 맞추고:
   python3 docs/usage_e2e.py
   ```
-- **단위 테스트**: `src/bin/ezerd/usage.rs` mod tests (파서·tail·munge), `handlers.rs` usage_register_* 3종,
-  `ezer.rs` expand_tilde, `main.rs` env_scrub. `cargo test` 178 passed.
+- **단위 테스트**: `src/bin/EZERagentd/usage.rs` mod tests (파서·tail·munge), `handlers.rs` usage_register_* 3종,
+  `EZERagent.rs` expand_tilde, `main.rs` env_scrub. `cargo test` 178 passed.
 - **적대 리뷰 요약**: `scratch/r3_review_summary.txt` (R1 발견·수정 내역).
 
 ## 6. 핵심 파일 지도 (Phase 2 작업 위치)
 
 | 작업 | 파일 | 진입 지점 |
 |---|---|---|
-| usage.report RPC | `src/bin/ezerd/handlers.rs` | `"usage.register" =>` 블록 바로 아래에 복제 |
-| 게이트 헬퍼 추출 | `src/bin/ezerd/handlers.rs` + `usage.rs` | context.threshold 발화 3곳 → 1 헬퍼 |
-| agy/statusline 수집 | `src/bin/ezerd/usage.rs` | `collect_for`의 `match agent` |
-| CLI 커맨드 | `src/bin/ezer.rs` | `UsageRegister` 커맨드 옆 |
-| 래퍼 스크립트 임베드 | `src/pack.rs` PACK 배열 + `ezer-pack/hooks/` | session-start.sh 패턴 |
-| preflight C28 | `ezer-pack/bin/ezer_preflight.py` | C03(hook) 검사 패턴 |
+| usage.report RPC | `src/bin/EZERagentd/handlers.rs` | `"usage.register" =>` 블록 바로 아래에 복제 |
+| 게이트 헬퍼 추출 | `src/bin/EZERagentd/handlers.rs` + `usage.rs` | context.threshold 발화 3곳 → 1 헬퍼 |
+| agy/statusline 수집 | `src/bin/EZERagentd/usage.rs` | `collect_for`의 `match agent` |
+| CLI 커맨드 | `src/bin/EZERagent.rs` | `UsageRegister` 커맨드 옆 |
+| 래퍼 스크립트 임베드 | `src/pack.rs` PACK 배열 + `EZERagent-pack/hooks/` | session-start.sh 패턴 |
+| preflight C28 | `EZERagent-pack/bin/EZERagent_preflight.py` | C03(hook) 검사 패턴 |
 | UI 대시보드 | `ui/src/main.ts` + `style.css` | refreshPaneTitles·사이드바 |
-| 배포 | (런북) | memory `ezer-agent-deploy-runbook` — pgrep -x ezerd·os.replace·denylist |
+| 배포 | (런북) | memory `EZERagent-deploy-runbook` — pgrep -x EZERagentd·os.replace·denylist |
 
 ## 7. 배포 절차 (Phase 1에서 확립 — memory에도 박제)
-1. `cargo test` 통과 → `sh scripts/bundle-prep.sh`(UI+release ezer/ezerd) → `cargo build --release -p ezer-app`.
-2. python `os.replace`로 `/Applications/ezer.app/Contents/MacOS/{ezer,ezerd,ezer-app}` 원자 교체(.bak-<tag>).
-3. `pgrep -x ezerd`로 정확한 pid kill → `ezer ping` 자동 재기동 → `ezer boot`.
-4. ★데몬 재기동 전 `ezer status --json`으로 전 노드 idle 확인 — 워커 장기 턴 중 강행 금지.
+1. `cargo test` 통과 → `sh scripts/bundle-prep.sh`(UI+release EZERagent/EZERagentd) → `cargo build --release -p EZERagent-app`.
+2. python `os.replace`로 `/Applications/EZERagent.app/Contents/MacOS/{EZERagent,EZERagentd,EZERagent-app}` 원자 교체(.bak-<tag>).
+3. `pgrep -x EZERagentd`로 정확한 pid kill → `EZERagent ping` 자동 재기동 → `EZERagent boot`.
+4. ★데몬 재기동 전 `EZERagent status --json`으로 전 노드 idle 확인 — 워커 장기 턴 중 강행 금지.
 5. preflight READY · 라이브 배지 실측 · SESSION_STATE 갱신.
 
 ---

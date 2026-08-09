@@ -3,7 +3,7 @@
 $ErrorActionPreference = "Continue"
 
 Write-Output "=== [1/6] source sync ==="
-robocopy "\\Mac\Home\Desktop\Ezer\aiterm" "C:\aiterm-src" /MIR /XD target node_modules dist .git gen android ios src-tauri ui /NFL /NDL /NJH /NJS | Out-Null
+robocopy "\\Mac\Home\Desktop\EZERagent\aiterm" "C:\aiterm-src" /MIR /XD target node_modules dist .git gen android ios src-tauri ui /NFL /NDL /NJH /NJS | Out-Null
 Set-Location C:\aiterm-src
 Get-ChildItem | Select-Object -ExpandProperty Name
 

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ezer",
+  "productName": "EZERagent",
   "version": "0.12.64",
-  "identifier": "com.ezer.terminal",
+  "identifier": "com.EZERagent.terminal",
   "build": {
     "frontendDist": "../ui/dist",
     "beforeBuildCommand": "sh ../scripts/bundle-prep.sh"
@@ -11,7 +11,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "ezer — Ezer Terminal",
+        "title": "EZERagent — EZERagent Terminal",
         "width": 1280,
         "height": 820
       }
@@ -28,8 +28,8 @@
       "dmg"
     ],
     "externalBin": [
-      "binaries/ezerd",
-      "binaries/ezer"
+      "binaries/EZERagentd",
+      "binaries/EZERagent"
     ],
     "resources": {
       "resources/pack.tar.gz": "./",

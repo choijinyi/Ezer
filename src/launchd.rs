@@ -1,14 +1,14 @@
-//! launchd 자동등록 — 앱 첫 실행 시 ezerd를 RunAtLoad·KeepAlive로 상시 가동 등록.
+//! launchd 자동등록 — 앱 첫 실행 시 EZERagentd를 RunAtLoad·KeepAlive로 상시 가동 등록.
 //!
-//! 수동 `ezer daemon install`과 **동일 plist 포맷·경로를 단일 소스**로 공유해
+//! 수동 `EZERagent daemon install`과 **동일 plist 포맷·경로를 단일 소스**로 공유해
 //! 자동/수동 등록의 포맷 드리프트를 막는다. 전체가 macOS 한정.
 #![cfg(target_os = "macos")]
 
 use std::path::{Path, PathBuf};
 
-pub const LAUNCHD_LABEL: &str = "com.ezer.ezerd";
+pub const LAUNCHD_LABEL: &str = "com.EZERagent.EZERagentd";
 
-/// ~/Library/LaunchAgents/com.ezer.ezerd.plist
+/// ~/Library/LaunchAgents/com.EZERagent.EZERagentd.plist
 pub fn plist_path() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -16,12 +16,12 @@ pub fn plist_path() -> PathBuf {
         .join(format!("{LAUNCHD_LABEL}.plist"))
 }
 
-/// 데몬 로그 경로(소켓 디렉터리 옆 ezerd.log).
+/// 데몬 로그 경로(소켓 디렉터리 옆 EZERagentd.log).
 pub fn log_path() -> PathBuf {
     crate::socket_path()
         .parent()
-        .map(|d| d.join("ezerd.log"))
-        .unwrap_or_else(|| PathBuf::from("/tmp/ezerd.log"))
+        .map(|d| d.join("EZERagentd.log"))
+        .unwrap_or_else(|| PathBuf::from("/tmp/EZERagentd.log"))
 }
 
 /// XML `<string>` 콘텐츠 이스케이프 — 경로·사용자명에 `&`·`<`·`>`가 있어도
@@ -63,8 +63,8 @@ pub fn is_loaded() -> bool {
         .unwrap_or(false)
 }
 
-/// ★W3: CLI autostart가 launchd에 위임할지 판정(순수 함수). launchd가 ezerd 서비스를 적재
-/// 중이면 sibling spawn 대신 `launchctl kickstart`로 위임한다 — 구형 CLI가 자기 옆 구형 ezerd를
+/// ★W3: CLI autostart가 launchd에 위임할지 판정(순수 함수). launchd가 EZERagentd 서비스를 적재
+/// 중이면 sibling spawn 대신 `launchctl kickstart`로 위임한다 — 구형 CLI가 자기 옆 구형 EZERagentd를
 /// 띄워 startup lock을 선점하고 launchd 신형(KeepAlive)과 crashloop 하는 경로를 원천 차단.
 pub fn should_delegate_autostart(loaded: bool) -> bool {
     loaded
@@ -76,7 +76,7 @@ pub fn kickstart_args(uid: u32) -> [String; 2] {
     ["kickstart".to_string(), format!("gui/{uid}/{LAUNCHD_LABEL}")]
 }
 
-/// launchd에 적재된 ezerd 서비스를 kickstart(미가동이면 기동). 성공 여부 반환.
+/// launchd에 적재된 EZERagentd 서비스를 kickstart(미가동이면 기동). 성공 여부 반환.
 /// current uid로 gui 도메인 타깃을 구성한다(로그인 세션의 사용자 데몬).
 pub fn kickstart() -> bool {
     let uid = unsafe { libc::getuid() };
@@ -88,8 +88,8 @@ pub fn kickstart() -> bool {
         .unwrap_or(false)
 }
 
-/// plist 본문에서 ProgramArguments의 첫 `<string>`(=ezerd 경로, XML 이스케이프된 형태)을 추출.
-/// stale drift(plist가 옛 ezerd 경로를 가리킴) 감지에 쓴다. 순수 함수(테스트 가능).
+/// plist 본문에서 ProgramArguments의 첫 `<string>`(=EZERagentd 경로, XML 이스케이프된 형태)을 추출.
+/// stale drift(plist가 옛 EZERagentd 경로를 가리킴) 감지에 쓴다. 순수 함수(테스트 가능).
 fn extract_program_path(content: &str) -> Option<String> {
     let after = content.split("ProgramArguments").nth(1)?;
     let s = after.split("<string>").nth(1)?;
@@ -97,7 +97,7 @@ fn extract_program_path(content: &str) -> Option<String> {
     Some(path.to_string())
 }
 
-/// 현재 기록된 plist의 ezerd 경로가 `daemon`(원하는 경로)과 일치하는가.
+/// 현재 기록된 plist의 EZERagentd 경로가 `daemon`(원하는 경로)과 일치하는가.
 /// plist가 없거나 파싱 실패 시 false(=불일치로 간주 → 재기록 유도).
 fn plist_path_matches(daemon: &Path) -> bool {
     let Ok(content) = std::fs::read_to_string(plist_path()) else {
@@ -106,8 +106,8 @@ fn plist_path_matches(daemon: &Path) -> bool {
     extract_program_path(&content).as_deref() == Some(xml_escape(&daemon.display().to_string()).as_str())
 }
 
-/// 이 결과에서 launchd가 ezerd 기동을 책임지는가 — 앱 setup이 **수동 spawn을 건너뛰고**
-/// launchd-owned ezerd의 socket-ready를 폴링할지 결정한다(split-brain·이중 spawn 방지).
+/// 이 결과에서 launchd가 EZERagentd 기동을 책임지는가 — 앱 setup이 **수동 spawn을 건너뛰고**
+/// launchd-owned EZERagentd의 socket-ready를 폴링할지 결정한다(split-brain·이중 spawn 방지).
 /// Registered/AlreadyRegistered = launchd가 띄움. DeferredDaemonRunning = 기존 데몬이
 /// 이미 가동(connect로 충분, launchd 미적재).
 pub fn launchd_will_serve(outcome: RegisterOutcome) -> bool {
@@ -132,7 +132,7 @@ pub fn write_plist(daemon: &Path) -> std::io::Result<PathBuf> {
 pub enum RegisterOutcome {
     /// plist가 이미 존재 — 이미 launchd 소유(무동작).
     AlreadyRegistered,
-    /// plist 기록 + launchctl load 완료(launchd가 ezerd 소유).
+    /// plist 기록 + launchctl load 완료(launchd가 EZERagentd 소유).
     Registered,
     /// 데몬이 이미 가동 중 — plist만 기록(load 보류, 다음 로그인 발효).
     /// 현 세션의 flock 단일소유를 깨지 않아 가동 세션 소멸을 피한다.
@@ -149,7 +149,7 @@ struct Plan {
     outcome: RegisterOutcome,
 }
 
-/// `fresh` = plist 존재 **그리고** 그 ProgramArguments 경로가 현재 원하는 ezerd 경로와 일치.
+/// `fresh` = plist 존재 **그리고** 그 ProgramArguments 경로가 현재 원하는 EZERagentd 경로와 일치.
 /// stale drift(앱 이동·재설치로 plist가 옛 경로를 가리킴)면 fresh=false → 재기록 + reload 유도.
 fn plan(fresh: bool, loaded: bool, daemon_running: bool) -> Plan {
     if fresh && loaded {
@@ -167,7 +167,7 @@ fn plan(fresh: bool, loaded: bool, daemon_running: bool) -> Plan {
 
 /// 앱 첫 실행/매 기동 시 자동등록(멱등). 부작용 없는 `plan()`이 결정한 대로 plist 기록·load.
 /// 멱등성은 'plist 존재 AND 경로 일치(fresh) AND launchd 적재' 교차검사로 판정한다.
-/// - 미등록 + 데몬 미가동(첫 실행): plist write + `launchctl load` → launchd가 즉시 ezerd 소유
+/// - 미등록 + 데몬 미가동(첫 실행): plist write + `launchctl load` → launchd가 즉시 EZERagentd 소유
 /// - plist 존재하나 미적재 + 데몬 미가동(deferred 후 데몬 소멸 등): load로 KeepAlive 보호 복원
 /// - plist가 옛 경로(stale drift) + 데몬 미가동: 재기록 + reload로 경로 교정
 /// - 데몬 가동 중: plist만 보장(load 보류) → 현 세션 flock 단일소유 비파괴
@@ -210,35 +210,35 @@ mod tests {
 
     #[test]
     fn render_plist_has_reboot_survival_keys_and_daemon_path() {
-        let daemon = Path::new("/Applications/ezer.app/Contents/MacOS/ezerd");
-        let log = Path::new("/tmp/ezerd.log");
+        let daemon = Path::new("/Applications/EZERagent.app/Contents/MacOS/EZERagentd");
+        let log = Path::new("/tmp/EZERagentd.log");
         let plist = render_plist(daemon, log);
         // 재부팅 생존 핵심: RunAtLoad(로그인 자동 기동) + KeepAlive(사망 시 재기동).
         assert!(plist.contains("<key>RunAtLoad</key><true/>"), "RunAtLoad 누락");
         assert!(plist.contains("<key>KeepAlive</key><true/>"), "KeepAlive 누락");
-        // launchd가 띄울 대상은 정확한 ezerd 절대경로.
+        // launchd가 띄울 대상은 정확한 EZERagentd 절대경로.
         assert!(
-            plist.contains("<string>/Applications/ezer.app/Contents/MacOS/ezerd</string>"),
-            "ProgramArguments에 ezerd 경로 누락"
+            plist.contains("<string>/Applications/EZERagent.app/Contents/MacOS/EZERagentd</string>"),
+            "ProgramArguments에 EZERagentd 경로 누락"
         );
         assert!(plist.contains(&format!("<string>{LAUNCHD_LABEL}</string>")), "Label 누락");
-        assert!(plist.contains("<string>/tmp/ezerd.log</string>"), "로그 경로 누락");
+        assert!(plist.contains("<string>/tmp/EZERagentd.log</string>"), "로그 경로 누락");
         // 유효한 plist 골격.
         assert!(plist.starts_with("<?xml"), "plist 헤더 누락");
     }
 
     #[test]
     fn label_matches_manual_install_contract() {
-        // 수동 `ezer daemon install`과 동일 라벨이어야 status/uninstall이 자동등록분을 인식한다.
-        assert_eq!(LAUNCHD_LABEL, "com.ezer.ezerd");
+        // 수동 `EZERagent daemon install`과 동일 라벨이어야 status/uninstall이 자동등록분을 인식한다.
+        assert_eq!(LAUNCHD_LABEL, "com.EZERagent.EZERagentd");
     }
 
     #[test]
     fn render_plist_escapes_xml_special_chars_in_path() {
         // 사용자명·경로에 &,<,> 가 있어도 plist가 손상되지 않아야 한다.
-        let daemon = Path::new("/Users/x/a&b<c>/ezer.app/Contents/MacOS/ezerd");
+        let daemon = Path::new("/Users/x/a&b<c>/EZERagent.app/Contents/MacOS/EZERagentd");
         let plist = render_plist(daemon, Path::new("/tmp/l&g.log"));
-        assert!(plist.contains("/Users/x/a&amp;b&lt;c&gt;/ezer.app/Contents/MacOS/ezerd"));
+        assert!(plist.contains("/Users/x/a&amp;b&lt;c&gt;/EZERagent.app/Contents/MacOS/EZERagentd"));
         assert!(plist.contains("/tmp/l&amp;g.log"));
         // 원시(미이스케이프) 앰퍼샌드가 <string> 안에 남으면 안 된다.
         assert!(!plist.contains("a&b<c>"));
@@ -271,16 +271,16 @@ mod tests {
     #[test]
     fn extract_program_path_roundtrips_with_render_plist() {
         // render_plist가 쓴 경로를 그대로 추출해야 stale 비교가 정확하다(이스케이프 형태로).
-        let daemon = Path::new("/Applications/ezer.app/Contents/MacOS/ezerd");
-        let plist = render_plist(daemon, Path::new("/tmp/ezerd.log"));
+        let daemon = Path::new("/Applications/EZERagent.app/Contents/MacOS/EZERagentd");
+        let plist = render_plist(daemon, Path::new("/tmp/EZERagentd.log"));
         assert_eq!(
             extract_program_path(&plist).as_deref(),
-            Some("/Applications/ezer.app/Contents/MacOS/ezerd")
+            Some("/Applications/EZERagent.app/Contents/MacOS/EZERagentd")
         );
         // 이스케이프 경로도 그대로(이스케이프된 형태로) 추출 — plist_path_matches는 동일 형태끼리 비교.
-        let weird = Path::new("/Users/x/a&b/MacOS/ezerd");
-        let plist = render_plist(weird, Path::new("/tmp/ezerd.log"));
-        assert_eq!(extract_program_path(&plist).as_deref(), Some("/Users/x/a&amp;b/MacOS/ezerd"));
+        let weird = Path::new("/Users/x/a&b/MacOS/EZERagentd");
+        let plist = render_plist(weird, Path::new("/tmp/EZERagentd.log"));
+        assert_eq!(extract_program_path(&plist).as_deref(), Some("/Users/x/a&amp;b/MacOS/EZERagentd"));
         // 깨진 입력은 None.
         assert_eq!(extract_program_path("no program args here"), None);
     }
@@ -297,10 +297,10 @@ mod tests {
         // ★W3 (d): service target = gui/<uid>/<label> — 로그인 세션 사용자 데몬.
         assert_eq!(
             kickstart_args(501),
-            ["kickstart".to_string(), "gui/501/com.ezer.ezerd".to_string()]
+            ["kickstart".to_string(), "gui/501/com.EZERagent.EZERagentd".to_string()]
         );
         // uid는 그대로 반영(다른 사용자 오타깃 방지).
-        assert_eq!(kickstart_args(0)[1], "gui/0/com.ezer.ezerd");
+        assert_eq!(kickstart_args(0)[1], "gui/0/com.EZERagent.EZERagentd");
     }
 
     #[test]

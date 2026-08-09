@@ -1,4 +1,4 @@
-//! ezer UI shell — ezerd 소켓의 얇은 클라이언트.
+//! EZERagent UI shell — EZERagentd 소켓의 얇은 클라이언트.
 //! 코어/UI 분리: UI가 죽어도 세션(PTY)은 데몬에 살아있다. UI 재시작 = 재attach.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -28,10 +28,10 @@ fn sock_slug(socket: &std::path::Path) -> String {
     format!("{:016x}", h.finish())
 }
 
-/// 기본 소켓 — env(EZER_SOCKET) 누수 방지를 위해 명시적 기본 경로를 쓴다(멀티마스터 F3:
-/// 앱이 EZER_SOCKET 걸린 셸에서 런칭돼도 단일 데몬 사용자 하위호환이 깨지지 않게).
+/// 기본 소켓 — env(EZERAGENT_SOCKET) 누수 방지를 위해 명시적 기본 경로를 쓴다(멀티마스터 F3:
+/// 앱이 EZERAGENT_SOCKET 걸린 셸에서 런칭돼도 단일 데몬 사용자 하위호환이 깨지지 않게).
 fn default_socket() -> std::path::PathBuf {
-    ezer::socket_path()
+    EZERagent::socket_path()
 }
 /// UI workspace의 socket(Option) → 실제 경로. None = 기본 데몬(하위호환의 단일 결정요인).
 fn resolve_socket(opt: &Option<String>) -> std::path::PathBuf {
@@ -45,7 +45,7 @@ async fn connect_to(socket: &std::path::Path) -> Result<Stream, String> {
     tokio::net::UnixStream::connect(socket)
         .await
         .map(|s| Box::new(s) as Stream)
-        .map_err(|e| format!("cannot connect to ezerd at {}: {e}", socket.display()))
+        .map_err(|e| format!("cannot connect to EZERagentd at {}: {e}", socket.display()))
 }
 
 #[cfg(windows)]
@@ -56,19 +56,19 @@ async fn connect_to(socket: &std::path::Path) -> Result<Stream, String> {
     // 표준 패턴). 재시도 없는 1회 open 은 앱 기동 fan-out(daemon_status + pane별 attach +
     // event forwarder 동시 연결)에서 상시 "startup failed … os error 231"이 됐다(2026-07-10
     // Windows 실사고 — 워크스페이스/pane 렌더 전체 불능). 그 외 오류(파이프 부재 = 데몬
-    // 다운 등)는 즉시 반환한다. 정책 상수는 CLI(ezer)와 공용 단일 진실인 lib(ezer::PIPE_BUSY_*).
+    // 다운 등)는 즉시 반환한다. 정책 상수는 CLI(EZERagent)와 공용 단일 진실인 lib(EZERagent::PIPE_BUSY_*).
     let name = socket.to_string_lossy().into_owned();
-    let deadline = std::time::Instant::now() + ezer::PIPE_BUSY_RETRY_DEADLINE;
+    let deadline = std::time::Instant::now() + EZERagent::PIPE_BUSY_RETRY_DEADLINE;
     loop {
         match ClientOptions::new().open(&name) {
             Ok(s) => return Ok(Box::new(s) as Stream),
             Err(e)
-                if e.raw_os_error() == Some(ezer::PIPE_BUSY_ERROR)
+                if e.raw_os_error() == Some(EZERagent::PIPE_BUSY_ERROR)
                     && std::time::Instant::now() < deadline =>
             {
-                tokio::time::sleep(ezer::PIPE_BUSY_RETRY_INTERVAL).await;
+                tokio::time::sleep(EZERagent::PIPE_BUSY_RETRY_INTERVAL).await;
             }
-            Err(e) => return Err(format!("cannot connect to ezerd pipe: {e}")),
+            Err(e) => return Err(format!("cannot connect to EZERagentd pipe: {e}")),
         }
     }
 }
@@ -177,7 +177,7 @@ async fn daemon_status(socket: Option<String>) -> Result<Value, String> {
     rpc_on(&resolve_socket(&socket), "system.identify", json!({"caller": "ui"})).await
 }
 
-/// GUI(ezer-app) 자기 버전 — 데몬 버전(system.identify .version)과 비교해 rename-swap 후
+/// GUI(EZERagent-app) 자기 버전 — 데몬 버전(system.identify .version)과 비교해 rename-swap 후
 /// lame-duck 스큐(구 데몬 + 새 앱)를 UI 배지로 알리는 용도(P2 · 비차단·강제 재시작 없음).
 #[tauri::command]
 fn app_version() -> String {
@@ -387,14 +387,14 @@ async fn create_surface(
     .await
 }
 
-/// 한글 IME 계측(디버그 전용): UI가 localStorage.ezerImeDebug==="1"일 때만 호출 —
-/// 입력 이벤트 시퀀스를 /tmp/ezer-ime.log에 append해 유실 경로를 결정론으로 확정한다
+/// 한글 IME 계측(디버그 전용): UI가 localStorage.EZERagentImeDebug==="1"일 때만 호출 —
+/// 입력 이벤트 시퀀스를 /tmp/EZERagent-ime.log에 append해 유실 경로를 결정론으로 확정한다
 /// (WKWebView 콘솔 접근이 어려운 환경의 실측 채널 · 2026-06-13 한글 4자→2자 유실 조사).
 #[tauri::command]
 fn log_ime(line: String) {
     use std::io::Write;
     // RC-10: /tmp 하드코딩 → OS중립 temp_dir(Windows엔 /tmp 없어 디버그 로그 무음 유실이던 것 수정).
-    let log_path = std::env::temp_dir().join("ezer-ime.log");
+    let log_path = std::env::temp_dir().join("EZERagent-ime.log");
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -408,12 +408,12 @@ fn log_ime(line: String) {
     }
 }
 
-/// IME 디버그 게이트(파일/환경변수): 릴리스 빌드엔 devtools가 없어 localStorage.ezerImeDebug를
-/// 최종 사용자가 켤 수 없다 → ~/.ezer/ime-debug 파일 존재 또는 EZER_IME_DEBUG=1이면 계측 활성.
+/// IME 디버그 게이트(파일/환경변수): 릴리스 빌드엔 devtools가 없어 localStorage.EZERagentImeDebug를
+/// 최종 사용자가 켤 수 없다 → ~/.EZERagent/ime-debug 파일 존재 또는 EZERAGENT_IME_DEBUG=1이면 계측 활성.
 #[tauri::command]
 fn ime_debug_enabled() -> bool {
-    std::env::var("EZER_IME_DEBUG").map(|v| v == "1").unwrap_or(false)
-        || ezer::home_dir().join(".ezer/ime-debug").exists()
+    std::env::var("EZERAGENT_IME_DEBUG").map(|v| v == "1").unwrap_or(false)
+        || EZERagent::home_dir().join(".EZERagent/ime-debug").exists()
 }
 
 #[tauri::command]
@@ -442,7 +442,7 @@ fn save_pasted_image(data_b64: String, ext: String) -> Result<String, String> {
     } else {
         "png"
     };
-    let dir = std::env::temp_dir().join("ezer-paste");
+    let dir = std::env::temp_dir().join("EZERagent-paste");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -492,7 +492,7 @@ fn open_path(path: String) -> Result<(), String> {
 /// HUD-2: 외부 URL HARD 화이트리스트 — https만·도메인 allowlist. 통과 시 Ok(spawn 없음·테스트 가능).
 /// url crate 부재 → 수동 host 파싱(https:// strip → 첫 '/' 전 host, userinfo(@)·port(:) 제거 = 위장 host 차단).
 /// 기본 목록은 코드 봉인, 사용자 도메인은 로컬 설정으로 확장(공개 배포에서 기관 도메인 하드코딩 제거):
-/// ~/.ezer/url-allow-hosts(줄당 1도메인 — GUI 경로) 또는 $EZER_URL_ALLOW_HOSTS(콤마 구분).
+/// ~/.EZERagent/url-allow-hosts(줄당 1도메인 — GUI 경로) 또는 $EZERAGENT_URL_ALLOW_HOSTS(콤마 구분).
 fn url_host_allowed(url: &str) -> Result<(), String> {
     let rest = url.strip_prefix("https://").ok_or_else(|| "https only".to_string())?;
     // authority는 첫 '/', '?'(query), '#'(fragment) 전까지(RFC 3986) — query/fragment 사칭 우회 차단.
@@ -517,14 +517,14 @@ fn host_in_allowlist(host: &str, extras: &[String]) -> bool {
         .any(|d| !d.is_empty() && (host == d || host.ends_with(&format!(".{d}"))))
 }
 
-/// 사용자 확장 allowlist — 파일(~/.ezer/url-allow-hosts, 줄당 1개) ∪ env(콤마 구분).
+/// 사용자 확장 allowlist — 파일(~/.EZERagent/url-allow-hosts, 줄당 1개) ∪ env(콤마 구분).
 /// 로컬 사용자 자신의 동의 하에 자기 머신에서만 확장된다(원격 주입 경로 없음).
 fn user_allow_hosts() -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
-    if let Ok(s) = std::fs::read_to_string(ezer::home_dir().join(".ezer/url-allow-hosts")) {
+    if let Ok(s) = std::fs::read_to_string(EZERagent::home_dir().join(".EZERagent/url-allow-hosts")) {
         out.extend(s.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty() && !l.starts_with('#')));
     }
-    if let Ok(env) = std::env::var("EZER_URL_ALLOW_HOSTS") {
+    if let Ok(env) = std::env::var("EZERAGENT_URL_ALLOW_HOSTS") {
         out.extend(env.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()));
     }
     out
@@ -543,7 +543,7 @@ fn open_url(url: String) -> Result<(), String> {
     r.map(|_| ()).map_err(|e| e.to_string())
 }
 
-/// D5: ezer 사이드카 바이너리 해소 — exe 옆(production 번들) 우선, 없으면 PATH 폴백(ensure_daemon 패턴).
+/// D5: EZERagent 사이드카 바이너리 해소 — exe 옆(production 번들) 우선, 없으면 PATH 폴백(ensure_daemon 패턴).
 fn resolve_sidecar(name: &str) -> std::path::PathBuf {
     std::env::current_exe()
         .ok()
@@ -555,9 +555,9 @@ fn resolve_sidecar(name: &str) -> std::path::PathBuf {
 // ── CLI PATH 설치(명시 메뉴) — 가드/스크립트 순수 헬퍼 ─────────────────
 #[derive(PartialEq, Debug)]
 enum BundleKind {
-    Canonical,    // /Applications/ezer.app 또는 ~/Applications/ezer.app
+    Canonical,    // /Applications/EZERagent.app 또는 ~/Applications/EZERagent.app
     Translocated, // Gatekeeper AppTranslocation 휘발 경로
-    Backup,       // ezer.app.bak-*/*.prev*
+    Backup,       // EZERagent.app.bak-*/*.prev*
     NonStandard,  // 그 외(Downloads 등) — 경고와 함께 진행
 }
 
@@ -586,10 +586,10 @@ fn classify_bundle_dir(macos_dir: &std::path::Path) -> BundleKind {
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
-        if name.starts_with("ezer.app.bak") || name.starts_with("ezer.app.prev") {
+        if name.starts_with("EZERagent.app.bak") || name.starts_with("EZERagent.app.prev") {
             return BundleKind::Backup;
         }
-        if name == "ezer.app" {
+        if name == "EZERagent.app" {
             let parent = b
                 .parent()
                 .map(|p| p.to_string_lossy().to_string())
@@ -602,23 +602,23 @@ fn classify_bundle_dir(macos_dir: &std::path::Path) -> BundleKind {
     BundleKind::NonStandard
 }
 
-/// `do shell script` 본문: target_dir 생성 + ezer·ezerd 심볼릭 멱등 생성(`ln -sf`).
+/// `do shell script` 본문: target_dir 생성 + EZERagent·EZERagentd 심볼릭 멱등 생성(`ln -sf`).
 fn build_install_script(
-    ezer: &std::path::Path,
-    ezerd: &std::path::Path,
+    EZERagent: &std::path::Path,
+    EZERagentd: &std::path::Path,
     target_dir: &str,
 ) -> String {
     format!(
         "mkdir -p {td} && ln -sf {c} {tc} && ln -sf {d} {tdd}",
         td = sh_squote(target_dir),
-        c = sh_squote(&ezer.to_string_lossy()),
-        tc = sh_squote(&format!("{target_dir}/ezer")),
-        d = sh_squote(&ezerd.to_string_lossy()),
-        tdd = sh_squote(&format!("{target_dir}/ezerd")),
+        c = sh_squote(&EZERagent.to_string_lossy()),
+        tc = sh_squote(&format!("{target_dir}/EZERagent")),
+        d = sh_squote(&EZERagentd.to_string_lossy()),
+        tdd = sh_squote(&format!("{target_dir}/EZERagentd")),
     )
 }
 
-/// `which -a ezer` 출력 → precedence 순 경로 리스트(공백줄 제거).
+/// `which -a EZERagent` 출력 → precedence 순 경로 리스트(공백줄 제거).
 fn parse_which_a(stdout: &str) -> Vec<String> {
     stdout
         .lines()
@@ -629,8 +629,8 @@ fn parse_which_a(stdout: &str) -> Vec<String> {
 
 /// 설치 계획(순수): 가드 판정 + 소스 경로 + osascript 인자 + 경고. osascript 실행은 포함하지 않는다.
 struct CliInstallPlan {
-    ezer_src: std::path::PathBuf,
-    ezerd_src: std::path::PathBuf,
+    EZERagent_src: std::path::PathBuf,
+    EZERagentd_src: std::path::PathBuf,
     osascript_arg: String, // `do shell script "..." with administrator privileges` (AppleScript 큰따옴표 리터럴)
     warnings: Vec<String>,
 }
@@ -641,13 +641,13 @@ fn plan_cli_install(
 ) -> Result<CliInstallPlan, String> {
     match classify_bundle_dir(macos_dir) {
         BundleKind::Translocated => {
-            return Err("ezer.app이 Gatekeeper에 의해 임시 위치에서 실행 중입니다. \
-Finder에서 ezer.app을 Applications 폴더로 옮긴 뒤 다시 열고 시도하세요."
+            return Err("EZERagent.app이 Gatekeeper에 의해 임시 위치에서 실행 중입니다. \
+Finder에서 EZERagent.app을 Applications 폴더로 옮긴 뒤 다시 열고 시도하세요."
                 .into());
         }
         BundleKind::Backup => {
             return Err("백업 번들에서 실행 중입니다. \
-정규 ezer.app(Applications)에서 실행한 뒤 시도하세요."
+정규 EZERagent.app(Applications)에서 실행한 뒤 시도하세요."
                 .into());
         }
         BundleKind::Canonical | BundleKind::NonStandard => {}
@@ -655,14 +655,14 @@ Finder에서 ezer.app을 Applications 폴더로 옮긴 뒤 다시 열고 시도�
     let mut warnings = vec![];
     if classify_bundle_dir(macos_dir) == BundleKind::NonStandard {
         warnings.push(
-            "ezer.app이 표준 위치(Applications)가 아닌 곳에서 실행 중입니다. \
+            "EZERagent.app이 표준 위치(Applications)가 아닌 곳에서 실행 중입니다. \
 앱을 옮기면 심볼릭이 깨지니 Applications로 이동을 권장합니다."
                 .into(),
         );
     }
-    let ezer_src = macos_dir.join("ezer");
-    let ezerd_src = macos_dir.join("ezerd");
-    let script = build_install_script(&ezer_src, &ezerd_src, target_dir);
+    let EZERagent_src = macos_dir.join("EZERagent");
+    let EZERagentd_src = macos_dir.join("EZERagentd");
+    let script = build_install_script(&EZERagent_src, &EZERagentd_src, target_dir);
     // AppleScript `do shell script`는 큰따옴표 문자열 리터럴을 요구한다 — 작은따옴표로 감싸면
     // 실행 전 파스 단계에서 syntax error -2741로 거부된다(내부 셸 경로 인용은 build_install_script의
     // sh_squote가 담당). 따라서 바깥 래핑은 반드시 applescript_str(큰따옴표)여야 한다.
@@ -671,8 +671,8 @@ Finder에서 ezer.app을 Applications 폴더로 옮긴 뒤 다시 열고 시도�
         applescript_str(&script)
     );
     Ok(CliInstallPlan {
-        ezer_src,
-        ezerd_src,
+        EZERagent_src,
+        EZERagentd_src,
         osascript_arg,
         warnings,
     })
@@ -682,15 +682,15 @@ Finder에서 ezer.app을 Applications 폴더로 옮긴 뒤 다시 열고 시도�
 struct InstallCliReport {
     ok: bool,
     target_dir: String,
-    ezer_link: String,
-    ezerd_link: String,
-    source_ezer: String,
-    effective_ezer: Option<String>, // which -a ezer 1순위
-    shadowed_by: Option<String>,   // /usr/local/bin/ezer 앞을 가리는 다른 ezer
+    EZERagent_link: String,
+    EZERagentd_link: String,
+    source_EZERagent: String,
+    effective_EZERagent: Option<String>, // which -a EZERagent 1순위
+    shadowed_by: Option<String>,   // /usr/local/bin/EZERagent 앞을 가리는 다른 EZERagent
     warnings: Vec<String>,
 }
 
-/// 명시 메뉴 트리거. macOS에서 ezer·ezerd를 /usr/local/bin에 1회 승격으로 심볼릭한다.
+/// 명시 메뉴 트리거. macOS에서 EZERagent·EZERagentd를 /usr/local/bin에 1회 승격으로 심볼릭한다.
 #[tauri::command]
 fn install_cli_to_path() -> Result<InstallCliReport, String> {
     #[cfg(not(target_os = "macos"))]
@@ -707,11 +707,11 @@ fn install_cli_to_path() -> Result<InstallCliReport, String> {
             .to_path_buf();
 
         let plan = plan_cli_install(&macos_dir, target_dir)?;
-        if !plan.ezer_src.exists() || !plan.ezerd_src.exists() {
-            return Err("번들 내 ezer/ezerd 바이너리를 찾지 못했습니다.".into());
+        if !plan.EZERagent_src.exists() || !plan.EZERagentd_src.exists() {
+            return Err("번들 내 EZERagent/EZERagentd 바이너리를 찾지 못했습니다.".into());
         }
 
-        // osascript 1회 승격(ezer·ezerd 동시 → 단일 프롬프트).
+        // osascript 1회 승격(EZERagent·EZERagentd 동시 → 단일 프롬프트).
         let out = std::process::Command::new("osascript")
             .arg("-e")
             .arg(&plan.osascript_arg)
@@ -725,66 +725,66 @@ fn install_cli_to_path() -> Result<InstallCliReport, String> {
             return Err(format!("심볼릭 생성 실패: {}", err.trim()));
         }
 
-        // 검증: 로그인 PATH 기준 which -a ezer.
+        // 검증: 로그인 PATH 기준 which -a EZERagent.
         let which = std::process::Command::new("bash")
             .arg("-lc")
-            .arg("which -a ezer")
+            .arg("which -a EZERagent")
             .output()
             .ok();
         let entries = which
             .as_ref()
             .map(|o| parse_which_a(&String::from_utf8_lossy(&o.stdout)))
             .unwrap_or_default();
-        let effective_ezer = entries.first().cloned();
-        let target_ezer = format!("{target_dir}/ezer");
-        let shadowed_by = match &effective_ezer {
-            Some(p) if *p != target_ezer => Some(p.clone()),
+        let effective_EZERagent = entries.first().cloned();
+        let target_EZERagent = format!("{target_dir}/EZERagent");
+        let shadowed_by = match &effective_EZERagent {
+            Some(p) if *p != target_EZERagent => Some(p.clone()),
             _ => None,
         };
 
         let mut warnings = plan.warnings;
         if let Some(sh) = &shadowed_by {
             warnings.push(format!(
-                "PATH 선행 위치의 다른 ezer가 우선합니다: {sh} \
-(예: dev deploy_gate의 /opt/homebrew/bin). 새로 설치한 {target_ezer}는 그 뒤에 있습니다."
+                "PATH 선행 위치의 다른 EZERagent가 우선합니다: {sh} \
+(예: dev deploy_gate의 /opt/homebrew/bin). 새로 설치한 {target_EZERagent}는 그 뒤에 있습니다."
             ));
         }
 
         Ok(InstallCliReport {
             ok: true,
             target_dir: target_dir.to_string(),
-            ezer_link: target_ezer,
-            ezerd_link: format!("{target_dir}/ezerd"),
-            source_ezer: plan.ezer_src.to_string_lossy().to_string(),
-            effective_ezer,
+            EZERagent_link: target_EZERagent,
+            EZERagentd_link: format!("{target_dir}/EZERagentd"),
+            source_EZERagent: plan.EZERagent_src.to_string_lossy().to_string(),
+            effective_EZERagent,
             shadowed_by,
             warnings,
         })
     }
 }
 
-/// 업데이트 재시작 후 자동복귀 마커 경로 — install_update(재시작 직전)가 쓰고, 재시작된 ezer-app
-/// setup이 읽는다. 두 프로세스가 공유하는 ~/.ezer 아래에 둔다.
+/// 업데이트 재시작 후 자동복귀 마커 경로 — install_update(재시작 직전)가 쓰고, 재시작된 EZERagent-app
+/// setup이 읽는다. 두 프로세스가 공유하는 ~/.EZERagent 아래에 둔다.
 fn pending_restore_path() -> std::path::PathBuf {
-    ezer::home_dir().join(".ezer/.pending-restore")
+    EZERagent::home_dir().join(".EZERagent/.pending-restore")
 }
 
 /// (T1) 마지막으로 팩반영·복원을 완료한 앱 버전 스탬프 경로. 홈페이지 수동 설치(.app 번들만 교체·
 /// 복귀 마커 없음)를 '버전변경'으로 감지하는 진실원 — 인앱 업데이트(마커)와 수동 설치(스탬프) 두
-/// 경로 모두에서 재시작 후 팩반영·복원이 돌게 한다. pending_restore_path와 같은 ~/.ezer 아래에 둔다.
+/// 경로 모두에서 재시작 후 팩반영·복원이 돌게 한다. pending_restore_path와 같은 ~/.EZERagent 아래에 둔다.
 fn last_app_version_path() -> std::path::PathBuf {
-    ezer::home_dir().join(".ezer/.last-app-version")
+    EZERagent::home_dir().join(".EZERagent/.last-app-version")
 }
 
 /// GUI 온보딩 완료 마커 — "이 GUI가 이 바이너리 버전에서 온보딩(팩+hook(+win: schtasks))을
 /// **성공** 완료했는가". writer는 GUI 온보딩 성공 경로 단 하나다 — CLI autostart·잔존 schtasks·
-/// ONLOGON 등 어떤 순서로 ezerd가 먼저 돌아도 이 마커를 선점할 수 없다(0.12.52 ezer-neo 회귀 시정:
-/// 팩 마커(.pack-version) 기반 게이트를 CLI-선행 ezerd 스윕이 선점 → ~/.claude hook 영구 미설치 →
+/// ONLOGON 등 어떤 순서로 EZERagentd가 먼저 돌아도 이 마커를 선점할 수 없다(0.12.52 EZERagent-neo 회귀 시정:
+/// 팩 마커(.pack-version) 기반 게이트를 CLI-선행 EZERagentd 스윕이 선점 → ~/.claude hook 영구 미설치 →
 /// "너는 마스터다" 부트스트랩 무력화). ★.pack-version(팩 최신 여부·install 계층 writer)·
 /// .last-app-version(복원 필요 여부·L2 writer)과 질문·작성자가 전부 다르다 — 통합 금지:
 /// .last-app-version은 --no-install-hook 경로(Apply)가 전진시키므로 "스탬프 있음=hook 있음"이 거짓.
 fn gui_onboarded_path() -> std::path::PathBuf {
-    ezer::home_dir().join(".ezer/.gui-onboarded")
+    EZERagent::home_dir().join(".EZERagent/.gui-onboarded")
 }
 
 /// GUI 온보딩 실행 여부 — 부작용 없는 순수 판정(단위테스트 대상). 마커 내용이 현재 바이너리
@@ -805,7 +805,7 @@ enum PendingUpdatePlan {
 }
 
 /// 발동 조건 = 마커 존재 OR 버전변경 감지. 마커가 최우선(구버전이 이 릴리스로 올라올 때 마커를 남김).
-/// prior_state_exists = 기존 설치 증거(~/.ezer/pack/.pack-version 존재). 스탬프 부재(≤0.12.50엔 스탬프
+/// prior_state_exists = 기존 설치 증거(~/.EZERagent/pack/.pack-version 존재). 스탬프 부재(≤0.12.50엔 스탬프
 /// 파일 자체가 없다) 시 이 증거로 '전환기 기존 사용자의 홈페이지 수동설치'(Apply)와 '진짜 최초
 /// 설치'(RecordStampOnly)를 가른다 — 오너가 홈페이지 설치본을 배포할 예정이라 이 경로가 실경로다.
 fn decide_pending_update(
@@ -827,9 +827,9 @@ fn decide_pending_update(
 }
 
 /// 업데이트(인앱 재시작 OR 홈페이지 수동설치로 인한 버전변경)이면 두 가지를 한다:
-///  ① 새 기능 배포 — 새 ezer 바이너리에 embed된 팩(pack.rs include_str! + build.rs PACK_SKILLS)을
-///     `ezer init-pack --no-install-hook`으로 ~/.ezer/pack에 반영한다. --no-install-hook: hook 등록은
-///     최초 설치/launch-agent에서 끝나므로 매 업데이트마다 settings.json을 건드리지 않는다(.bak-ezer
+///  ① 새 기능 배포 — 새 EZERagent 바이너리에 embed된 팩(pack.rs include_str! + build.rs PACK_SKILLS)을
+///     `EZERagent init-pack --no-install-hook`으로 ~/.EZERagent/pack에 반영한다. --no-install-hook: hook 등록은
+///     최초 설치/launch-agent에서 끝나므로 매 업데이트마다 settings.json을 건드리지 않는다(.bak-EZERagent
 ///     백업 파괴·활성 프로필 재직렬화 방지 — 적대검증 serious). force 없이 호출하므로 preserve-gate가
 ///     사용자 수정 파일을 보존하고 비수정·신규만 갱신한다.
 ///  ② 자동복귀 — 팩 반영 성공 시에만 조직 전체(본부+등록 부서) 노드를 복원(T2 spawn_org_restore).
@@ -844,7 +844,7 @@ fn maybe_apply_pending_update(app: &AppHandle) {
         .ok()
         .map(|s| s.trim().to_string());
     // 기존 설치 증거 — 디스크 팩 버전 파일(check_pack_update:1711·install_pack_update:1895와 동일 SOT).
-    let prior_state = ezer::pack::pack_dir().join(".pack-version").exists();
+    let prior_state = EZERagent::pack::pack_dir().join(".pack-version").exists();
     match decide_pending_update(marker_exists, stamp.as_deref(), current, prior_state) {
         PendingUpdatePlan::Skip => return,
         PendingUpdatePlan::RecordStampOnly => {
@@ -855,7 +855,7 @@ fn maybe_apply_pending_update(app: &AppHandle) {
         PendingUpdatePlan::Apply => {}
     }
     // ① 새 팩(새 기능) 반영 — 성공 여부를 검사한다(침묵 실패 차단).
-    let mut init_cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "ezer.exe" } else { "ezer" }));
+    let mut init_cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "EZERagent.exe" } else { "EZERagent" }));
     init_cmd.arg("init-pack").arg("--no-install-hook");
     no_console(&mut init_cmd);
     let pack_ok = init_cmd
@@ -877,16 +877,16 @@ fn maybe_apply_pending_update(app: &AppHandle) {
     spawn_org_restore(app.clone());
 }
 
-/// (T2) `ezer restore --include-master`를 사이드카로 1회 실행한다. socket=Some이면 그 부서 소켓
-/// 대상(EZER_SOCKET), None이면 기본(본부) 소켓. EZER_NO_AUTOSTART=1로 죽은 소켓에 빈 ezerd가
+/// (T2) `EZERagent restore --include-master`를 사이드카로 1회 실행한다. socket=Some이면 그 부서 소켓
+/// 대상(EZERAGENT_SOCKET), None이면 기본(본부) 소켓. EZERAGENT_NO_AUTOSTART=1로 죽은 소켓에 빈 EZERagentd가
 /// autostart되는 것을 막는다(살아있는 대상에만 호출하므로 평시 무영향인 심층방어). 반환=성공 여부.
 async fn run_sidecar_restore(socket: Option<std::path::PathBuf>) -> bool {
     tokio::task::spawn_blocking(move || {
-        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "ezer.exe" } else { "ezer" }));
+        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "EZERagent.exe" } else { "EZERagent" }));
         cmd.arg("restore").arg("--include-master");
-        cmd.env("EZER_NO_AUTOSTART", "1"); // 죽은 소켓에 빈 데몬 autostart 금지(사이드카 CLI 가드)
+        cmd.env("EZERAGENT_NO_AUTOSTART", "1"); // 죽은 소켓에 빈 데몬 autostart 금지(사이드카 CLI 가드)
         if let Some(sock) = socket {
-            cmd.env(ezer::ENV_SOCKET, sock);
+            cmd.env(EZERagent::ENV_SOCKET, sock);
         }
         no_console(&mut cmd);
         cmd.status().map(|s| s.success()).unwrap_or(false)
@@ -905,7 +905,7 @@ async fn run_sidecar_restore(socket: Option<std::path::PathBuf>) -> bool {
 fn nudge_folder_permissions(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let home = ezer::home_dir();
+        let home = EZERagent::home_dir();
         for folder in ["Desktop", "Documents"] {
             let p = home.join(folder);
             let denied = tokio::task::spawn_blocking(move || {
@@ -925,7 +925,7 @@ fn nudge_folder_permissions(app: &AppHandle) {
 /// restore-progress를 emit한다(update-progress emit 스타일 동형). 본부=기본 소켓 사이드카 restore →
 /// list_depts() 순회: 부서 데몬이 살아있으면 사이드카 restore(부서 소켓), 죽었으면 기존 launch 경로
 /// (launch_dept_daemon)로 재기동한다 — 재기동된 부서 데몬은 콜드부트 auto-restore로 노드를 되살린다
-/// (src/bin/ezerd/main.rs). run_restore 멱등이라 콜드부트 복원과 겹쳐도 안전.
+/// (src/bin/EZERagentd/main.rs). run_restore 멱등이라 콜드부트 복원과 겹쳐도 안전.
 fn spawn_org_restore(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let _ = app.emit("restore-progress", json!({"phase": "start"}));
@@ -934,7 +934,7 @@ fn spawn_org_restore(app: AppHandle) {
         // ★WP-3 리바이버 게이트: base 데몬 dept 묘비 — 삭제-의도 부서는 재기동에서 제외(+생존 시 reap).
         // RPC 실패=빈 집합(보수적 fail-open: 묘비 부재=현행 거동 — 롤백 불변식 "부재=제약 없음").
         let tombs: std::collections::HashSet<String> =
-            rpc_oneshot(&ezer::socket_path(), "dept_tombstone.list", json!({}))
+            rpc_oneshot(&EZERagent::socket_path(), "dept_tombstone.list", json!({}))
                 .await
                 .ok()
                 .and_then(|v| {
@@ -1034,15 +1034,15 @@ async fn send_key(socket: Option<String>, surface_id: u64, key: String) -> Resul
 /// D5/SB-1: 스킬 버튼 보드 카탈로그 읽기(pack/board-catalog.json) — 정적 파일 read(데몬 무변경).
 #[tauri::command]
 fn read_board_catalog() -> Result<Value, String> {
-    let path = ezer::pack::pack_dir().join("board-catalog.json");
+    let path = EZERagent::pack::pack_dir().join("board-catalog.json");
     let raw = std::fs::read_to_string(&path)
         .map_err(|e| format!("board-catalog.json 없음 ({}): {e}", path.display()))?;
     serde_json::from_str(&raw).map_err(|e| format!("카탈로그 파싱 실패: {e}"))
 }
 
-/// D6: 청중 프로파일(~/.ezer/profile.json·사용자 로컬·pack 밖) audience 읽기 — 없으면 "custom"(전체보기 폴백·안전).
+/// D6: 청중 프로파일(~/.EZERagent/profile.json·사용자 로컬·pack 밖) audience 읽기 — 없으면 "custom"(전체보기 폴백·안전).
 fn read_profile_audience() -> String {
-    let path = ezer::home_dir().join(".ezer/profile.json");
+    let path = EZERagent::home_dir().join(".EZERagent/profile.json");
     std::fs::read_to_string(&path)
         .ok()
         .and_then(|s| serde_json::from_str::<Value>(&s).ok())
@@ -1056,8 +1056,8 @@ fn read_profile_audience() -> String {
 /// D6: 청중 프로파일 audience를 scope에 주입 — 스킬이 Implications Domain 질문을 건너뛴다(custom=전체보기).
 #[tauri::command]
 fn make_ticket(task: String, scope: String, success: String, to: String) -> Result<String, String> {
-    let script = ezer::pack::pack_dir().join("bin").join("ezer_orchestra.py");
-    let out_fmt = "산출물을 ~/.ezer/_round/skill-out/<작업slug>/ (절대경로) 아래에 저장하라(결정론 회수 위치·SB-6). \
+    let script = EZERagent::pack::pack_dir().join("bin").join("EZERagent_orchestra.py");
+    let out_fmt = "산출물을 ~/.EZERagent/_round/skill-out/<작업slug>/ (절대경로) 아래에 저장하라(결정론 회수 위치·SB-6). \
                    산출물에 '🔒 AI 보조 생성 · 오너 검수 전' 신뢰선 라벨을 부착하라(과대약속 금지).";
     let audience = read_profile_audience();
     let scope_full = if audience != "custom" {
@@ -1076,21 +1076,21 @@ fn make_ticket(task: String, scope: String, success: String, to: String) -> Resu
     no_console(&mut orch_cmd);
     let output = orch_cmd
         .output()
-        .map_err(|e| format!("ezer_orchestra 실행 실패: {e}"))?;
+        .map_err(|e| format!("EZERagent_orchestra 실행 실패: {e}"))?;
     if !output.status.success() {
         return Err(format!("task-prompt 실패: {}", String::from_utf8_lossy(&output.stderr)));
     }
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-/// D5/SB-2: 보이는 일회용 워커로 스킬 실행 — ezer skill run(schedule --fresh) spawn(새 RPC 0·invisible -p 금지).
+/// D5/SB-2: 보이는 일회용 워커로 스킬 실행 — EZERagent skill run(schedule --fresh) spawn(새 RPC 0·invisible -p 금지).
 #[tauri::command]
 fn run_skill(name: String, ticket: String, agent: Option<String>, close_after: Option<u64>) -> Result<Value, String> {
     if ticket.trim().is_empty() {
         return Err("ticket 비어 있음 — 무계약 실행 금지".into());
     }
-    let ezer = resolve_sidecar(if cfg!(windows) { "ezer.exe" } else { "ezer" });
-    let mut cmd = std::process::Command::new(&ezer);
+    let EZERagent = resolve_sidecar(if cfg!(windows) { "EZERagent.exe" } else { "EZERagent" });
+    let mut cmd = std::process::Command::new(&EZERagent);
     cmd.arg("skill").arg("run").arg(&name)
         .args(["--ticket", &ticket])
         .args(["--agent", agent.as_deref().unwrap_or("claude")]);
@@ -1100,15 +1100,15 @@ fn run_skill(name: String, ticket: String, agent: Option<String>, close_after: O
     cmd.stdin(std::process::Stdio::null());
     no_console(&mut cmd);
     cmd.spawn()
-        .map_err(|e| format!("ezer skill run 실행 실패 ({}): {e}", ezer.display()))?;
+        .map_err(|e| format!("EZERagent skill run 실행 실패 ({}): {e}", EZERagent.display()))?;
     Ok(json!({"ok": true, "name": name}))
 }
 
-/// D5/SB-6: 산출물 회수 결정론 위치(~/.ezer/_round/skill-out) — make_ticket output_format과 정합.
+/// D5/SB-6: 산출물 회수 결정론 위치(~/.EZERagent/_round/skill-out) — make_ticket output_format과 정합.
 #[tauri::command]
 fn skill_out_dir() -> String {
-    ezer::home_dir()
-        .join(".ezer/_round/skill-out")
+    EZERagent::home_dir()
+        .join(".EZERagent/_round/skill-out")
         .to_string_lossy()
         .to_string()
 }
@@ -1259,56 +1259,56 @@ async fn wait_for_connect(attempts: u32) -> bool {
     false
 }
 
-/// 앱 첫 실행 시 ezerd를 launchd에 자동등록(RunAtLoad·KeepAlive) — 재부팅 후에도 데몬 생존.
-/// 수동 `ezer daemon install`의 opt-in을 자동화한다(`ezer::launchd`와 plist 포맷 단일화).
-/// 반환값 = **launchd가 ezerd 기동을 책임지는가**. true면 setter가 수동 spawn을 건너뛰고
-/// launchd-owned ezerd의 socket-ready를 폴링해야 한다(중복 spawn·flock 경합 방지 — codex BLOCKER).
+/// 앱 첫 실행 시 EZERagentd를 launchd에 자동등록(RunAtLoad·KeepAlive) — 재부팅 후에도 데몬 생존.
+/// 수동 `EZERagent daemon install`의 opt-in을 자동화한다(`EZERagent::launchd`와 plist 포맷 단일화).
+/// 반환값 = **launchd가 EZERagentd 기동을 책임지는가**. true면 setter가 수동 spawn을 건너뛰고
+/// launchd-owned EZERagentd의 socket-ready를 폴링해야 한다(중복 spawn·flock 경합 방지 — codex BLOCKER).
 #[cfg(target_os = "macos")]
 async fn maybe_autoregister_launchd() -> bool {
-    // 번들 동봉 ezerd 절대경로(ensure_daemon과 동일 규칙) — 형제 ezerd가 없으면 보류.
+    // 번들 동봉 EZERagentd 절대경로(ensure_daemon과 동일 규칙) — 형제 EZERagentd가 없으면 보류.
     let daemon = match std::env::current_exe()
         .ok()
-        .and_then(|p| p.parent().map(|d| d.join("ezerd")))
+        .and_then(|p| p.parent().map(|d| d.join("EZERagentd")))
     {
         Some(p) if p.exists() => p,
         _ => return false,
     };
     let running = connect().await.is_ok();
-    match ezer::launchd::register_if_absent(&daemon, running) {
+    match EZERagent::launchd::register_if_absent(&daemon, running) {
         Ok(outcome) => {
-            eprintln!("[ezer-app] launchd autoregister: {outcome:?}");
-            ezer::launchd::launchd_will_serve(outcome)
+            eprintln!("[EZERagent-app] launchd autoregister: {outcome:?}");
+            EZERagent::launchd::launchd_will_serve(outcome)
         }
         Err(e) => {
-            eprintln!("[ezer-app] launchd autoregister skipped: {e}");
+            eprintln!("[EZERagent-app] launchd autoregister skipped: {e}");
             false
         }
     }
 }
 
-/// 첫 기동 온보딩 공용 단계 — `ezer init-pack`으로 팩 파일 + Claude SessionStart hook 등록.
-/// install은 preserve, hook은 중복 dedup(already→skip·.bak-ezer 무변경)이라 **멱등** — 반복 실행해도
+/// 첫 기동 온보딩 공용 단계 — `EZERagent init-pack`으로 팩 파일 + Claude SessionStart hook 등록.
+/// install은 preserve, hook은 중복 dedup(already→skip·.bak-EZERagent 무변경)이라 **멱등** — 반복 실행해도
 /// 안전하다. 호출은 setup의 needs_gui_onboard 게이트(.gui-onboarded 마커)로 조건화된다(v4 · 2026-07-12):
 /// 마커 부재(신선 머신·직전 실패)·버전 불일치(업그레이드)에만 실행 — 평시 부트 비용 제거.
 /// Windows·macOS 온보딩이 공유한다(autostart는 OS별로 분리: Windows=schtasks·macOS=launchd).
-/// 반환 = init-pack 성공 여부(★hook 등록 실패도 rc=1 — ezer.rs run_init_pack). false면 호출자가
+/// 반환 = init-pack 성공 여부(★hook 등록 실패도 rc=1 — EZERagent.rs run_init_pack). false면 호출자가
 /// 마커를 기록하지 않아 다음 부트에 재시도된다(best-effort + 재시도 내장). 실패해도 세션은 진행.
 #[cfg(any(windows, target_os = "macos"))]
-fn onboard_init_pack(ezer: &std::path::Path) -> bool {
-    let mut init = std::process::Command::new(ezer);
+fn onboard_init_pack(EZERagent: &std::path::Path) -> bool {
+    let mut init = std::process::Command::new(EZERagent);
     init.arg("init-pack");
     no_console(&mut init);
     match init.status() {
         Ok(s) if s.success() => {
-            eprintln!("[ezer-app] onboarding: init-pack ok");
+            eprintln!("[EZERagent-app] onboarding: init-pack ok");
             true
         }
         Ok(s) => {
-            eprintln!("[ezer-app] onboarding: init-pack exited {s}");
+            eprintln!("[EZERagent-app] onboarding: init-pack exited {s}");
             false
         }
         Err(e) => {
-            eprintln!("[ezer-app] onboarding: init-pack spawn failed: {e}");
+            eprintln!("[EZERagent-app] onboarding: init-pack spawn failed: {e}");
             false
         }
     }
@@ -1317,26 +1317,26 @@ fn onboard_init_pack(ezer: &std::path::Path) -> bool {
 /// Windows 첫 기동 온보딩(RC-1) — 순정 Windows엔 hook 자동등록 경로가 없어 "너는 마스터다"
 /// 부트스트랩(SessionStart hook)이 미발동했다(T1 증상①).
 /// ① `onboard_init_pack`: 팩 + Claude hook 등록(멱등).
-/// ② `ezer daemon install`: 기존 schtasks ONLOGON 자동기동 등록 재사용(ezer.rs:3139·/F 멱등).
+/// ② `EZERagent daemon install`: 기존 schtasks ONLOGON 자동기동 등록 재사용(EZERagent.rs:3139·/F 멱등).
 #[cfg(windows)]
 fn maybe_windows_onboard() -> bool {
-    let ezer = resolve_sidecar("ezer.exe");
-    let init_ok = onboard_init_pack(&ezer);
-    // ② autostart 등록 (기존 ezer daemon install = schtasks ONLOGON 재사용, /F 멱등)
-    let mut reg = std::process::Command::new(&ezer);
+    let EZERagent = resolve_sidecar("EZERagent.exe");
+    let init_ok = onboard_init_pack(&EZERagent);
+    // ② autostart 등록 (기존 EZERagent daemon install = schtasks ONLOGON 재사용, /F 멱등)
+    let mut reg = std::process::Command::new(&EZERagent);
     reg.arg("daemon").arg("install");
     no_console(&mut reg);
     let reg_ok = match reg.status() {
         Ok(s) if s.success() => {
-            eprintln!("[ezer-app] windows onboarding: daemon install (schtasks) ok");
+            eprintln!("[EZERagent-app] windows onboarding: daemon install (schtasks) ok");
             true
         }
         Ok(s) => {
-            eprintln!("[ezer-app] windows onboarding: daemon install exited {s}");
+            eprintln!("[EZERagent-app] windows onboarding: daemon install exited {s}");
             false
         }
         Err(e) => {
-            eprintln!("[ezer-app] windows onboarding: daemon install spawn failed: {e}");
+            eprintln!("[EZERagent-app] windows onboarding: daemon install spawn failed: {e}");
             false
         }
     };
@@ -1347,14 +1347,14 @@ fn maybe_windows_onboard() -> bool {
 /// macOS 첫 기동 온보딩 — Windows 온보딩의 대칭(RC-17·T5). macOS DMG 소비자는 launchd
 /// 자동시작(maybe_autoregister_launchd)만 있고 hook 자동등록 경로가 없어 "너는 마스터다"
 /// 부트스트랩이 미발동했다. autostart는 launchd가 담당하므로 여기서는 Windows와 대칭으로
-/// 팩+Claude hook만 등록한다. init-pack 멱등 — 기존 사용자에 재실행돼도 무해(already→skip·.bak-ezer 불변).
+/// 팩+Claude hook만 등록한다. init-pack 멱등 — 기존 사용자에 재실행돼도 무해(already→skip·.bak-EZERagent 불변).
 #[cfg(target_os = "macos")]
 fn maybe_macos_onboard() -> bool {
-    let ezer = resolve_sidecar("ezer");
-    onboard_init_pack(&ezer)
+    let EZERagent = resolve_sidecar("EZERagent");
+    onboard_init_pack(&EZERagent)
 }
 
-/// Windows: GUI(windows_subsystem)가 콘솔 바이너리(ezer/ezerd/python3)를 스폰할 때 콘솔 창이
+/// Windows: GUI(windows_subsystem)가 콘솔 바이너리(EZERagent/EZERagentd/python3)를 스폰할 때 콘솔 창이
 /// 뜨지 않게 CREATE_NO_WINDOW 를 붙인다(검은 빈 Windows Terminal 창·ConPTY 오염 방지). 타 OS 무동작.
 fn no_console(cmd: &mut std::process::Command) {
     #[cfg(windows)]
@@ -1370,8 +1370,8 @@ fn no_console(cmd: &mut std::process::Command) {
 }
 
 /// RC-5: GUI 직스폰(bash/python3)에 동봉 runtime PATH 주입. GUI(Explorer/Finder) 프로세스 PATH엔
-/// runtime이 없어 순정 Windows서 bash/python3 lookup 실패 → ＋부서·티켓 무반응이었다(ezerd PTY 자식만
-/// 주입 수혜). ezerd와 동일한 공용 로직(ezer::runtime_prefixed_path) 사용 — 중복 구현 금지.
+/// runtime이 없어 순정 Windows서 bash/python3 lookup 실패 → ＋부서·티켓 무반응이었다(EZERagentd PTY 자식만
+/// 주입 수혜). EZERagentd와 동일한 공용 로직(EZERagent::runtime_prefixed_path) 사용 — 중복 구현 금지.
 /// 타 OS는 exe_dir만 얹혀 사실상 무영향(제거 없음).
 fn inject_runtime_path(cmd: &mut std::process::Command) {
     if let Some(exe_dir) = std::env::current_exe()
@@ -1379,7 +1379,7 @@ fn inject_runtime_path(cmd: &mut std::process::Command) {
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
     {
         let cur = std::env::var("PATH").unwrap_or_default();
-        if let Some(newp) = ezer::runtime_prefixed_path(&exe_dir, &cur) {
+        if let Some(newp) = EZERagent::runtime_prefixed_path(&exe_dir, &cur) {
             cmd.env("PATH", newp);
         }
     }
@@ -1393,7 +1393,7 @@ async fn ensure_daemon() -> Result<(), String> {
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()));
-    let daemon_name = if cfg!(windows) { "ezerd.exe" } else { "ezerd" };
+    let daemon_name = if cfg!(windows) { "EZERagentd.exe" } else { "EZERagentd" };
     let candidate = exe_dir.as_ref().map(|d| d.join(daemon_name));
     let program = match candidate {
         Some(p) if p.exists() => p,
@@ -1407,11 +1407,11 @@ async fn ensure_daemon() -> Result<(), String> {
     no_console(&mut command);
     command
         .spawn()
-        .map_err(|e| format!("failed to start ezerd ({}): {e}", program.display()))?;
+        .map_err(|e| format!("failed to start EZERagentd ({}): {e}", program.display()))?;
     if wait_for_connect(40).await {
         Ok(())
     } else {
-        Err("ezerd did not come up within 4s".into())
+        Err("EZERagentd did not come up within 4s".into())
     }
 }
 
@@ -1480,20 +1480,20 @@ fn spawn_event_forwarder(app: AppHandle, socket: std::path::PathBuf) {
     });
 }
 
-/// 부서 운용 정식 도구 ezer-dept 경로(pack_dir/bin/ezer-dept).
+/// 부서 운용 정식 도구 EZERagent-dept 경로(pack_dir/bin/EZERagent-dept).
 fn dept_tool() -> std::path::PathBuf {
-    ezer::pack::pack_dir().join("bin").join("ezer-dept")
+    EZERagent::pack::pack_dir().join("bin").join("EZERagent-dept")
 }
 
-/// 부서 데몬 소켓 경로 — RC-4: 공용 규약(ezer::dept_socket_path)에 위임.
-/// Windows=named pipe `\\.\pipe\ezer-dept-<name>`, unix=~/.local/state/ezer-dept-<name>/ezer.sock.
+/// 부서 데몬 소켓 경로 — RC-4: 공용 규약(EZERagent::dept_socket_path)에 위임.
+/// Windows=named pipe `\\.\pipe\EZERagent-dept-<name>`, unix=~/.local/state/EZERagent-dept-<name>/EZERagent.sock.
 /// (구: HOME 직접사용 unix .sock 고정 → Windows named pipe 미대응·HOME 미설정 이중결함 RC-4/RC-7.)
 fn dept_socket_path(name: &str) -> std::path::PathBuf {
-    ezer::dept_socket_path(name)
+    EZERagent::dept_socket_path(name)
 }
 
-/// 새 부서 workspace 런칭 = 부서 데몬 spawn. 단일 진입점 ezer-dept launch를 OS 호출해
-/// 레지스트리·ACL 시드·CEO 승격을 일임한다(직접 ezerd spawn 금지, 검증 mustFix). 성공 시
+/// 새 부서 workspace 런칭 = 부서 데몬 spawn. 단일 진입점 EZERagent-dept launch를 OS 호출해
+/// 레지스트리·ACL 시드·CEO 승격을 일임한다(직접 EZERagentd spawn 금지, 검증 mustFix). 성공 시
 /// 그 데몬용 이벤트 forwarder를 추가 spawn하고 socket·slug·identify를 반환한다.
 #[tauri::command]
 async fn launch_dept_daemon(app: AppHandle, name: String) -> Result<Value, String> {
@@ -1524,8 +1524,8 @@ async fn launch_dept_daemon(app: AppHandle, name: String) -> Result<Value, Strin
 
 /// 새 부서 번호 백엔드 원자 발급. 번호 계산을 UI가 아닌 레지스트리 flock RMW에 일임해
 /// lowest-unused 재사용 + 멀티창 충돌0을 보장한다. stdout 마지막 줄이 확정 name(dept-N).
-/// ＋부서 자동화(패치5): `catalog_key`=Some(k) → `ezer-dept create <k>`(카탈로그 기반 부서명·계정·미션·각성),
-/// None → `ezer-dept allocate`(레거시 무변경). create 경로는 레지스트리에서 display_name 을 조회해 반환한다.
+/// ＋부서 자동화(패치5): `catalog_key`=Some(k) → `EZERagent-dept create <k>`(카탈로그 기반 부서명·계정·미션·각성),
+/// None → `EZERagent-dept allocate`(레거시 무변경). create 경로는 레지스트리에서 display_name 을 조회해 반환한다.
 #[tauri::command]
 async fn allocate_dept_daemon(app: AppHandle, catalog_key: Option<String>) -> Result<Value, String> {
     let tool = dept_tool();
@@ -1576,8 +1576,8 @@ async fn allocate_dept_daemon(app: AppHandle, catalog_key: Option<String>) -> Re
         obj.insert("socket".into(), json!(sock.to_string_lossy()));
         obj.insert("socket_slug".into(), json!(sock_slug(&sock)));
         obj.insert("name".into(), json!(name));
-        // ＋부서 자동화: create 경로면 레지스트리(ezer-dept reg_set_meta 가 기록)에서 display_name 조회 →
-        // 탭 표시명. create stdout 은 name only(ezer-dept 코어 재구현 금지)이므로 depts.json 이 표시명 진실원.
+        // ＋부서 자동화: create 경로면 레지스트리(EZERagent-dept reg_set_meta 가 기록)에서 display_name 조회 →
+        // 탭 표시명. create stdout 은 name only(EZERagent-dept 코어 재구현 금지)이므로 depts.json 이 표시명 진실원.
         if catalog_key.is_some() {
             if let Some(disp) = dept_display_name(&name) {
                 obj.insert("display_name".into(), json!(disp));
@@ -1587,7 +1587,7 @@ async fn allocate_dept_daemon(app: AppHandle, catalog_key: Option<String>) -> Re
     Ok(info)
 }
 
-/// 부서 workspace 닫기 = 부서 데몬 teardown. ezer-dept down에 일임(SIGTERM·소켓 정리·레지스트리·CEO 강등).
+/// 부서 workspace 닫기 = 부서 데몬 teardown. EZERagent-dept down에 일임(SIGTERM·소켓 정리·레지스트리·CEO 강등).
 #[tauri::command]
 async fn stop_dept_daemon(name: String) -> Result<(), String> {
     let tool = dept_tool();
@@ -1606,10 +1606,10 @@ async fn stop_dept_daemon(name: String) -> Result<(), String> {
 /// 무비판 재-launch하지 않게 한다(옛 테스트 잔재·삭제된 부서 차단). 부재 시 빈 depts.
 #[tauri::command]
 fn list_depts() -> Result<Value, String> {
-    let reg = std::env::var("EZER_DEPTS_JSON")
+    let reg = std::env::var("EZERAGENT_DEPTS_JSON")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| {
-            ezer::home_dir().join(".ezer/depts.json")
+            EZERagent::home_dir().join(".EZERagent/depts.json")
         });
     match std::fs::read_to_string(&reg) {
         Ok(s) => serde_json::from_str::<Value>(&s).map_err(|e| e.to_string()),
@@ -1617,13 +1617,13 @@ fn list_depts() -> Result<Value, String> {
     }
 }
 
-/// 부서 레지스트리(depts.json)에서 표시명 조회 — ezer-dept reg_set_meta 가 기록한 display_name.
+/// 부서 레지스트리(depts.json)에서 표시명 조회 — EZERagent-dept reg_set_meta 가 기록한 display_name.
 /// create stdout 은 name only 이므로 표시명의 진실원은 레지스트리다. 부재/오류 시 None(=name 폴백).
 fn dept_display_name(name: &str) -> Option<String> {
-    let reg = std::env::var("EZER_DEPTS_JSON")
+    let reg = std::env::var("EZERAGENT_DEPTS_JSON")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| {
-            ezer::home_dir().join(".ezer/depts.json")
+            EZERagent::home_dir().join(".EZERagent/depts.json")
         });
     let s = std::fs::read_to_string(&reg).ok()?;
     let v: Value = serde_json::from_str(&s).ok()?;
@@ -1634,15 +1634,15 @@ fn dept_display_name(name: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-/// 부서 카탈로그(dept-catalog.json) 조회 — ＋부서 선택 팝업용. ezer-dept 와 동일 경로 규약
-/// (EZER_DEPT_CATALOG 또는 $HOME/.ezer/dept-catalog.json). 부재/손상 시 빈 departments 반환(팝업=레거시 폴백).
+/// 부서 카탈로그(dept-catalog.json) 조회 — ＋부서 선택 팝업용. EZERagent-dept 와 동일 경로 규약
+/// (EZERAGENT_DEPT_CATALOG 또는 $HOME/.EZERagent/dept-catalog.json). 부재/손상 시 빈 departments 반환(팝업=레거시 폴백).
 #[tauri::command]
 fn read_dept_catalog() -> Result<Value, String> {
-    let cat = std::env::var("EZER_DEPT_CATALOG")
+    let cat = std::env::var("EZERAGENT_DEPT_CATALOG")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| {
-            ezer::home_dir()
-                .join(".ezer/dept-catalog.json")
+            EZERagent::home_dir()
+                .join(".EZERagent/dept-catalog.json")
         });
     match std::fs::read_to_string(&cat) {
         Ok(s) => serde_json::from_str::<Value>(&s).map_err(|e| e.to_string()),
@@ -1650,12 +1650,12 @@ fn read_dept_catalog() -> Result<Value, String> {
     }
 }
 
-/// ★WP-3(BOOTSTRAP_HARDENING): 소켓 문자열에서 부서명 파생 — ezer-dept-<name> 슬러그
-/// (unix `.../ezer-dept-<n>/ezer.sock` · pipe `\\.\pipe\ezer-dept-<n>` 공통 · ezer-dept D8 파생과 동일 규약).
+/// ★WP-3(BOOTSTRAP_HARDENING): 소켓 문자열에서 부서명 파생 — EZERagent-dept-<name> 슬러그
+/// (unix `.../EZERagent-dept-<n>/EZERagent.sock` · pipe `\\.\pipe\EZERagent-dept-<n>` 공통 · EZERagent-dept D8 파생과 동일 규약).
 fn dept_name_from_socket(sock: &str) -> Option<String> {
     let norm = sock.replace('\\', "/");
     norm.split('/')
-        .find_map(|seg| seg.strip_prefix("ezer-dept-").map(str::to_string))
+        .find_map(|seg| seg.strip_prefix("EZERagent-dept-").map(str::to_string))
         .filter(|n| !n.is_empty())
 }
 
@@ -1666,29 +1666,29 @@ fn dept_name_from_socket(sock: &str) -> Option<String> {
 async fn dept_tombstone_by_socket(socket: String) -> Result<Value, String> {
     let name = dept_name_from_socket(&socket)
         .ok_or_else(|| format!("부서명 파생 실패(비표준 소켓): {socket}"))?;
-    rpc_oneshot(&ezer::socket_path(), "dept_tombstone.set", json!({"name": name})).await
+    rpc_oneshot(&EZERagent::socket_path(), "dept_tombstone.set", json!({"name": name})).await
 }
 
 /// ★WP-3 리바이버 게이트 소스: base 데몬의 dept 묘비 목록(프론트 복원이 유령 판정에 사용).
 #[tauri::command]
 async fn dept_tombstones() -> Result<Vec<String>, String> {
-    let v = rpc_oneshot(&ezer::socket_path(), "dept_tombstone.list", json!({})).await?;
+    let v = rpc_oneshot(&EZERagent::socket_path(), "dept_tombstone.list", json!({})).await?;
     Ok(v.get("dept_tombstones")
         .and_then(|a| a.as_array())
         .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
         .unwrap_or_default())
 }
 
-/// ★WP-1 결정 e(설계 v1.1): "마스터 시작" — ezer launch-agent --role master 배선. worker/cso와
-/// 동일 메커니즘(앵커 준수: 시스템은 노드만 띄우고 지휘하지 않는다). EZER_SOCKET 제거로 항상
+/// ★WP-1 결정 e(설계 v1.1): "마스터 시작" — EZERagent launch-agent --role master 배선. worker/cso와
+/// 동일 메커니즘(앵커 준수: 시스템은 노드만 띄우고 지휘하지 않는다). EZERAGENT_SOCKET 제거로 항상
 /// base 데몬 대상(부서 오염 불가 — 소켓 격리와 동일 축). 생성된 surface는 GUI 자동입양이 수용.
 #[tauri::command]
 async fn start_master() -> Result<(), String> {
-    let ezer = resolve_sidecar("ezer");
+    let EZERagent = resolve_sidecar("EZERagent");
     let out = tokio::task::spawn_blocking(move || {
-        let mut cmd = std::process::Command::new(&ezer);
+        let mut cmd = std::process::Command::new(&EZERagent);
         inject_runtime_path(&mut cmd);
-        cmd.env_remove("EZER_SOCKET");
+        cmd.env_remove("EZERAGENT_SOCKET");
         cmd.arg("launch-agent").arg("--role").arg("master").arg("--agent").arg("claude");
         no_console(&mut cmd);
         cmd.output()
@@ -1703,15 +1703,15 @@ async fn start_master() -> Result<(), String> {
     }
 }
 
-/// ★R8(WP-2·적대검증 W2): CEO 승격 대기(PENDING) 여부 — ezer-dept가 기록한 상태 파일 존재 검사.
+/// ★R8(WP-2·적대검증 W2): CEO 승격 대기(PENDING) 여부 — EZERagent-dept가 기록한 상태 파일 존재 검사.
 /// 프론트가 시작 시 1회+팔레트 온디맨드로 읽는다(신규 타이머 금지 — WINAUDIT 타이머 증식 방지).
 #[tauri::command]
 fn ceo_pending() -> bool {
-    ezer::home_dir().join(".ezer/state/ceo-pending").exists()
+    EZERagent::home_dir().join(".EZERagent/state/ceo-pending").exists()
 }
 
-/// ★R8: PENDING 해소 실행 — ezer-dept promote-if-pending(대기형·자체 동의 게이트 feed --wait 경유).
-/// GUI는 role-less(EZER_ROLE 제거 명시)라 단일소유 가드를 통과한다. async라 UI 무블록,
+/// ★R8: PENDING 해소 실행 — EZERagent-dept promote-if-pending(대기형·자체 동의 게이트 feed --wait 경유).
+/// GUI는 role-less(EZERAGENT_ROLE 제거 명시)라 단일소유 가드를 통과한다. async라 UI 무블록,
 /// feed --wait의 timeout(deny/timeout=보류) 규약이 상한을 보장한다.
 #[tauri::command]
 async fn promote_pending_ceo() -> Result<String, String> {
@@ -1719,8 +1719,8 @@ async fn promote_pending_ceo() -> Result<String, String> {
     let out = tokio::task::spawn_blocking(move || {
         let mut cmd = std::process::Command::new("bash");
         inject_runtime_path(&mut cmd);
-        cmd.env_remove("EZER_SOCKET");
-        cmd.env_remove("EZER_ROLE");
+        cmd.env_remove("EZERAGENT_SOCKET");
+        cmd.env_remove("EZERAGENT_ROLE");
         cmd.arg(&tool).arg("promote-if-pending");
         no_console(&mut cmd);
         cmd.output()
@@ -1741,16 +1741,16 @@ async fn promote_pending_ceo() -> Result<String, String> {
 }
 
 /// ★조직 모델(오너 2026-07-15): 부서 탭의 "▶부서장" — 해당 부서 데몬에 master(부서장) 노드 기동.
-/// start_master(base=CEO 자리)와 대칭·동일 메커니즘(launch-agent). EZER_SOCKET=부서 소켓으로
+/// start_master(base=CEO 자리)와 대칭·동일 메커니즘(launch-agent). EZERAGENT_SOCKET=부서 소켓으로
 /// 그 부서 데몬이 pane을 spawn하므로 부서 팩 디렉티브(MASTER_DIRECTIVE)가 자동 주입되고,
 /// claim도 그 부서 레지스트리 대상(데몬당 살아있는 마스터 1명 규칙은 부서별 독립 적용).
 #[tauri::command]
 async fn start_dept_master(socket: String) -> Result<(), String> {
-    let ezer = resolve_sidecar("ezer");
+    let EZERagent = resolve_sidecar("EZERagent");
     let out = tokio::task::spawn_blocking(move || {
-        let mut cmd = std::process::Command::new(&ezer);
+        let mut cmd = std::process::Command::new(&EZERagent);
         inject_runtime_path(&mut cmd);
-        cmd.env("EZER_SOCKET", &socket);
+        cmd.env("EZERAGENT_SOCKET", &socket);
         cmd.arg("launch-agent").arg("--role").arg("master").arg("--agent").arg("claude");
         no_console(&mut cmd);
         cmd.output()
@@ -1766,7 +1766,7 @@ async fn start_dept_master(socket: String) -> Result<(), String> {
 }
 
 /// 부서 데몬 teardown(socket 기준) — ws 이름 변경(rename)으로 name→socket 매핑이 끊겨도 정확히 종료.
-/// ezer-dept down-sock에 일임(레지스트리 역인덱스로 부서명 해석 후 teardown).
+/// EZERagent-dept down-sock에 일임(레지스트리 역인덱스로 부서명 해석 후 teardown).
 #[tauri::command]
 async fn stop_dept_daemon_by_socket(socket: String) -> Result<(), String> {
     let tool = dept_tool();
@@ -1807,8 +1807,8 @@ async fn dept_live_session_count(sock: &std::path::Path) -> Result<u64, String> 
     Ok(n)
 }
 
-/// 부서 데몬 버전 스큐 세대교체(재기동) — 메인 rotate_daemon의 부서판. `ezer-dept rotate <name>`에 일임한다:
-/// 데몬 프로세스만 정지→새 on-disk ezerd로 재기동하고 **레지스트리·phoenix 묘비·CEO는 건드리지 않는다**
+/// 부서 데몬 버전 스큐 세대교체(재기동) — 메인 rotate_daemon의 부서판. `EZERagent-dept rotate <name>`에 일임한다:
+/// 데몬 프로세스만 정지→새 on-disk EZERagentd로 재기동하고 **레지스트리·phoenix 묘비·CEO는 건드리지 않는다**
 /// (down=폐기와 결정적 차이 — CSO 단일소유 부서 생성/폐기 권한 불침범·rotate=순수 재기동). force 가드는
 /// rotate_daemon 동형이되 대상이 부서 소켓이라 세션 카운트를 dept_live_session_count(부서소켓 surface.list)로
 /// 산출한다(live_session_count는 메인 전용이라 재사용 불가). 반환=새 데몬 identify(+rotate_log) — UI 스큐 해소 판정.
@@ -1825,18 +1825,18 @@ async fn rotate_dept_daemon(app: AppHandle, name: String, force: bool) -> Result
             Err(_) => return Err("live_sessions:unknown".to_string()),
         }
     }
-    // drain(best-effort): 교대 전 부서 노드에 저장 신호. 부서 소켓 대상(EZER_SOCKET)으로 ezer drain 실행
-    // (메인 rotate_daemon의 drain 동형·spawn_blocking 패턴 일치). ezer drain 자체 watchdog로 hang 시에도 종료.
+    // drain(best-effort): 교대 전 부서 노드에 저장 신호. 부서 소켓 대상(EZERAGENT_SOCKET)으로 EZERagent drain 실행
+    // (메인 rotate_daemon의 drain 동형·spawn_blocking 패턴 일치). EZERagent drain 자체 watchdog로 hang 시에도 종료.
     let dsock = sock.to_string_lossy().into_owned();
     let _ = tokio::task::spawn_blocking(move || {
-        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "ezer.exe" } else { "ezer" }));
-        cmd.env(ezer::ENV_SOCKET, &dsock);
+        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "EZERagent.exe" } else { "EZERagent" }));
+        cmd.env(EZERagent::ENV_SOCKET, &dsock);
         cmd.arg("drain");
         no_console(&mut cmd);
         cmd.status()
     })
     .await;
-    // ezer-dept rotate <name> — 프로세스 정지→새 바이너리 재기동(reg_upsert 메타보존·묘비 불변).
+    // EZERagent-dept rotate <name> — 프로세스 정지→새 바이너리 재기동(reg_upsert 메타보존·묘비 불변).
     // launch_dept_daemon의 bash+inject_runtime_path+no_console+spawn_blocking 패턴 동형.
     let tool = dept_tool();
     let n = name.clone();
@@ -1879,15 +1879,15 @@ async fn rotate_dept_daemon(app: AppHandle, name: String, force: bool) -> Result
     Ok(info)
 }
 
-/// 업데이트 체크·설치 공용 updater 핸들. EZER_UPDATE_MANIFEST_URL(테스트 전용 env)이 있으면 그
+/// 업데이트 체크·설치 공용 updater 핸들. EZERAGENT_UPDATE_MANIFEST_URL(테스트 전용 env)이 있으면 그
 /// 엔드포인트로 오버라이드한다 — 패치 채널 E2E 실기기 검증용(Finder 런칭엔 env가 없어 프로덕션
 /// 경로는 tauri.conf 기본 엔드포인트 그대로). ★서명 검증 불변: 설치는 baked pubkey로 .sig를
 /// 검증하므로 엔드포인트 교체가 위조 패키지 설치를 허용하지 않는다.
 fn build_updater(app: &AppHandle) -> Result<tauri_plugin_updater::Updater, String> {
-    if let Some(u) = ezer::env_compat("EZER_UPDATE_MANIFEST_URL") {
+    if let Some(u) = EZERagent::env_compat("EZERAGENT_UPDATE_MANIFEST_URL") {
         let url: tauri::Url = u
             .parse()
-            .map_err(|e| format!("EZER_UPDATE_MANIFEST_URL 파싱 실패: {e}"))?;
+            .map_err(|e| format!("EZERAGENT_UPDATE_MANIFEST_URL 파싱 실패: {e}"))?;
         return app
             .updater_builder()
             .endpoints(vec![url])
@@ -1898,12 +1898,12 @@ fn build_updater(app: &AppHandle) -> Result<tauri_plugin_updater::Updater, Strin
     app.updater().map_err(|e| e.to_string())
 }
 
-/// 테스트 전용(패치 채널 E2E — 오너 2026-07-15): EZER_AUTOTEST_PATCH_INSTALL=1 env로 기동된
+/// 테스트 전용(패치 채널 E2E — 오너 2026-07-15): EZERAGENT_AUTOTEST_PATCH_INSTALL=1 env로 기동된
 /// 경우에만 true — UI가 기동 직후 패치 설치를 무클릭 자동 발화한다(Finder 런칭엔 env 부재 →
 /// 프로덕션 무영향).
 #[tauri::command]
 fn autotest_patch_install() -> bool {
-    ezer::env_compat("EZER_AUTOTEST_PATCH_INSTALL").as_deref() == Some("1")
+    EZERagent::env_compat("EZERAGENT_AUTOTEST_PATCH_INSTALL").as_deref() == Some("1")
 }
 
 /// 업데이트 확인: 새 버전이 있으면 (version, notes)를 반환, 없으면 null.
@@ -1931,7 +1931,7 @@ fn default_pack_manifest_url() -> String {
 /// 무중단 팩 업데이트 가용성 확인(DESIGN §7-④ 3축 게이트) — 원격 pack-manifest.json만 경량
 /// 페치(curl)해 디스크 `.pack-version` 및 실행 바이너리 버전과 비교한다. ★pack.tar.gz·서명은
 /// 받지 않는다(폴링 비용 최소화) — 실제 다운로드·서명검증·원자적 반영·reinject는
-/// install_pack_update(사이드카 ezer pack-update)가 전담한다(불가침).
+/// install_pack_update(사이드카 EZERagent pack-update)가 전담한다(불가침).
 /// 반환(★3상태 — UI가 'transient 장애'와 '확인된 no-update'를 구분해 fail-safe 상태보존):
 ///   - Ok(Some({pack_version, manifest_url, min_binary_version, binary_too_old}))
 ///       → 확인된 새 팩 있음. binary_too_old=false=무중단 가능(install_pack_update 경로) /
@@ -1968,15 +1968,15 @@ async fn check_pack_update(manifest_url: Option<String>) -> Result<Option<Value>
     // 미서명/필수필드 부재 manifest = packsig PackManifest 역직렬화 fail-closed(거부) = 보안 경계.
     //   받았으나 신뢰 불가 → '새 팩 없음'으로 취급(Ok(None), 설치 안 함). fetch 장애(Err·상태보존)와
     //   달리 재시도해도 동일하므로 unknown이 아닌 확정 거부 — UI는 packUpdateAvailable을 해제한다.
-    let manifest: ezer::packsig::PackManifest = match serde_json::from_slice(&out.stdout) {
+    let manifest: EZERagent::packsig::PackManifest = match serde_json::from_slice(&out.stdout) {
         Ok(m) => m,
         Err(_) => return Ok(None),
     };
-    let disk = std::fs::read_to_string(ezer::pack::pack_dir().join(".pack-version"))
+    let disk = std::fs::read_to_string(EZERagent::pack::pack_dir().join(".pack-version"))
         .map(|s| s.trim().to_string())
         .unwrap_or_default();
     // 축1 반영 판정: remote가 디스크보다 strictly-newer 여야. ★여기서 false면 '확인된 no-update' = Ok(None).
-    if !ezer::pack::remote_is_newer(&manifest.pack_version, &disk) {
+    if !EZERagent::pack::remote_is_newer(&manifest.pack_version, &disk) {
         return Ok(None);
     }
     // 축2 호환 게이트: min_binary_version ≤ 실행 바이너리(env CARGO_PKG_VERSION = 단일 버전선).
@@ -1991,13 +1991,13 @@ async fn check_pack_update(manifest_url: Option<String>) -> Result<Option<Value>
 
 /// 무중단 호환 게이트(DESIGN §7-④ 축2) 순수 판정 — min_binary_version > 실행 바이너리면 true(무중단
 /// 거부=바이너리 경로). 빈 값=제약 없음(false), 어느 쪽이든 파싱 실패=거부(true, 보수적).
-/// ezer.rs version_gates의 호환 게이트와 동일 의미 — 단위테스트 대상.
+/// EZERagent.rs version_gates의 호환 게이트와 동일 의미 — 단위테스트 대상.
 fn pack_binary_too_old(min_binary: &str, running: &str) -> bool {
     let min = min_binary.trim();
     if min.is_empty() {
         return false;
     }
-    match (ezer::pack::parse_semver(min), ezer::pack::parse_semver(running)) {
+    match (EZERagent::pack::parse_semver(min), EZERagent::pack::parse_semver(running)) {
         (Some(m), Some(r)) => m > r,
         _ => true,
     }
@@ -2027,7 +2027,7 @@ async fn install_update(app: AppHandle, force: bool) -> Result<(), String> {
     if sessions > 0 && !force {
         return Err(format!("live_sessions:{sessions}"));
     }
-    // 2) 업데이트 받아 설치 (.app 번들 교체 — 새 ezerd/ezer 동봉)
+    // 2) 업데이트 받아 설치 (.app 번들 교체 — 새 EZERagentd/EZERagent 동봉)
     let updater = build_updater(&app)?;
     let update = updater
         .check()
@@ -2048,24 +2048,24 @@ async fn install_update(app: AppHandle, force: bool) -> Result<(), String> {
         .await
         .map_err(|e| e.to_string())?;
     // 3) 데몬 핸드오프: 구 데몬을 정상 종료(SIGTERM — scoped 정리·소켓 제거)해야
-    //    재시작 후 새 번들의 ezerd가 뜬다. 종료 안 하면 구 데몬이 계속 세션을 들고 돈다.
+    //    재시작 후 새 번들의 EZERagentd가 뜬다. 종료 안 하면 구 데몬이 계속 세션을 들고 돈다.
     // drain(best-effort): 재시작 전 살아있는 노드에 저장 신호 + 유예를 준다. 노드 LLM 협조 의존이라
     // 무손실 보장은 아니며(마지막 미저장분은 손실 가능), 주 복원 경로는 재시작 후 resume이다.
-    // spawn_blocking으로 tokio 워커 점유를 막는다(파일 내 launch_dept_daemon 패턴과 일치). ezer drain은
+    // spawn_blocking으로 tokio 워커 점유를 막는다(파일 내 launch_dept_daemon 패턴과 일치). EZERagent drain은
     // 자체 watchdog(12s)로 hang 시에도 종료되므로 별도 timeout 없이 await해도 업데이트가 멈추지 않는다.
     let _ = app.emit("update-progress", json!({"phase": "drain"}));
     let _ = tokio::task::spawn_blocking(|| {
-        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "ezer.exe" } else { "ezer" }));
+        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "EZERagent.exe" } else { "EZERagent" }));
         cmd.arg("drain");
         no_console(&mut cmd);
         cmd.status()
     })
     .await;
     let _ = app.emit("update-progress", json!({"phase": "handoff"}));
-    // 재시작 후 자동복귀 예약 — 새 ezer-app setup이 이 마커를 보고 ezer restore로 노드를 resume 재런칭한다.
+    // 재시작 후 자동복귀 예약 — 새 EZERagent-app setup이 이 마커를 보고 EZERagent restore로 노드를 resume 재런칭한다.
     let _ = std::fs::write(pending_restore_path(), "");
     stop_running_daemon().await;
-    // 4) 앱 재시작 — setup의 ensure_daemon이 새 ezerd를 자동 기동, maybe_restore_after_update가 노드 복원
+    // 4) 앱 재시작 — setup의 ensure_daemon이 새 EZERagentd를 자동 기동, maybe_restore_after_update가 노드 복원
     // ★재활성화 경고(현재 이 경로는 휴면 — 본체 업데이트는 홈페이지 전용 T5): single-instance 플러그인이
     // 등록돼 있어 restart()의 신 프로세스가 구 프로세스의 인스턴스 락과 레이스할 수 있다(신 인스턴스가
     // 죽어가는 구 인스턴스로 포워딩 후 종료 → 앱 미복귀). 이 경로를 되살릴 때 반드시 실기기 검증하라.
@@ -2076,8 +2076,8 @@ async fn install_update(app: AppHandle, force: bool) -> Result<(), String> {
 /// 지연 핸드오프 완결(P2 스큐 배지의 짝). NSIS 경로는 install_update의 핸드오프 코드가 실행될 수
 /// 없어(인스톨러가 앱을 죽임) 디스크만 새 버전·프로세스는 구 버전으로 남는다 — 이 command가
 /// install_update 3~4단계를 업데이트 없이 재현한다: drain → 복귀 마커 → 구 데몬 종료 →
-/// 디스크의 새 ezerd 기동. app.restart()가 없어 setup이 다시 돌지 않으므로
-/// maybe_apply_pending_update(팩 반영 + ezer restore 노드 복원)를 여기서 직접 수행한다.
+/// 디스크의 새 EZERagentd 기동. app.restart()가 없어 setup이 다시 돌지 않으므로
+/// maybe_apply_pending_update(팩 반영 + EZERagent restore 노드 복원)를 여기서 직접 수행한다.
 /// ★update-progress는 emit하지 않는다 — drain/handoff 페이즈가 UI "업데이트 설치" sticky 토스트를
 /// 만드는데 이 경로엔 재시작이 없어 영구 잔류한다. 진행 표시는 UI(checkVersionSkew/manualRotateSkewed) 토스트 담당.
 /// force=false: 살아있는 세션이 있으면 거부(UI가 확인 후 force=true로 재호출) — install_update 가드 동형.
@@ -2095,7 +2095,7 @@ async fn rotate_daemon(app: AppHandle, force: bool) -> Result<(), String> {
     }
     // drain(best-effort): 교대 전 살아있는 노드에 저장 신호 + 유예 (install_update 3단계 동형).
     let _ = tokio::task::spawn_blocking(|| {
-        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "ezer.exe" } else { "ezer" }));
+        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "EZERagent.exe" } else { "EZERagent" }));
         cmd.arg("drain");
         no_console(&mut cmd);
         cmd.status()
@@ -2111,13 +2111,13 @@ async fn rotate_daemon(app: AppHandle, force: bool) -> Result<(), String> {
 }
 
 /// P5: 무중단 팩 업데이트 UI 브리지(DESIGN-noshutdown-pack-update §2-②·§7-③/④).
-/// UI "업데이트 버튼"이 호출 → `ezer pack-update`(P4) 사이드카를 실행해 서명검증→디스크 반영→
-/// 살아있는 노드 reinject를 시킨다. ★`app.restart()`를 **절대 호출하지 않는다** — ezerd·ezer-app·
+/// UI "업데이트 버튼"이 호출 → `EZERagent pack-update`(P4) 사이드카를 실행해 서명검증→디스크 반영→
+/// 살아있는 노드 reinject를 시킨다. ★`app.restart()`를 **절대 호출하지 않는다** — EZERagentd·EZERagent-app·
 /// 세션이 단 한 번도 죽지 않는 게 install_update(재시작)와의 핵심 차이(무중단).
-/// 오케스트레이션은 ezer(Rust)에 있고 ezer CLI엔 AppHandle이 없으므로, **이 command가 사이드카를
+/// 오케스트레이션은 EZERagent(Rust)에 있고 EZERagent CLI엔 AppHandle이 없으므로, **이 command가 사이드카를
 /// 래핑**해(make_ticket/run_skill 패턴 동형) 성공 종료 후 자신이 `app.emit("pack-updated", …)`
 /// 한다 — 프런트가 read_board_catalog 등 캐시 의존 호출을 재실행해 stale 캐시를 갱신(§2-② UI 브리지).
-/// 인자: from(로컬 디렉터리) 우선, 없으면 manifest_url(원격) — ezer pack-update의 --from/--manifest-url에 전달.
+/// 인자: from(로컬 디렉터리) 우선, 없으면 manifest_url(원격) — EZERagent pack-update의 --from/--manifest-url에 전달.
 #[tauri::command]
 async fn install_pack_update(
     app: AppHandle,
@@ -2125,8 +2125,8 @@ async fn install_pack_update(
     from: Option<String>,
 ) -> Result<String, String> {
     let _ = app.emit("pack-progress", json!({"phase": "start"}));
-    let ezer = resolve_sidecar(if cfg!(windows) { "ezer.exe" } else { "ezer" });
-    let mut cmd = std::process::Command::new(&ezer);
+    let EZERagent = resolve_sidecar(if cfg!(windows) { "EZERagent.exe" } else { "EZERagent" });
+    let mut cmd = std::process::Command::new(&EZERagent);
     cmd.arg("pack-update");
     no_console(&mut cmd);
     match (&from, &manifest_url) {
@@ -2142,13 +2142,13 @@ async fn install_pack_update(
     let out = tokio::task::spawn_blocking(move || cmd.output())
         .await
         .map_err(|e| format!("pack-update join 실패: {e}"))?
-        .map_err(|e| format!("ezer pack-update 실행 실패 ({}): {e}", ezer.display()))?;
+        .map_err(|e| format!("EZERagent pack-update 실행 실패 ({}): {e}", EZERagent.display()))?;
     let stdout = String::from_utf8_lossy(&out.stdout).to_string();
     let stderr = String::from_utf8_lossy(&out.stderr).to_string();
     // 종료코드 구분: EXIT_REINJECT_DEGRADED = 디스크 팩은 반영됐으나 라이브 노드 reinject 실패
     // (일부 미각성) — 디스크는 성공이므로 pack-updated를 emit하되 update-warning을 함께 띄운다.
     // 그 외 비0 = 실제 실패(디스크 미반영) → 구 캐시 유지가 안전하므로 update-error만.
-    let degraded = out.status.code() == Some(ezer::pack::EXIT_REINJECT_DEGRADED);
+    let degraded = out.status.code() == Some(EZERagent::pack::EXIT_REINJECT_DEGRADED);
     if !out.status.success() && !degraded {
         // ★실패 — "pack-updated"는 emit하지 않는다(구 캐시 유지가 stale 갱신보다 안전). update-error만.
         let _ = app.emit(
@@ -2159,7 +2159,7 @@ async fn install_pack_update(
     }
     // ★디스크 반영 성공(success 또는 degraded) — .pack-version을 읽어 새 팩 버전으로 브로드캐스트(§2-②/§7-③).
     //   read_board_catalog가 pack_dir의 정적 파일을 읽는 것과 동일 SOT(pack_dir).
-    let pack_version = std::fs::read_to_string(ezer::pack::pack_dir().join(".pack-version"))
+    let pack_version = std::fs::read_to_string(EZERagent::pack::pack_dir().join(".pack-version"))
         .map(|s| s.trim().to_string())
         .unwrap_or_default();
     // 사이드카 구조화 출력에서 reinject failed/deferred 집계 — 라이브 미각성을 사용자에게 경고.
@@ -2192,13 +2192,13 @@ async fn install_pack_update(
     Ok(pack_version)
 }
 
-/// 사이드카(ezer pack-update) stdout에서 `PACK_UPDATE_RESULT … failed=N deferred=N` 토큰을 파싱해
+/// 사이드카(EZERagent pack-update) stdout에서 `PACK_UPDATE_RESULT … failed=N deferred=N` 토큰을 파싱해
 /// (failed, deferred)를 돌려준다. 토큰 부재(구버전 사이드카·reinject 스킵 등)면 (0,0) — 보수적.
 /// 사람용 메시지와 독립한 안정 토큰(REINJECT_RESULT_PREFIX)만 신뢰한다.
 fn parse_reinject_counts(stdout: &str) -> (u64, u64) {
     for line in stdout.lines() {
         let line = line.trim();
-        if let Some(rest) = line.strip_prefix(ezer::pack::REINJECT_RESULT_PREFIX) {
+        if let Some(rest) = line.strip_prefix(EZERagent::pack::REINJECT_RESULT_PREFIX) {
             let (mut failed, mut deferred) = (0u64, 0u64);
             for tok in rest.split_whitespace() {
                 if let Some(v) = tok.strip_prefix("failed=") {
@@ -2216,7 +2216,7 @@ fn parse_reinject_counts(stdout: &str) -> (u64, u64) {
 /// `ledger.list` 응답에서 scoped 프로세스 pid만 추린다.
 /// windows 핸드오프(taskkill /F=TerminateProcess)는 데몬의 콘솔 이벤트 핸들러를
 /// 못 깨워 shutdown_cleanup이 실행되지 않으므로, 데몬이 살아있는 동안 UI가
-/// 직접 이 pid들을 ledger.kill로 회수해야 한다 (ezerd shutdown_cleanup와 동일 선별).
+/// 직접 이 pid들을 ledger.kill로 회수해야 한다 (EZERagentd shutdown_cleanup와 동일 선별).
 /// (호출은 windows 경로 한정 — non-windows 빌드에선 테스트만 사용한다.)
 #[cfg_attr(not(windows), allow(dead_code))]
 fn scoped_pids_from_ledger_list(resp: &Value) -> Vec<u64> {
@@ -2245,7 +2245,7 @@ async fn stop_running_daemon() {
         #[cfg(windows)]
         {
             // taskkill /F는 TerminateProcess라 데몬이 어떤 콘솔 이벤트도 못 받아
-            // shutdown_cleanup이 실행되지 않는다 → ledger의 scoped 프로세스(=ezer CLI의
+            // shutdown_cleanup이 실행되지 않는다 → ledger의 scoped 프로세스(=EZERagent CLI의
             // 자식, 데몬 트리 밖이라 /T로도 닿지 않음)가 영구 고아로 남는다. 데몬이
             // 아직 살아있는 지금 직접 회수한 뒤 데몬을 종료한다 (unix SIGTERM 경로 대칭).
             if let Ok(r) = rpc("ledger.list", json!({})).await {
@@ -2271,7 +2271,7 @@ async fn stop_running_daemon() {
 fn main() {
     tauri::Builder::default()
         // ★최선두 등록 필수 — 두 번째 인스턴스는 다른 플러그인·setup이 돌기 전에 기존 창 포커스 후
-        // 스스로 종료된다(Win11 ezer-app.exe 프로세스 증식 이슈의 증상 차단 · 2026-07-12). 스폰 소스가
+        // 스스로 종료된다(Win11 EZERagent-app.exe 프로세스 증식 이슈의 증상 차단 · 2026-07-12). 스폰 소스가
         // 무엇이든(설치기 재실행·바로가기 이중클릭·OS 재기동 복원) 단일 인스턴스가 보장된다.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
@@ -2346,8 +2346,8 @@ fn main() {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 // ★온보딩 게이트(v4) — GUI 전용 완료 마커(.gui-onboarded) 기준. 팩 마커(.pack-version)
-                // 기준이던 v3는 CLI autostart·잔존 schtasks 등으로 ezerd가 GUI보다 먼저 돈 머신에서
-                // 게이트가 선점돼 ~/.claude hook이 영구 미설치됐다(0.12.52 ezer-neo 실사고 — "너는
+                // 기준이던 v3는 CLI autostart·잔존 schtasks 등으로 EZERagentd가 GUI보다 먼저 돈 머신에서
+                // 게이트가 선점돼 ~/.claude hook이 영구 미설치됐다(0.12.52 EZERagent-neo 실사고 — "너는
                 // 마스터다" 부트스트랩 무력화). 이 마커는 GUI 온보딩 성공 경로만 기록하므로 프로세스
                 // 순서와 무관하게 신선 머신 온보딩이 보장된다. 평시 부트 비용 = 마커 read 1회.
                 #[allow(unused_variables)] // 온보딩 경로가 없는 OS(linux CI 등)에서만 미사용
@@ -2363,15 +2363,15 @@ fn main() {
                 // 종전에는 launchd 소유 시 5초 무응답이면 부트 시퀀스 전체를 영구 포기했다(재시도·
                 // 폴백 전무 — 온보딩·이벤트 파이프까지 미실행). 최신 macOS는 앱이 등록한 LaunchAgent를
                 // '백그라운드 항목' 사용자 승인까지 보류할 수 있고, 첫 실행 Gatekeeper 검증은 5초를
-                // 훌쩍 넘긴다. 수리: ①launchd 5초 무응답 → 형제 spawn 폴백(CLI ezer와 대칭 — 중복
-                // spawn은 ezerd 시동 잠금(healthy-holder 거부)이 단일 인스턴스 보장) ②그래도 실패면
+                // 훌쩍 넘긴다. 수리: ①launchd 5초 무응답 → 형제 spawn 폴백(CLI EZERagent와 대칭 — 중복
+                // spawn은 EZERagentd 시동 잠금(healthy-holder 거부)이 단일 인스턴스 보장) ②그래도 실패면
                 // 15초 간격 백그라운드 재시도(최대 20회 ≈ 5분 — 승인 지연·느린 첫 기동 흡수)
                 // ③4회째부터 로그인 항목 안내 이벤트(daemon-retry-hint) — 생초보 가이드.
                 let mut result = if launchd_owns {
                     if wait_for_connect(50).await {
                         Ok(())
                     } else {
-                        eprintln!("[ezer-app] launchd-owned ezerd not ready in 5s — 형제 spawn 폴백");
+                        eprintln!("[EZERagent-app] launchd-owned EZERagentd not ready in 5s — 형제 spawn 폴백");
                         ensure_daemon().await
                     }
                 } else {
@@ -2396,7 +2396,7 @@ fn main() {
                 if let Err(e) = result {
                     let _ = handle.emit(
                         "daemon-error",
-                        format!("{e} — 데몬을 시작하지 못했습니다. 시스템 설정 → 일반 → 로그인 항목에서 ezer 백그라운드 항목을 허용한 뒤 앱을 다시 여세요."),
+                        format!("{e} — 데몬을 시작하지 못했습니다. 시스템 설정 → 일반 → 로그인 항목에서 EZERagent 백그라운드 항목을 허용한 뒤 앱을 다시 여세요."),
                     );
                     return;
                 }
@@ -2411,14 +2411,14 @@ fn main() {
                 #[cfg(windows)]
                 if needs_onboard && maybe_windows_onboard() {
                     if let Err(e) = std::fs::write(gui_onboarded_path(), env!("CARGO_PKG_VERSION")) {
-                        eprintln!("[ezer-app] onboarding marker write failed (다음 부트 재시도): {e}");
+                        eprintln!("[EZERagent-app] onboarding marker write failed (다음 부트 재시도): {e}");
                     }
                 }
                 // RC-17(T5): macOS 첫 기동 온보딩(팩+hook) — Windows 대칭(동일 게이트). autostart는 위 launchd.
                 #[cfg(target_os = "macos")]
                 if needs_onboard && maybe_macos_onboard() {
                     if let Err(e) = std::fs::write(gui_onboarded_path(), env!("CARGO_PKG_VERSION")) {
-                        eprintln!("[ezer-app] onboarding marker write failed (다음 부트 재시도): {e}");
+                        eprintln!("[EZERagent-app] onboarding marker write failed (다음 부트 재시도): {e}");
                     }
                 }
                 // 업데이트 재시작 시: 새 팩(새 기능) 반영 + 노드 자동복귀(마커가 있을 때만).
@@ -2456,9 +2456,9 @@ mod tests {
 
     /// (T1) 재시작 후 팩반영·복원 발동 판정 — 마커(인앱 업데이트) OR 버전변경(홈페이지 수동설치).
     #[test]
-    /// ★v4 GUI 온보딩 게이트 회귀 핀(0.12.52 ezer-neo 실사고) — 마커가 현재 버전과 정확히 일치할
+    /// ★v4 GUI 온보딩 게이트 회귀 핀(0.12.52 EZERagent-neo 실사고) — 마커가 현재 버전과 정확히 일치할
     /// 때만 스킵. 부재(신선 머신·직전 실패)·구버전·손상 = 실행(fail-open 치유 방향). 이 판정이
-    /// .pack-version 등 팩 상태를 일절 보지 않는 것이 요점 — ezerd 선행이 게이트를 선점 못 한다.
+    /// .pack-version 등 팩 상태를 일절 보지 않는 것이 요점 — EZERagentd 선행이 게이트를 선점 못 한다.
     #[test]
     fn needs_gui_onboard_only_skips_on_exact_version_match() {
         assert!(needs_gui_onboard(None, "0.12.53"), "마커 부재 = 온보딩(신선·직전 실패)");
@@ -2488,7 +2488,7 @@ mod tests {
     #[test]
     fn open_url_whitelist_blocks_spoofed_and_nonhttps() {
         assert!(url_host_allowed("https://notebooklm.google.com/notebook/abc").is_ok());
-        assert!(url_host_allowed("https://github.com/ezer/repo").is_ok());
+        assert!(url_host_allowed("https://github.com/EZERagent/repo").is_ok());
         assert!(url_host_allowed("https://www.kaea.ai.kr/").is_ok(), "홈페이지(본체 다운로드) 허용");
         assert!(url_host_allowed("https://kaea.ai.kr/download").is_ok(), "홈페이지 apex 허용");
         assert!(url_host_allowed("http://notebooklm.google.com/").is_err(), "http 차단");
@@ -2553,8 +2553,8 @@ mod tests {
         assert!(pack_binary_too_old("0.5.0", "garbage"));
     }
 
-    // 회귀: windows 업데이트 핸드오프가 데몬을 taskkill /F로 하드킬하면 ezerd의
-    // shutdown_cleanup이 실행되지 않아 scoped 자식(ezer CLI의 자식)이 영구 고아로
+    // 회귀: windows 업데이트 핸드오프가 데몬을 taskkill /F로 하드킬하면 EZERagentd의
+    // shutdown_cleanup이 실행되지 않아 scoped 자식(EZERagent CLI의 자식)이 영구 고아로
     // 남는다. 그 누수를 막으려면 데몬이 살아있을 때 UI가 ledger.list에서 scoped pid를
     // 정확히 추려 ledger.kill로 회수해야 한다 — 그 선별 로직을 고정한다.
     #[test]
@@ -2594,7 +2594,7 @@ mod tests {
     fn rpc_oneshot_parses_response_and_times_out_on_hung_socket() {
         use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _};
         use tokio::net::UnixListener;
-        let dir = std::env::temp_dir().join(format!("ezer-rpc-oneshot-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("EZERagent-rpc-oneshot-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let ok_sock = dir.join("ok.sock");
         let hang_sock = dir.join("hang.sock");
@@ -2644,21 +2644,21 @@ mod tests {
     #[test]
     fn sh_squote_escapes_spaces_and_quotes() {
         assert_eq!(sh_squote("/usr/local/bin"), "'/usr/local/bin'");
-        assert_eq!(sh_squote("/Users/x/a b/ezer.app"), "'/Users/x/a b/ezer.app'");
+        assert_eq!(sh_squote("/Users/x/a b/EZERagent.app"), "'/Users/x/a b/EZERagent.app'");
         // 단일따옴표는 '\'' 시퀀스로 안전 이스케이프
         assert_eq!(sh_squote("a'b"), "'a'\\''b'");
     }
 
     #[test]
     fn build_install_script_emits_idempotent_symlinks() {
-        let ezer = std::path::Path::new("/Applications/ezer.app/Contents/MacOS/ezer");
-        let ezerd = std::path::Path::new("/Applications/ezer.app/Contents/MacOS/ezerd");
-        let s = build_install_script(ezer, ezerd, "/usr/local/bin");
+        let EZERagent = std::path::Path::new("/Applications/EZERagent.app/Contents/MacOS/EZERagent");
+        let EZERagentd = std::path::Path::new("/Applications/EZERagent.app/Contents/MacOS/EZERagentd");
+        let s = build_install_script(EZERagent, EZERagentd, "/usr/local/bin");
         assert_eq!(
             s,
             "mkdir -p '/usr/local/bin' && \
-ln -sf '/Applications/ezer.app/Contents/MacOS/ezer' '/usr/local/bin/ezer' && \
-ln -sf '/Applications/ezer.app/Contents/MacOS/ezerd' '/usr/local/bin/ezerd'"
+ln -sf '/Applications/EZERagent.app/Contents/MacOS/EZERagent' '/usr/local/bin/EZERagent' && \
+ln -sf '/Applications/EZERagent.app/Contents/MacOS/EZERagentd' '/usr/local/bin/EZERagentd'"
         );
     }
 
@@ -2666,42 +2666,42 @@ ln -sf '/Applications/ezer.app/Contents/MacOS/ezerd' '/usr/local/bin/ezerd'"
     fn classify_bundle_dir_distinguishes_canonical_translocated_backup_nonstandard() {
         use std::path::Path;
         assert_eq!(
-            classify_bundle_dir(Path::new("/Applications/ezer.app/Contents/MacOS")),
+            classify_bundle_dir(Path::new("/Applications/EZERagent.app/Contents/MacOS")),
             BundleKind::Canonical
         );
         assert_eq!(
-            classify_bundle_dir(Path::new("/Users/x/Applications/ezer.app/Contents/MacOS")),
+            classify_bundle_dir(Path::new("/Users/x/Applications/EZERagent.app/Contents/MacOS")),
             BundleKind::Canonical
         );
         assert_eq!(
             classify_bundle_dir(Path::new(
-                "/private/var/folders/aa/bb/AppTranslocation/CCCC/d/ezer.app/Contents/MacOS"
+                "/private/var/folders/aa/bb/AppTranslocation/CCCC/d/EZERagent.app/Contents/MacOS"
             )),
             BundleKind::Translocated
         );
         assert_eq!(
-            classify_bundle_dir(Path::new("/Applications/ezer.app.bak-044/Contents/MacOS")),
+            classify_bundle_dir(Path::new("/Applications/EZERagent.app.bak-044/Contents/MacOS")),
             BundleKind::Backup
         );
         assert_eq!(
-            classify_bundle_dir(Path::new("/Applications/ezer.app.prev-210050/Contents/MacOS")),
+            classify_bundle_dir(Path::new("/Applications/EZERagent.app.prev-210050/Contents/MacOS")),
             BundleKind::Backup
         );
         assert_eq!(
-            classify_bundle_dir(Path::new("/Users/x/Downloads/ezer.app/Contents/MacOS")),
+            classify_bundle_dir(Path::new("/Users/x/Downloads/EZERagent.app/Contents/MacOS")),
             BundleKind::NonStandard
         );
     }
 
     #[test]
     fn parse_which_a_returns_precedence_ordered_paths() {
-        let out = "/Users/x/.local/bin/ezer\n/opt/homebrew/bin/ezer\n\n/usr/local/bin/ezer\n";
+        let out = "/Users/x/.local/bin/EZERagent\n/opt/homebrew/bin/EZERagent\n\n/usr/local/bin/EZERagent\n";
         assert_eq!(
             parse_which_a(out),
             vec![
-                "/Users/x/.local/bin/ezer".to_string(),
-                "/opt/homebrew/bin/ezer".to_string(),
-                "/usr/local/bin/ezer".to_string(),
+                "/Users/x/.local/bin/EZERagent".to_string(),
+                "/opt/homebrew/bin/EZERagent".to_string(),
+                "/usr/local/bin/EZERagent".to_string(),
             ]
         );
     }
@@ -2710,12 +2710,12 @@ ln -sf '/Applications/ezer.app/Contents/MacOS/ezerd' '/usr/local/bin/ezerd'"
     fn plan_cli_install_refuses_translocated_and_backup() {
         // translocated → Err
         assert!(plan_cli_install(
-            std::path::Path::new("/private/var/folders/x/AppTranslocation/Y/d/ezer.app/Contents/MacOS"),
+            std::path::Path::new("/private/var/folders/x/AppTranslocation/Y/d/EZERagent.app/Contents/MacOS"),
             "/usr/local/bin"
         ).is_err());
         // backup → Err
         assert!(plan_cli_install(
-            std::path::Path::new("/Applications/ezer.app.bak-044/Contents/MacOS"),
+            std::path::Path::new("/Applications/EZERagent.app.bak-044/Contents/MacOS"),
             "/usr/local/bin"
         ).is_err());
     }
@@ -2723,18 +2723,18 @@ ln -sf '/Applications/ezer.app/Contents/MacOS/ezerd' '/usr/local/bin/ezerd'"
     #[test]
     fn plan_cli_install_warns_on_nonstandard_but_proceeds() {
         let plan = plan_cli_install(
-            std::path::Path::new("/Users/x/Downloads/ezer.app/Contents/MacOS"),
+            std::path::Path::new("/Users/x/Downloads/EZERagent.app/Contents/MacOS"),
             "/usr/local/bin"
         ).expect("nonstandard는 경고와 함께 진행");
         assert!(plan.osascript_arg.contains("with administrator privileges"));
         assert!(plan.warnings.iter().any(|w| w.contains("표준 위치")));
-        assert_eq!(plan.ezer_src, std::path::PathBuf::from("/Users/x/Downloads/ezer.app/Contents/MacOS/ezer"));
+        assert_eq!(plan.EZERagent_src, std::path::PathBuf::from("/Users/x/Downloads/EZERagent.app/Contents/MacOS/EZERagent"));
     }
 
     #[test]
     fn plan_cli_install_canonical_has_no_location_warning() {
         let plan = plan_cli_install(
-            std::path::Path::new("/Applications/ezer.app/Contents/MacOS"),
+            std::path::Path::new("/Applications/EZERagent.app/Contents/MacOS"),
             "/usr/local/bin"
         ).expect("정규 번들은 진행");
         assert!(plan.warnings.iter().all(|w| !w.contains("표준 위치")));
@@ -2755,14 +2755,14 @@ ln -sf '/Applications/ezer.app/Contents/MacOS/ezerd' '/usr/local/bin/ezerd'"
     #[test]
     fn osascript_arg_wraps_shell_in_applescript_double_quotes() {
         let plan = plan_cli_install(
-            std::path::Path::new("/Applications/ezer.app/Contents/MacOS"),
+            std::path::Path::new("/Applications/EZERagent.app/Contents/MacOS"),
             "/usr/local/bin",
         )
         .unwrap();
         assert!(plan.osascript_arg.starts_with("do shell script \""));
         assert!(plan.osascript_arg.ends_with("\" with administrator privileges"));
         assert!(!plan.osascript_arg.starts_with("do shell script '"));
-        assert!(plan.osascript_arg.contains("'/usr/local/bin/ezer'"));
+        assert!(plan.osascript_arg.contains("'/usr/local/bin/EZERagent'"));
         assert!(plan.osascript_arg.contains("ln -sf"));
     }
 }

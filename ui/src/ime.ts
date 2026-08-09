@@ -23,7 +23,7 @@ export type ImeEvent =
   | { kind: "onData"; data: string; duplicate?: boolean }
   | { kind: "blur" };
 
-/** send=PTY로 보낼 바이트, debug=ezerImeDebug 채널 로그(평시 미출력). */
+/** send=PTY로 보낼 바이트, debug=EZERagentImeDebug 채널 로그(평시 미출력). */
 export type ImeAction = { send: string } | { debug: string };
 
 export interface ImeResult {
@@ -122,7 +122,7 @@ export function imeStep(state: ImeState, event: ImeEvent): ImeResult {
     }
     case "onData": {
       actions.push({ debug: `onData data="${event.data}"${event.duplicate ? " DUP" : ""} pending="${pending}"` });
-      // 프로필 D(ezer-neo, macOS 26.5.1 WKWebView): xterm(Terminal._inputEvent)가 음절 첫 자모의
+      // 프로필 D(EZERagent-neo, macOS 26.5.1 WKWebView): xterm(Terminal._inputEvent)가 음절 첫 자모의
       // insertText 커밋을 triggerDataEvent로 onData에 유출한다. 같은 자모를 아래 input 경로가 이미
       // pending에 버퍼·확정하므로 이 onData의 data는 중복(선행 자모 유출)이다. main.ts 배선이
       // 'insertText(한글) 디스패치 중 동기 발화'를 감지해 duplicate로 표시한다 → 잔여 pending(직전

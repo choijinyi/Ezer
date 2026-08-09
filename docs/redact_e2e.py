@@ -14,11 +14,11 @@ import sqlite3
 import subprocess
 import time
 
-DIR = f"/tmp/ezer-e9-{os.getpid()}"
+DIR = f"/tmp/EZERagent-e9-{os.getpid()}"
 os.makedirs(DIR, exist_ok=True)
-SOCK = os.path.join(DIR, "ezer.sock")
-EZERD = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "ezerd")
-ENV = dict(os.environ, EZER_SOCKET=SOCK, EZER_PACK_DIR=os.path.join(DIR, "pack"))
+SOCK = os.path.join(DIR, "EZERagent.sock")
+EZERAGENTD = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "EZERagentd")
+ENV = dict(os.environ, EZERAGENT_SOCKET=SOCK, EZERAGENT_PACK_DIR=os.path.join(DIR, "pack"))
 DBP = os.path.join(DIR, "analytics.db")
 PII_PATH = "/Users/user/.claude/projects/secret-project/abc-123.jsonl"
 FAIL = []
@@ -45,7 +45,7 @@ def rpc(method, params):
 
 
 def start_daemon():
-    p = subprocess.Popen([EZERD], env=ENV, stdout=open(os.path.join(DIR, "ezerd.log"), "a"), stderr=subprocess.STDOUT)
+    p = subprocess.Popen([EZERAGENTD], env=ENV, stdout=open(os.path.join(DIR, "EZERagentd.log"), "a"), stderr=subprocess.STDOUT)
     for _ in range(50):
         try:
             if rpc("system.ping", {}):
@@ -85,7 +85,7 @@ def main():
         sid = s1["session_id"]
         check("redact=true: session_id=sess-<hash>", sid.startswith("sess-") and len(sid) == 13, sid)
         check("★PII 미노출(경로·홈·프로젝트명 없음)",
-              "/" not in sid and "ezer" not in sid and "secret" not in sid, sid)
+              "/" not in sid and "EZERagent" not in sid and "secret" not in sid, sid)
         check("집계(토큰 5000) 보존", s1["tokens"] == 5000, str(s1.get("tokens")))
         # 안정성: 같은 세션은 같은 해시
         r2 = rpc("control.sessions", {"window": "all", "redact": True})["result"]

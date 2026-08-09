@@ -1,7 +1,7 @@
 #!/bin/sh
 # tauri build 전처리: UI 번들 최신화 + 데몬/CLI 릴리스 빌드 + externalBin 배치.
 # tauri.conf.json beforeBuildCommand가 호출한다 (src-tauri 디렉토리 기준 실행).
-# EZER_TARGET(예: x86_64-apple-darwin) 설정 시 그 타깃으로 크로스 빌드 — CI 매트릭스용.
+# EZERAGENT_TARGET(예: x86_64-apple-darwin) 설정 시 그 타깃으로 크로스 빌드 — CI 매트릭스용.
 # 미설정 시 호스트 타깃으로 빌드 — 로컬 빌드 동작 그대로 유지.
 set -e
 cd "$(dirname "$0")/.."
@@ -12,25 +12,25 @@ PY="$(command -v python3 || command -v python || true)"
 
 sh ui/build.sh
 
-if [ -n "$EZER_TARGET" ]; then
-  triple="$EZER_TARGET"
-  cargo build --release --target "$triple" --bin ezer --bin ezerd
+if [ -n "$EZERAGENT_TARGET" ]; then
+  triple="$EZERAGENT_TARGET"
+  cargo build --release --target "$triple" --bin EZERagent --bin EZERagentd
   bindir="target/$triple/release"
 else
   triple="$(rustc -vV | sed -n 's/^host: //p')"
-  cargo build --release --bin ezer --bin ezerd
+  cargo build --release --bin EZERagent --bin EZERagentd
   bindir="target/release"
 fi
 
-# Windows 사이드카는 .exe 확장자 필수(tauri externalBin은 ezer-<triple>.exe 를 찾음).
+# Windows 사이드카는 .exe 확장자 필수(tauri externalBin은 EZERagent-<triple>.exe 를 찾음).
 case "$triple" in *windows*) exe=".exe" ;; *) exe="" ;; esac
 mkdir -p src-tauri/binaries
-cp "$bindir/ezer$exe" "src-tauri/binaries/ezer-$triple$exe"
-cp "$bindir/ezerd$exe" "src-tauri/binaries/ezerd-$triple$exe"
+cp "$bindir/EZERagent$exe" "src-tauri/binaries/EZERagent-$triple$exe"
+cp "$bindir/EZERagentd$exe" "src-tauri/binaries/EZERagentd-$triple$exe"
 
 # ── pack.tar.gz를 .app Contents/Resources/ 에 동봉 (옵션4 — 오프라인 자기완결·가시·핫스왑) ──
-# 임베드 PACK_ALL(build.rs가 git-추적 ezer-pack/ 전 트리에서 생성한 권위 테이블)을 단일 SOT로
-# `ezer pack-manifest`가 방출 → 정확히 그 파일집합만으로 결정론 tar(정렬·고정 mtime 2020-01-01·owner 0/0)
+# 임베드 PACK_ALL(build.rs가 git-추적 EZERagent-pack/ 전 트리에서 생성한 권위 테이블)을 단일 SOT로
+# `EZERagent pack-manifest`가 방출 → 정확히 그 파일집합만으로 결정론 tar(정렬·고정 mtime 2020-01-01·owner 0/0)
 # 를 만들어 src-tauri/resources/ 에 둔다. release.yml pack-artifacts의 결정론 tar 로직과 동일하되,
 # bundle-prep은 macOS(bsdtar — --sort/--mtime 미지원) beforeBuildCommand라 동일 로직을 python3로
 # 표현한다(release.yml도 동일성·tar 단계를 python3 heredoc으로 수행). ★raw 트리 글롭이 아니라
@@ -39,16 +39,16 @@ cp "$bindir/ezerd$exe" "src-tauri/binaries/ezerd-$triple$exe"
 host_triple="$(rustc -vV | sed -n 's/^host: //p')"
 case "$host_triple" in *windows*) host_exe=".exe" ;; *) host_exe="" ;; esac
 if [ "$triple" = "$host_triple" ]; then
-  manifest_ezer="$bindir/ezer$exe"      # 호스트 네이티브 사이드카 — 그대로 실행 가능
+  manifest_EZERagent="$bindir/EZERagent$exe"      # 호스트 네이티브 사이드카 — 그대로 실행 가능
 else
   # 크로스 빌드 레그(예: arm64 러너에서 x86_64): 사이드카는 타깃 ABI라 실행 불가 →
-  # 호스트 ezer를 별도 빌드해 manifest emit에 쓴다(팩 콘텐츠는 타깃 무관 = 동일 manifest).
-  cargo build --release --bin ezer
-  manifest_ezer="target/release/ezer$host_exe"
+  # 호스트 EZERagent를 별도 빌드해 manifest emit에 쓴다(팩 콘텐츠는 타깃 무관 = 동일 manifest).
+  cargo build --release --bin EZERagent
+  manifest_EZERagent="target/release/EZERagent$host_exe"
 fi
 
 mkdir -p src-tauri/resources
-"$manifest_ezer" pack-manifest > src-tauri/resources/pack-manifest.json
+"$manifest_EZERagent" pack-manifest > src-tauri/resources/pack-manifest.json
 "$PY" - <<'PY'
 import gzip, hashlib, io, json, os, sys, tarfile
 
@@ -57,7 +57,7 @@ import gzip, hashlib, io, json, os, sys, tarfile
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
-ROOT = "ezer-pack"
+ROOT = "EZERagent-pack"
 man = json.load(open("src-tauri/resources/pack-manifest.json"))
 files = man["files"]
 if not files:

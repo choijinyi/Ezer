@@ -19,16 +19,16 @@ V_CARGO=$(grep -m1 '^version'   Cargo.toml                  | sed -E 's/.*"([^"]
 V_TCARGO=$(grep -m1 '^version'  src-tauri/Cargo.toml        | sed -E 's/.*"([^"]+)".*/\1/')
 V_CONF=$(grep -m1 '"version"'   src-tauri/tauri.conf.json   | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
 V_PKG=$(grep -m1 '"version"'    ui/package.json             | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
-V_WXS=$(grep -m1 'Product'      dist-win/ezer.wxs            | sed -E 's/.*Version="([^"]+)".*/\1/')
-V_WXS64=$(grep -m1 'Product'    dist-win/ezer-x64.wxs        | sed -E 's/.*Version="([^"]+)".*/\1/')
+V_WXS=$(grep -m1 'Product'      dist-win/EZERagent.wxs            | sed -E 's/.*Version="([^"]+)".*/\1/')
+V_WXS64=$(grep -m1 'Product'    dist-win/EZERagent-x64.wxs        | sed -E 's/.*Version="([^"]+)".*/\1/')
 
 echo "버전 SOT 6곳:"
 row "Cargo.toml"                "$V_CARGO"
 row "src-tauri/Cargo.toml"      "$V_TCARGO"
 row "src-tauri/tauri.conf.json" "$V_CONF"
 row "ui/package.json"           "$V_PKG"
-row "dist-win/ezer.wxs"          "$V_WXS"
-row "dist-win/ezer-x64.wxs"      "$V_WXS64"
+row "dist-win/EZERagent.wxs"          "$V_WXS"
+row "dist-win/EZERagent-x64.wxs"      "$V_WXS64"
 echo ""
 
 NUNIQ=$(printf '%s\n' "$V_CARGO" "$V_TCARGO" "$V_CONF" "$V_PKG" "$V_WXS" "$V_WXS64" | sort -u | wc -l | tr -d ' ')

@@ -4,23 +4,23 @@ members = ["src-tauri"]
 exclude = ["vendor/portable-pty"]
 
 [package]
-name = "ezer-agent"
+name = "EZERagent"
 version = "0.12.64"
 edition = "2021"
-description = "ezer — the Ezer terminal: bidirectional socket IPC, multi-agent OS (Ezer Pack), governance, heartbeat"
+description = "EZERagent — AI agent fleet orchestration terminal: bidirectional socket IPC, multi-agent OS (EZERagent Pack), governance, heartbeat"
 license = "MIT"
 
 [lib]
-name = "ezer"
+name = "EZERagent"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ezerd"
-path = "src/bin/ezerd/main.rs"
+name = "EZERagentd"
+path = "src/bin/EZERagentd/main.rs"
 
 [[bin]]
-name = "ezer"
-path = "src/bin/ezer.rs"
+name = "EZERagent"
+path = "src/bin/EZERagent.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time", "signal", "process"] }

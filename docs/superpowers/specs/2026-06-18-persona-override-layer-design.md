@@ -9,8 +9,8 @@
 ### 현재 동작
 - 노드 페르소나의 실체 = directive 마크다운 (`MASTER_DIRECTIVE.md` / `WORKER_DIRECTIVE.md` /
   `CSO_DIRECTIVE.md` / `REVIEWER_DIRECTIVE.md` / `RSI_LEARNING_DIRECTIVE.md`). 바이너리에
-  `include_str!`로 임베드(`src/pack.rs` `PACK`) → `~/.ezer/pack/directives/`에 설치.
-- `compose_directive(role)` (`src/bin/ezer.rs:1966`)이 `역할 directive + RSI(master·worker) +
+  `include_str!`로 임베드(`src/pack.rs` `PACK`) → `~/.EZERagent/pack/directives/`에 설치.
+- `compose_directive(role)` (`src/bin/EZERagent.rs:1966`)이 `역할 directive + RSI(master·worker) +
   soul.md + 메모리 색인 + 스킬 색인`을 조립해 노드 기동 시 주입.
 - `install()` (`src/pack.rs:228`)에 3-way 머지 존재:
   - 비수정 파일(매니페스트 해시 = 디스크 해시) → 신버전 자동 업그레이드
@@ -36,7 +36,7 @@
 ## 3. 아키텍처
 
 ### 3.1 데이터 모델 — 오버라이드 파일
-- 경로: `~/.ezer/pack/overrides/<role>.json` (role ∈ {master, worker, cso, reviewer}).
+- 경로: `~/.EZERagent/pack/overrides/<role>.json` (role ∈ {master, worker, cso, reviewer}).
   역할 접두 매칭(`role_directive_path`와 동일 규칙): `worker-2` → `worker.json`,
   `reviewer-gemini` → `reviewer.json`.
 - **임베드 PACK에 미포함** → `install()`이 절대 건드리지 않는 순수 사용자 데이터.
@@ -77,10 +77,10 @@ context_clear_pct 60 = "60% 초과 전 clear"). 레지스트리는 단일 진실
 4. persona 길이 상한(예: 4000자) 초과 → 절단 + 경고.
 5. persona 안전 침해 스캔 → **해당 줄 strip + 경고**(denylist·recovery·kill-switch·soul·헌법·
    autopilot·헌장 등 키워드 × 무력화 동사 패턴). 방어심층 — 1차 보증은 3.3의 last-word 재선언.
-6. `expert` 플래그(`EZER_OVERRIDE_EXPERT=1`) → **숫자 노브 범위만** 확장.
+6. `expert` 플래그(`EZERAGENT_OVERRIDE_EXPERT=1`) → **숫자 노브 범위만** 확장.
    denylist·recovery·kill-switch는 레지스트리에 **부재** → 어떤 모드로도 튜닝 불가(구조적 보증).
 
-### 3.3 `compose_directive` 머지 (`src/bin/ezer.rs`)
+### 3.3 `compose_directive` 머지 (`src/bin/EZERagent.rs`)
 기존 조립(directive + RSI + soul + memory + skills) **뒤에** 두 블록을 순서대로 추가:
 
 ```
@@ -102,29 +102,29 @@ context_clear_pct 60 = "60% 초과 전 clear"). 레지스트리는 단일 진실
   사용자 텍스트가 뒤집어도 최후 단어가 안전핵.
 - 오버라이드 파일 부재 시 두 블록 모두 생략(현 동작 회귀 0).
 
-### 3.4 CLI — `ezer persona`
+### 3.4 CLI — `EZERagent persona`
 | 서브커맨드 | 동작 |
 |---|---|
-| `ezer persona show [--role master]` | 현 오버라이드 + 조립 미리보기 출력 |
-| `ezer persona set --role master --param review_rounds=5` | 노브 설정(검증 통과 시 저장) |
-| `ezer persona set --role master --persona "텍스트"` | persona 텍스트 설정(검증·sanitize 후 저장) |
-| `ezer persona reset [--role master]` | 오버라이드 파일 삭제 → 정식 기본 복귀 |
-| `ezer persona list-params` | 튜닝 가능 노브·범위·기본값 표 |
+| `EZERagent persona show [--role master]` | 현 오버라이드 + 조립 미리보기 출력 |
+| `EZERagent persona set --role master --param review_rounds=5` | 노브 설정(검증 통과 시 저장) |
+| `EZERagent persona set --role master --persona "텍스트"` | persona 텍스트 설정(검증·sanitize 후 저장) |
+| `EZERagent persona reset [--role master]` | 오버라이드 파일 삭제 → 정식 기본 복귀 |
+| `EZERagent persona list-params` | 튜닝 가능 노브·범위·기본값 표 |
 - `set`은 검증기를 통과해야 저장. 범위 밖·침해 입력은 명확한 에러로 거부(저장 안 함) →
   사용자가 즉시 인지. (런타임 주입 경로의 fail-closed-to-default와 달리, CLI 입력은 hard-reject.)
 
 ### 3.5 데몬 배선 — `context_clear_pct` (소작업 1건)
-`context_clear_pct`는 ezerd가 결정론 enforce(임계 도달 시 통보 — `ezer set-status --context`).
-현재 단일 발화점은 `src/bin/ezerd/handlers.rs`:
-- `context_threshold_pct()` (handlers.rs:302) = env `EZER_CONTEXT_THRESHOLD_PCT`, 기본 60.
+`context_clear_pct`는 EZERagentd가 결정론 enforce(임계 도달 시 통보 — `EZERagent set-status --context`).
+현재 단일 발화점은 `src/bin/EZERagentd/handlers.rs`:
+- `context_threshold_pct()` (handlers.rs:302) = env `EZERAGENT_CONTEXT_THRESHOLD_PCT`, 기본 60.
 - `maybe_fire_context_threshold(daemon, surface, pct, source, agent)` (handlers.rs:318) =
   **자기보고·관측·statusline 3경로가 공유**하는 단일 임계 발화 로직(에지 게이트). 같은 교차에
   3경로가 같은 임계를 써야 하는 불변식이 있다.
 - 배선: `maybe_fire_context_threshold`가 `surface.role`을 이미 알므로, 이 함수가 role별
-  `~/.ezer/pack/overrides/<role>.json`의 `context_clear_pct`를 우선 읽고(없으면
+  `~/.EZERagent/pack/overrides/<role>.json`의 `context_clear_pct`를 우선 읽고(없으면
   `context_threshold_pct()`=env/60으로 폴백) `threshold`로 사용. **단일 발화점만 바꾸면 3경로가
   동시에 role-aware**가 되어 공유 불변식 유지(인라인 복제 금지).
-- 나머지 3노브 + persona는 순수 프로즈라 `ezer.rs`만으로 완결(데몬 변경 불필요).
+- 나머지 3노브 + persona는 순수 프로즈라 `EZERagent.rs`만으로 완결(데몬 변경 불필요).
 
 ## 4. 안전·업그레이드 불변식 (테스트로 박제)
 
@@ -139,7 +139,7 @@ context_clear_pct 60 = "60% 초과 전 clear"). 레지스트리는 단일 진실
 
 ## 5. 범위 경계 (YAGNI)
 
-**포함(v1)**: 오버라이드 파일·스키마·레지스트리·검증기·`compose_directive` 머지·`ezer persona`
+**포함(v1)**: 오버라이드 파일·스키마·레지스트리·검증기·`compose_directive` 머지·`EZERagent persona`
 CLI·`context_clear_pct` 데몬 배선·위 7개 테스트.
 
 **제외(후속)**:
@@ -154,15 +154,15 @@ CLI·`context_clear_pct` 데몬 배선·위 7개 테스트.
 |---|---|
 | `src/overrides.rs` (신규) | 파라미터 레지스트리 + 검증기 + 조립 렌더 + 안전핵 const |
 | `src/lib.rs` | `pub mod overrides;` 등록 |
-| `src/bin/ezer.rs` | `compose_directive` 머지 단계 추가 · `ezer persona` 서브커맨드 |
-| `src/bin/ezerd/handlers.rs` (`maybe_fire_context_threshold` :318 / `context_threshold_pct` :302) | `context_clear_pct` role별 오버라이드 읽기(단일 발화점) |
+| `src/bin/EZERagent.rs` | `compose_directive` 머지 단계 추가 · `EZERagent persona` 서브커맨드 |
+| `src/bin/EZERagentd/handlers.rs` (`maybe_fire_context_threshold` :318 / `context_threshold_pct` :302) | `context_clear_pct` role별 오버라이드 읽기(단일 발화점) |
 | 테스트 | `src/overrides.rs` 단위 테스트 + `compose_directive` last-word 불변식 테스트 |
 
 ## 7. 성공 기준
 
-- `ezer persona set --role master --param review_rounds=3` 후 `ezer persona show`에 반영 +
+- `EZERagent persona set --role master --param review_rounds=3` 후 `EZERagent persona show`에 반영 +
   `compose_directive("master")` 출력에 "검증 라운드: 3회 (사용자 설정)" 등장.
 - 범위 밖 입력(`review_rounds=99`)은 CLI에서 hard-reject; 손상 파일은 런타임에서 기본으로 폴백.
 - 어떤 persona 입력에도 안전핵 재확인 블록이 조립 최후에 항상 존재.
-- `ezer persona reset` 후 출력 = 오버라이드 도입 전과 동일.
+- `EZERagent persona reset` 후 출력 = 오버라이드 도입 전과 동일.
 - `cargo test` 전 통과(기존 + 신규 불변식 테스트).

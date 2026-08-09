@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """T5 Phase 2-A 사용량 보고(statusline) E2E — 샌드박스 데몬에 usage.report를 RPC 직접 +
-`ezer usage-report-stdin` 바이너리 경로로 흘려 org.status 배지(ctx·5h·7d)·우선순위 병합·
+`EZERagent usage-report-stdin` 바이너리 경로로 흘려 org.status 배지(ctx·5h·7d)·우선순위 병합·
 소유 게이트를 실측 검증한다.
 
 실행법:
   cargo build --bins
-  EZER_E2E_SOCK=/tmp/ezer-rep-e2e-$$.sock python3 docs/usage_report_e2e.py
+  EZERAGENT_E2E_SOCK=/tmp/EZERagent-rep-e2e-$$.sock python3 docs/usage_report_e2e.py
   (스크립트가 데몬을 직접 기동·정리한다)
 """
 import json
@@ -15,10 +15,10 @@ import subprocess
 import sys
 import time
 
-SOCK = os.environ.get("EZER_E2E_SOCK", "/tmp/ezer-rep-e2e.sock")
-PACK = "/tmp/ezer-rep-e2e-pack"
-EZER = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "ezer")
-EZERD = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "ezerd")
+SOCK = os.environ.get("EZERAGENT_E2E_SOCK", "/tmp/EZERagent-rep-e2e.sock")
+PACK = "/tmp/EZERagent-rep-e2e-pack"
+EZERAGENT = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "EZERagent")
+EZERAGENTD = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "EZERagentd")
 FAIL = []
 
 
@@ -50,9 +50,9 @@ def usage_of(sid):
 
 
 def main():
-    env = dict(os.environ, EZER_SOCKET=SOCK, EZER_PACK_DIR=PACK, EZER_USAGE_POLL_SECS="1")
-    daemon = subprocess.Popen([EZERD], env=env,
-                              stdout=open("/tmp/ezer-rep-e2e.log", "w"), stderr=subprocess.STDOUT)
+    env = dict(os.environ, EZERAGENT_SOCKET=SOCK, EZERAGENT_PACK_DIR=PACK, EZERAGENT_USAGE_POLL_SECS="1")
+    daemon = subprocess.Popen([EZERAGENTD], env=env,
+                              stdout=open("/tmp/EZERagent-rep-e2e.log", "w"), stderr=subprocess.STDOUT)
     try:
         for _ in range(50):
             try:
@@ -84,18 +84,18 @@ def main():
 
         # 2) 우선순위 병합 — transcript가 파싱 가능해도(미게이트면 덮어쓸) 신선 statusline이 이긴다.
         #    fixture는 parse_claude_line 통과 형식(type=assistant·usage·ctx>0) — 게이트 진짜 검증.
-        open("/tmp/ezer-rep-e2e-tx.jsonl", "w").write(json.dumps({
+        open("/tmp/EZERagent-rep-e2e-tx.jsonl", "w").write(json.dumps({
             "type": "assistant", "isSidechain": False, "requestId": "req",
             "message": {"model": "claude-fable-5",
                         "usage": {"input_tokens": 5000, "cache_read_input_tokens": 5000,
                                   "cache_creation_input_tokens": 0, "output_tokens": 999}}}) + "\n")
-        rpc("usage.register", {"surface_id": sid, "transcript": "/tmp/ezer-rep-e2e-tx.jsonl"})
+        rpc("usage.register", {"surface_id": sid, "transcript": "/tmp/EZERagent-rep-e2e-tx.jsonl"})
         time.sleep(2.5)  # 수집기 2틱+ — statusline 신선(<60s)이라 트랜스크립트 수집 스킵돼야 함
         u2 = usage_of(sid)
         check("우선순위 병합: statusline 유지(파싱가능 transcript 미덮어씀)",
               u2 and u2.get("source") == "statusline" and u2.get("ctx_pct") == 42, str(u2))
 
-        # 3) `ezer usage-report-stdin` 바이너리 경로 — 실제 statusline JSON push -------------
+        # 3) `EZERagent usage-report-stdin` 바이너리 경로 — 실제 statusline JSON push -------------
         fake = json.dumps({"model": {"display_name": "Opus 4.8"},
                            "context_window": {"context_window_size": 1000000, "used_percentage": 73.0,
                                               "current_usage": {"input_tokens": 1000,
@@ -103,10 +103,10 @@ def main():
                                                                 "cache_creation_input_tokens": 0}},
                            "rate_limits": {"five_hour": {"used_percentage": 55.0, "resets_at": 1781314999},
                                            "seven_day": {"used_percentage": 22.0, "resets_at": 1781781999}}})
-        benv = dict(env, EZER_SURFACE_ID=f"surface:{sid}")
-        out = subprocess.run([EZER, "usage-report-stdin"], input=fake.encode(), env=benv,
+        benv = dict(env, EZERAGENT_SURFACE_ID=f"surface:{sid}")
+        out = subprocess.run([EZERAGENT, "usage-report-stdin"], input=fake.encode(), env=benv,
                              capture_output=True)
-        check("ezer usage-report-stdin exit 0", out.returncode == 0, out.stderr.decode())
+        check("EZERagent usage-report-stdin exit 0", out.returncode == 0, out.stderr.decode())
         check("사람용 줄 출력", b"CTX 73%" in out.stdout and b"5h 55%" in out.stdout, out.stdout.decode())
         u3 = usage_of(sid)
         check("바이너리 push → 배지 갱신(ctx 73)", u3 and u3.get("ctx_pct") == 73, str(u3))
@@ -119,7 +119,7 @@ def main():
             daemon.wait(timeout=5)
         except subprocess.TimeoutExpired:
             daemon.kill()
-        for f in (SOCK, "/tmp/ezer-rep-e2e-tx.jsonl"):
+        for f in (SOCK, "/tmp/EZERagent-rep-e2e-tx.jsonl"):
             try:
                 os.unlink(f)
             except OSError:

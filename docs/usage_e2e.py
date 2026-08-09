@@ -4,11 +4,11 @@ surface.list/org.status 노출·이벤트 발화를 실측 검증한다 (20/20 P
 
 실행법 (재접속 시):
   1) cargo build --bins                          # 신 바이너리 보장 (cargo test는 바이너리 갱신 안 함)
-  2) export EZER_E2E_SOCK=/tmp/ezer-e2e-$$.sock
-  3) EZER_SOCKET=$EZER_E2E_SOCK EZER_PACK_DIR=/tmp/ezer-e2e-pack EZER_USAGE_POLL_SECS=1 \
-       ./target/debug/ezerd > /tmp/ezer-e2e.log 2>&1 &
+  2) export EZERAGENT_E2E_SOCK=/tmp/EZERagent-e2e-$$.sock
+  3) EZERAGENT_SOCKET=$EZERAGENT_E2E_SOCK EZERAGENT_PACK_DIR=/tmp/EZERagent-e2e-pack EZERAGENT_USAGE_POLL_SECS=1 \
+       ./target/debug/EZERagentd > /tmp/EZERagent-e2e.log 2>&1 &
   4) python3 docs/usage_e2e.py
-  5) pgrep -f "$EZER_E2E_SOCK" | xargs kill        # 샌드박스 데몬 정리"""
+  5) pgrep -f "$EZERAGENT_E2E_SOCK" | xargs kill        # 샌드박스 데몬 정리"""
 import json
 import os
 import socket
@@ -16,10 +16,10 @@ import subprocess
 import sys
 import time
 
-SOCK = os.environ.get("EZER_E2E_SOCK", "/tmp/ezer-e2e-usage-r3.sock")
-ROOT = "/Users/user/Desktop/Ezer/ezer-agent"
-CLAUDE_TX = "/tmp/ezer-e2e-claude.jsonl"
-CODEX_TX = "/tmp/ezer-e2e-rollout.jsonl"
+SOCK = os.environ.get("EZERAGENT_E2E_SOCK", "/tmp/EZERagent-e2e-usage-r3.sock")
+ROOT = "/Users/user/Desktop/EZERagent/EZERagent"
+CLAUDE_TX = "/tmp/EZERagent-e2e-claude.jsonl"
+CODEX_TX = "/tmp/EZERagent-e2e-rollout.jsonl"
 
 FAIL = []
 

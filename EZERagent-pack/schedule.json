@@ -1,0 +1,37 @@
+{
+  "_doc": "Heartbeat 스케줄. EZERagent schedule add 로 추가하거나 직접 편집(데몬이 30초 내 핫 리로드). time(HH:MM 반복)·in(원샷)·every_minutes(주기) 중 하나. 예: {\"id\":\"daily-env-scan\",\"time\":\"07:00\",\"days\":[],\"action\":\"push\",\"to\":\"master\",\"text\":\"[heartbeat] 일일 환경스캐닝을 시작하라\",\"if_absent\":\"launch\",\"launch\":{\"role\":\"master\",\"agent\":\"claude\",\"cwd\":null}}. 24/365 가동 전제: Mac 전원/잠자기 설정(caffeinate 등)은 사용자가 보장해야 한다.",
+  "jobs": [
+    {
+      "action": "push",
+      "every_minutes": 15,
+      "id": "owner-progress-report-15min",
+      "if_absent": "skip",
+      "text_command": "printf '[heartbeat] 15분 보고 — 아래 진행%%는 결정론 산출값이다. 그대로(수치 불변) 주인님에게 보고하고, idle·feed·context 경고가 있으면 능동 조치하라.\\n'; python3 \"${EZERAGENT_PACK_DIR:-$HOME/.EZERagent/pack}/bin/EZERagent_report.py\"",
+      "to": "master"
+    },
+    {
+      "id": "owner-progress-report-5min",
+      "every_minutes": 5,
+      "action": "push",
+      "to": "master",
+      "text_command": "printf '[heartbeat] 5분 보고 — 아래 진행%%는 결정론 산출값이다. 그대로(수치 불변) 주인님에게 보고하라.\\n'; python3 \"${EZERAGENT_PACK_DIR:-$HOME/.EZERagent/pack}/bin/EZERagent_report.py\"",
+      "if_absent": "skip"
+    },
+    {
+      "id": "fleet-adoption-cost-digest",
+      "every_minutes": 1440,
+      "action": "push",
+      "to": "master",
+      "text_command": "printf '[heartbeat] 일일 fleet 채택/비용 digest — 결정론 read-only 집계. 수치 불변으로 보고하고 COVERAGE DRIFT 경고가 있으면 EZERagent_preflight.py --fix 하라.\\n'; python3 \"${EZERAGENT_PACK_DIR:-$HOME/.EZERagent/pack}/bin/EZERagent_fleet_report.py\" --days 7",
+      "if_absent": "skip"
+    },
+    {
+      "id": "content-channel-health-watch",
+      "every_minutes": 360,
+      "action": "push",
+      "to": "master",
+      "text_command": "python3 \"${EZERAGENT_PACK_DIR:-$HOME/.EZERagent/pack}/bin/EZERagent_channel_watch.py\" --no-push",
+      "if_absent": "skip"
+    }
+  ]
+}

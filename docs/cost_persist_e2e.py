@@ -13,12 +13,12 @@ import sqlite3
 import subprocess
 import time
 
-DIR = f"/tmp/ezer-e1-{os.getpid()}"
+DIR = f"/tmp/EZERagent-e1-{os.getpid()}"
 os.makedirs(DIR, exist_ok=True)
-SOCK = os.path.join(DIR, "ezer.sock")
+SOCK = os.path.join(DIR, "EZERagent.sock")
 TX = os.path.join(DIR, "claude-tx.jsonl")
-EZERD = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "ezerd")
-ENV = dict(os.environ, EZER_SOCKET=SOCK, EZER_PACK_DIR=os.path.join(DIR, "pack"), EZER_USAGE_POLL_SECS="1")
+EZERAGENTD = os.path.join(os.path.dirname(__file__), "..", "target", "debug", "EZERagentd")
+ENV = dict(os.environ, EZERAGENT_SOCKET=SOCK, EZERAGENT_PACK_DIR=os.path.join(DIR, "pack"), EZERAGENT_USAGE_POLL_SECS="1")
 FAIL = []
 
 
@@ -43,7 +43,7 @@ def rpc(method, params):
 
 
 def start_daemon():
-    p = subprocess.Popen([EZERD], env=ENV, stdout=open(os.path.join(DIR, "ezerd.log"), "a"), stderr=subprocess.STDOUT)
+    p = subprocess.Popen([EZERAGENTD], env=ENV, stdout=open(os.path.join(DIR, "EZERagentd.log"), "a"), stderr=subprocess.STDOUT)
     for _ in range(50):
         try:
             if rpc("system.ping", {}):

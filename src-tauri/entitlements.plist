@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
   <!-- Hardened Runtime 호환 entitlements (Apple 공증 필수).
-       ezer.app은 사이드카(ezerd·ezer)를 spawn하고 WKWebView를 쓰므로 아래가 필요하다. -->
+       EZERagent.app은 사이드카(EZERagentd·EZERagent)를 spawn하고 WKWebView를 쓰므로 아래가 필요하다. -->
 
   <!-- WKWebView JIT (Tauri/시스템 웹뷰) -->
   <key>com.apple.security.cs.allow-jit</key>
@@ -11,7 +11,7 @@
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
 
-  <!-- 사이드카(externalBin: ezerd·ezer)·동적 라이브러리 로드 허용
+  <!-- 사이드카(externalBin: EZERagentd·EZERagent)·동적 라이브러리 로드 허용
        (라이브러리 검증을 끄지 않으면 nested 바이너리 로드가 hardened runtime에서 차단될 수 있다) -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>

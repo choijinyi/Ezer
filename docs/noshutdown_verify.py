@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """무중단(재시작 0) 팩 업데이트 실측 E2E — DESIGN-noshutdown-pack-update §5-2·§7-⑥.
 
-라이브 ezerd에 `ezer pack-update --from <테스트팩>`을 가해 **반영 전/후 스냅샷 동등성**을 검증한다:
+라이브 EZERagentd에 `EZERagent pack-update --from <테스트팩>`을 가해 **반영 전/후 스냅샷 동등성**을 검증한다:
 
   | 생존 대상 | RPC(실측)         | 읽는 필드                     | 합격 조건            |
   |-----------|-------------------|-------------------------------|----------------------|
-  | ezerd      | system.identify   | daemon_pid                    | 전/후 동일           |
+  | EZERagentd      | system.identify   | daemon_pid                    | 전/후 동일           |
   | 세션      | surface.list      | surfaces[].surface_id·exited  | 집합 불변·전부 false |
   | 팩 반영   | 파일              | <pack_dir>/.pack-version      | 새 버전으로 범프     |
 
 ★불합격(hard fail): daemon_pid 변동 = 데몬 재시작 = 무중단 위반 = FAIL.
-  --app-pid 를 주면 ezer-app(Tauri) OS 프로세스 pid·기동시각 동일성(재시작 0)도 검증한다.
+  --app-pid 를 주면 EZERagent-app(Tauri) OS 프로세스 pid·기동시각 동일성(재시작 0)도 검증한다.
 
 ★노드 각성 검증: pack-update 후 `system.topology`의 surface별 `pack_reinject` 마커가
   새 pack_version으로 갱신됐는지 확인한다(부분/낡은 각성 = FAIL). 디렉티브 해시 불변 시
@@ -32,7 +32,7 @@
   - SKIP  → exit 77  (라이브 데몬/테스트 팩 부재 — 평시 graceful skip, pass와 구분)
 
 릴리스/승인용 hard gate 모드:
-  --require-live   → 라이브 ezerd 부재 = skip 아니라 FAIL(non-zero). 각성 hard gate도 켠다.
+  --require-live   → 라이브 EZERagentd 부재 = skip 아니라 FAIL(non-zero). 각성 hard gate도 켠다.
   --require-pack   → 테스트 팩(--from) 부재/불완전 = skip 아니라 FAIL(non-zero).
   --require-awaken → PACK_UPDATE_RESULT failed==0 AND deferred==0 + directive-changing 팩
                      마커 각성을 release hard gate로 요구(deferred-only/미각성 통과 차단).
@@ -42,7 +42,7 @@
   python3 docs/noshutdown_verify.py --from /path/to/testpack   # pack.tar.gz+manifest+.minisig
   python3 docs/noshutdown_verify.py --from ... --require-live --require-pack   # 릴리스 게이트
   python3 docs/noshutdown_verify.py --from ... --app-pid 12345                 # Tauri 앱 동일성도
-  EZER_SOCKET=... EZER_PACK_DIR=... python3 docs/noshutdown_verify.py --from ...
+  EZERAGENT_SOCKET=... EZERAGENT_PACK_DIR=... python3 docs/noshutdown_verify.py --from ...
 """
 import argparse
 import json
@@ -53,34 +53,34 @@ import sys
 
 
 def default_socket():
-    """src/lib.rs::socket_path()와 동일 규칙 — EZER_SOCKET 우선, 없으면 ~/.local/state/ezer/ezer.sock."""
-    for k in ("EZER_SOCKET", "EZER_SOCKET", "AITERM_SOCKET"):
+    """src/lib.rs::socket_path()와 동일 규칙 — EZERAGENT_SOCKET 우선, 없으면 ~/.local/state/EZERagent/EZERagent.sock."""
+    for k in ("EZERAGENT_SOCKET", "EZERAGENT_SOCKET", "AITERM_SOCKET"):
         v = os.environ.get(k)
         if v:
             return v
     home = os.path.expanduser("~")
-    return os.path.join(home, ".local", "state", "ezer", "ezer.sock")
+    return os.path.join(home, ".local", "state", "EZERagent", "EZERagent.sock")
 
 
 def default_pack_dir():
-    """src/pack.rs::pack_dir()와 동일 규칙 — EZER_PACK_DIR 우선, 없으면 ~/.ezer/pack."""
-    for k in ("EZER_PACK_DIR", "EZER_PACK_DIR", "AITERM_JARVIS_DIR"):
+    """src/pack.rs::pack_dir()와 동일 규칙 — EZERAGENT_PACK_DIR 우선, 없으면 ~/.EZERagent/pack."""
+    for k in ("EZERAGENT_PACK_DIR", "EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
         v = os.environ.get(k)
         if v:
             return v
-    return os.path.join(os.path.expanduser("~"), ".ezer", "pack")
+    return os.path.join(os.path.expanduser("~"), ".EZERagent", "pack")
 
 
-def find_ezer_bin():
-    """ezer 바이너리 — target/release > target/debug > PATH."""
+def find_EZERagent_bin():
+    """EZERagent 바이너리 — target/release > target/debug > PATH."""
     here = os.path.dirname(os.path.abspath(__file__))
     for cand in (
-        os.path.join(here, "..", "target", "release", "ezer"),
-        os.path.join(here, "..", "target", "debug", "ezer"),
+        os.path.join(here, "..", "target", "release", "EZERagent"),
+        os.path.join(here, "..", "target", "debug", "EZERagent"),
     ):
         if os.path.isfile(cand) and os.access(cand, os.X_OK):
             return os.path.abspath(cand)
-    return "ezer"  # PATH 폴백
+    return "EZERagent"  # PATH 폴백
 
 
 class DaemonUnavailable(Exception):
@@ -341,10 +341,10 @@ def main():
     ap = argparse.ArgumentParser(description="무중단 팩 업데이트 실측 E2E")
     ap.add_argument("--from", dest="from_dir",
                     help="테스트 팩 디렉터리(pack.tar.gz + pack-manifest.json + pack-manifest.json.minisig)")
-    ap.add_argument("--socket", default=default_socket(), help="ezerd Unix 소켓 경로")
+    ap.add_argument("--socket", default=default_socket(), help="EZERagentd Unix 소켓 경로")
     ap.add_argument("--pack-dir", default=default_pack_dir(), help="설치 팩 디렉터리(.pack-version 위치)")
     ap.add_argument("--require-live", action="store_true",
-                    help="라이브 ezerd 부재 시 skip이 아니라 FAIL(릴리스/승인 게이트)")
+                    help="라이브 EZERagentd 부재 시 skip이 아니라 FAIL(릴리스/승인 게이트)")
     ap.add_argument("--require-pack", action="store_true",
                     help="테스트 팩(--from) 부재/불완전 시 skip이 아니라 FAIL(릴리스/승인 게이트)")
     ap.add_argument("--require-awaken", action="store_true",
@@ -353,7 +353,7 @@ def main():
     ap.add_argument("--self-test", action="store_true",
                     help="라이브 데몬 없이 파싱·게이트 판정 로직만 단위 검증(exit 0/1)")
     ap.add_argument("--app-pid", type=int, default=None,
-                    help="ezer-app(Tauri) OS 프로세스 pid — 주면 pack-update 전후 동일성(재시작 0) 검증")
+                    help="EZERagent-app(Tauri) OS 프로세스 pid — 주면 pack-update 전후 동일성(재시작 0) 검증")
     args = ap.parse_args()
 
     if args.self_test:
@@ -374,7 +374,7 @@ def main():
     try:
         rpc(args.socket, "system.ping", {})
     except (DaemonUnavailable, OSError) as e:
-        msg = f"라이브 ezerd 없음({args.socket}): {e}"
+        msg = f"라이브 EZERagentd 없음({args.socket}): {e}"
         if args.require_live:
             print(f"[FAIL] {msg} — --require-live 게이트(skip 불가).")
             return 1
@@ -396,11 +396,11 @@ def main():
     if missing:
         return pack_gate_skip(f"테스트 팩 불완전({args.from_dir}) — 누락 {missing}.")
 
-    # ezer-app(Tauri) 기동시각 — pack-update가 OS 앱 프로세스를 재시작하지 않음을 보장(재시작 0).
+    # EZERagent-app(Tauri) 기동시각 — pack-update가 OS 앱 프로세스를 재시작하지 않음을 보장(재시작 0).
     app_before = None
     if args.app_pid is not None:
         if not proc_alive(args.app_pid):
-            check(f"ezer-app(pid {args.app_pid}) 반영 전 생존", False,
+            check(f"EZERagent-app(pid {args.app_pid}) 반영 전 생존", False,
                   "프로세스 부재 — --app-pid 확인")
         else:
             app_before = proc_starttime(args.app_pid)
@@ -419,12 +419,12 @@ def main():
           f"exited 세션 존재: {[s for s, e in before['surfaces'].items() if e]}")
 
     # pack-update 실행.
-    ezer = find_ezer_bin()
-    print(f"[run] {ezer} pack-update --from {args.from_dir}")
+    EZERagent = find_EZERagent_bin()
+    print(f"[run] {EZERagent} pack-update --from {args.from_dir}")
     proc = subprocess.run(
-        [ezer, "pack-update", "--from", args.from_dir],
+        [EZERagent, "pack-update", "--from", args.from_dir],
         capture_output=True, text=True,
-        env=dict(os.environ, EZER_SOCKET=args.socket, EZER_PACK_DIR=args.pack_dir),
+        env=dict(os.environ, EZERAGENT_SOCKET=args.socket, EZERAGENT_PACK_DIR=args.pack_dir),
     )
     sys.stdout.write(proc.stdout)
     sys.stderr.write(proc.stderr)
@@ -445,7 +445,7 @@ def main():
           f"surfaces={sorted(after['surfaces'])} pack_version={after['pack_version']!r}")
 
     # ★무중단 불변식 검증.
-    check("ezerd 생존 — daemon_pid 동일(재시작 0)",
+    check("EZERagentd 생존 — daemon_pid 동일(재시작 0)",
           before["daemon_pid"] is not None and before["daemon_pid"] == after["daemon_pid"],
           f"{before['daemon_pid']} != {after['daemon_pid']} (재시작 = 무중단 위반)")
     check("세션 집합 불변 — surface_id set 동일",
@@ -458,10 +458,10 @@ def main():
           version_bumped(before["pack_version"], after["pack_version"]),
           f"{before['pack_version']!r} → {after['pack_version']!r} (범프 안 됨)")
 
-    # ★ezer-app(Tauri) 동일성 — 재시작 0(같은 프로세스 인스턴스 유지).
+    # ★EZERagent-app(Tauri) 동일성 — 재시작 0(같은 프로세스 인스턴스 유지).
     if app_before is not None:
         app_after = proc_starttime(args.app_pid)
-        check(f"ezer-app(pid {args.app_pid}) 생존 — 재시작 0",
+        check(f"EZERagent-app(pid {args.app_pid}) 생존 — 재시작 0",
               proc_alive(args.app_pid) and app_after == app_before,
               f"기동시각 {app_before!r} → {app_after!r} (변동 = 앱 재시작 = 무중단 위반)")
 
@@ -497,7 +497,7 @@ def main():
     if fails:
         print(f"\n[FAIL] {len(fails)}건: {fails}")
         return 1
-    print("\n[PASS] 무중단 검증 통과 — ezerd·세션·앱 생존, 팩만 갱신(재시작 0), 노드 각성 정합.")
+    print("\n[PASS] 무중단 검증 통과 — EZERagentd·세션·앱 생존, 팩만 갱신(재시작 0), 노드 각성 정합.")
     return 0
 
 
