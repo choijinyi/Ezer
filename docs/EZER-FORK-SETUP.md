@@ -34,10 +34,13 @@ bunx @tauri-apps/cli signer generate -w ~/.ezer-updater.key
 
 | 위치 | 값 | 조치 필요 |
 |---|---|---|
-| `LICENSE` | `cysinsight@gmail.com` | **변경 금지** — MIT 원저작권 고지 |
-| `SECURITY.md` | `cysinsight@gmail.com` | 취약점 신고처를 Ezer 담당자 주소로 교체 |
+| `LICENSE` | 원저작자 이메일 | **변경 금지** — MIT 원저작권 고지 |
+| `SECURITY.md` | 원저작자 이메일 | 취약점 신고처를 Ezer 담당자 주소로 교체 |
 | `src-tauri/src/main.rs` 허용목록 | `cysinsight.com` | Ezer 홈페이지가 생기면 교체 |
 | `ui/src/main.ts`·`updateplan.ts` | `www.cysinsight.com` 안내 문구 | 본체 수동 다운로드 안내 — GitHub Releases 주소로 교체 권장 |
+
+> 이 문서에 이메일 주소를 문자 그대로 적지 마라 — `scripts/secret-scan.sh`가 PUBLIC 발행 전
+> 하드 게이트로 차단한다(허용은 `README.md`·`README.en.md`·`SECURITY.md`뿐).
 
 ## 4. 아이콘·브랜드 아트워크
 
