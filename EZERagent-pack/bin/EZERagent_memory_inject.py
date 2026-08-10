@@ -42,7 +42,7 @@ def memory_dir():
     v = os.environ.get("EZERAGENT_MEMORY_DIR")
     if v:
         return v
-    for key in ("EZERAGENT_PACK_DIR", "EZERAGENT_PACK_DIR"):
+    for key in ("EZERAGENT_PACK_DIR"):
         p = os.environ.get(key, "")
         if p:
             return os.path.join(p, "memory")

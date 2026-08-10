@@ -54,7 +54,7 @@ BANNED_REASON = ("best option", "the best option", "best choice", "obvious choic
 
 def pack_dir():
     """pack 위치 결정 — src/pack.rs pack_dir()·EZERagent_orchestra의 폴백을 그대로 미러링한다."""
-    for key in ("EZERAGENT_PACK_DIR", "EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
+    for key in ("EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
         v = os.environ.get(key, "")
         if v:
             return v

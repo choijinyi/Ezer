@@ -1351,7 +1351,6 @@ mod tests {
         // 거짓 실패한다. 모델 기반 분기만 검증하도록 해당 env를 제거 후 단언하고 복원한다.
         let keys = [
             "EZERAGENT_CLAUDE_CTX_WINDOW",
-            "EZERAGENT_CLAUDE_CTX_WINDOW",
             "AITERM_CLAUDE_CTX_WINDOW",
         ];
         let saved: Vec<(&str, Option<String>)> =

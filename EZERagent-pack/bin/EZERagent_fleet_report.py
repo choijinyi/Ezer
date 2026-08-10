@@ -43,7 +43,7 @@ MANUAL_IDIOMS = ["git status", "git diff", "git log", "pytest", "vitest",
 
 
 def pack_dir():
-    for key in ("EZERAGENT_PACK_DIR", "EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
+    for key in ("EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
         v = os.environ.get(key, "")
         if v:
             return v

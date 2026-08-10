@@ -37,7 +37,7 @@ EVICT_AFTER_FAILS = 2  # learning.py:32 동형 — 2-strike.
 
 
 def pack_dir():
-    for key in ("EZERAGENT_PACK_DIR", "EZERAGENT_PACK_DIR"):
+    for key in ("EZERAGENT_PACK_DIR"):
         v = os.environ.get(key, "")
         if v:
             return v

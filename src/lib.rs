@@ -20,11 +20,17 @@ pub const ENV_SURFACE_ID: &str = "EZERAGENT_SURFACE_ID";
 pub const ENV_SURFACE_REF: &str = "EZERAGENT_SURFACE_REF";
 pub const ENV_ROLE: &str = "EZERAGENT_ROLE";
 
-/// 이행기 호환: EZERAGENT_* 우선 → 구 EZERAGENT_* → 구 AITERM_* 순 폴백.
+/// 이행기 호환: EZERAGENT_* 우선 → 구 AITERM_* 폴백.
+///
+/// ★2026-08-10 리브랜딩 정정: 업스트림은 `CYS_`(주) → `JAVIS_`(구) → `AITERM_`(더 구)
+/// 3단이었는데, 리브랜딩에서 `CYS_`와 `JAVIS_` 가 **둘 다 `EZERAGENT_`** 로 접히면서
+/// 중간 단이 자기 자신을 자기 자신으로 바꾸는 no-op(치환 전후가 동일한 접두) 이 됐다.
+/// EZERagent 는 신규 제품이라 `JAVIS_` 이름을 쓰던 사용자가 존재하지 않으므로 그 단을
+/// 되살리지 않고 **없앤다**(죽은 분기를 남겨 계약을 흐리지 않는다). `AITERM_` 은
+/// 업스트림 이력상 실제 사용자가 있을 수 있어 유지한다.
 pub fn env_compat(primary: &str) -> Option<String> {
-    let EZERagent = primary.replacen("EZERAGENT_", "EZERAGENT_", 1);
     let aiterm = primary.replacen("EZERAGENT_", "AITERM_", 1);
-    [primary, EZERagent.as_str(), aiterm.as_str()]
+    [primary, aiterm.as_str()]
         .iter()
         .find_map(|k| std::env::var(k).ok().filter(|v| !v.is_empty()))
 }
@@ -883,51 +889,49 @@ mod tests {
 
     #[test]
     fn env_compat_fallback_priority() {
-        // 고유 키로 격리 (다른 테스트·환경과 충돌 방지)
+        // ★2단 계약 박제(리브랜딩 정정): EZERAGENT_(primary) → AITERM_(레거시).
+        //   업스트림의 중간 단(JAVIS_)은 EZERagent 로 접히며 소멸했다 — env_compat 주석 참조.
         let p = "EZERAGENT_ZZUNIQUETEST";
-        let j = "EZERAGENT_ZZUNIQUETEST";
         let a = "AITERM_ZZUNIQUETEST";
-        for k in [p, j, a] {
+        for k in [p, a] {
             std::env::remove_var(k);
         }
-        // 셋 다 없으면 None
+        // 둘 다 없으면 None
         assert_eq!(env_compat(p), None);
         // AITERM_만 있으면 폴백
         std::env::set_var(a, "aiterm_val");
         assert_eq!(env_compat(p), Some("aiterm_val".to_string()));
-        // EZERAGENT_가 AITERM_보다 우선
-        std::env::set_var(j, "EZERagent_val");
-        assert_eq!(env_compat(p), Some("EZERagent_val".to_string()));
         // EZERAGENT_(primary)가 최우선
-        std::env::set_var(p, "EZERagent_val");
-        assert_eq!(env_compat(p), Some("EZERagent_val".to_string()));
+        std::env::set_var(p, "ezer_val");
+        assert_eq!(env_compat(p), Some("ezer_val".to_string()));
         // 빈 문자열은 미설정으로 간주 → 다음 폴백
         std::env::set_var(p, "");
-        assert_eq!(env_compat(p), Some("EZERagent_val".to_string()));
-        for k in [p, j, a] {
+        assert_eq!(env_compat(p), Some("aiterm_val".to_string()));
+        for k in [p, a] {
             std::env::remove_var(k);
         }
     }
 
     #[test]
-    fn env_compat_only_first_EZERagent_token_is_rewritten() {
-        // replacen(..,1)이 'EZERAGENT_'를 첫 1회만 치환 — primary에 EZERAGENT_가 없으면
-        // 세 후보 키가 모두 primary와 동일(폴백 무의미)임을 박제.
-        let only = "EZERAGENT_ZZONLYPRIMARY";
-        let EZERagent = "EZERAGENT_ZZONLYPRIMARY";
-        std::env::remove_var(only);
-        std::env::remove_var(EZERagent);
-        // primary에 EZERAGENT_가 없는 키: 폴백 키가 자기 자신과 같아져 primary만 본다
-        let noEZERagent = "PLAINKEY_ZZ";
-        std::env::remove_var(noEZERagent);
-        assert_eq!(env_compat(noEZERagent), None);
-        std::env::set_var(noEZERagent, "plain");
-        assert_eq!(env_compat(noEZERagent), Some("plain".to_string()));
-        std::env::remove_var(noEZERagent);
-        // 첫 EZERAGENT_만 치환 — 'EZERAGENT_'가 값 중간에 또 나와도 1회만
-        std::env::set_var(EZERagent, "via_EZERagent");
-        assert_eq!(env_compat(only), Some("via_EZERagent".to_string()));
-        std::env::remove_var(EZERagent);
+    fn env_compat_only_first_token_is_rewritten() {
+        // primary에 EZERAGENT_ 가 없으면 폴백 키가 자기 자신과 같아져 primary만 본다.
+        let plain = "PLAINKEY_ZZ";
+        std::env::remove_var(plain);
+        assert_eq!(env_compat(plain), None);
+        std::env::set_var(plain, "plain");
+        assert_eq!(env_compat(plain), Some("plain".to_string()));
+        std::env::remove_var(plain);
+        // EZERAGENT_ 접두는 replacen(..,1)로 첫 1회만 AITERM_ 로 치환된다.
+        let p = "EZERAGENT_ZZONLYPRIMARY";
+        let a = "AITERM_ZZONLYPRIMARY";
+        for k in [p, a] {
+            std::env::remove_var(k);
+        }
+        std::env::set_var(a, "via_aiterm");
+        assert_eq!(env_compat(p), Some("via_aiterm".to_string()));
+        for k in [p, a] {
+            std::env::remove_var(k);
+        }
     }
 
     #[test]

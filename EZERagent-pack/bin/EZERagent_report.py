@@ -31,7 +31,7 @@ IDLE_ALERT_SECS = 300  # 절대지침 B3: idle 5분+ 즉시 조치 대상
 
 
 def pack_dir():
-    for key in ("EZERAGENT_PACK_DIR", "EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
+    for key in ("EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
         v = os.environ.get(key, "")
         if v:
             return v

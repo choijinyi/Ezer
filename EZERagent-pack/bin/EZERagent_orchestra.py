@@ -133,7 +133,7 @@ def effective_required_roles(detect=None, agents=None):
 
 
 def pack_dir():
-    for key in ("EZERAGENT_PACK_DIR", "EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
+    for key in ("EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
         v = os.environ.get(key, "")
         if v:
             return v
@@ -1285,7 +1285,7 @@ def _surface_id_env():
     """내 surface id 문자열 반환(없으면 None). EZERagent::env_compat 우선순위(AITERM_*→EZERAGENT_*→EZERAGENT_*)와 정합 —
     AITERM_SURFACE_ID를 먼저 보되, EZERagentd가 실제 주입하는 EZERAGENT_SURFACE_ID(src/lib.rs ENV_SURFACE_ID)도 인식한다.
     셋 다 미설정(외부 셸 세션)이면 None → 호출부가 PASS(부팅 차단 회귀 방지·gemini D2)."""
-    for k in ("AITERM_SURFACE_ID", "EZERAGENT_SURFACE_ID", "EZERAGENT_SURFACE_ID"):
+    for k in ("AITERM_SURFACE_ID", "EZERAGENT_SURFACE_ID"):
         v = os.environ.get(k, "").strip()
         if v:
             return v
