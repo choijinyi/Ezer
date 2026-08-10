@@ -139,8 +139,17 @@ jobs:
           $EZERagent = Join-Path $dir 'EZERagent.exe'
           # list가 형제 EZERagentd를 자동 기동(4초 대기 내장) — ping은 순수 프로브라 autostart가
           # 의도적으로 꺼져 있어(EZERagent.rs) 부트스트랩에 못 쓴다. 첫 시도 실패 시 1회 재시도.
-          & $EZERagent list; if ($LASTEXITCODE -ne 0) { Start-Sleep -Seconds 3; & $EZERagent list }
-          if ($LASTEXITCODE -ne 0) { throw "EZERagentd 기동 실패 (named pipe 미응답)" }
+          # ★재시도 5회로 확대(2026-08-10): autostart 내장 대기가 4초 고정인데 러너 부하가 높으면
+          #   그 안에 named pipe 가 안 열린다. 4회 중 2회 실패한 간헐 결함이었고 제품 결함이 아니다
+          #   (같은 커밋 재실행이 통과). 데몬이 실제로 죽는 회귀는 5회 전부 실패로 여전히 잡힌다.
+          $up = $false
+          for ($i = 1; $i -le 5; $i++) {
+            & $EZERagent list
+            if ($LASTEXITCODE -eq 0) { $up = $true; Write-Host "EZERagentd 기동 확인 (시도 $i)"; break }
+            Write-Host "EZERagentd 미응답 — 재시도 $i/5"
+            Start-Sleep -Seconds 5
+          }
+          if (-not $up) { throw "EZERagentd 기동 실패 (named pipe 미응답 · 5회 재시도)" }
           $ref = (& $EZERagent new-surface --title pty-smoke | Select-Object -Last 1).Trim()
           if (-not $ref) { throw "new-surface 실패" }
           Write-Host "surface: $ref"
