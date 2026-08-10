@@ -1,5 +1,38 @@
 # THIRD_PARTY — 외부 유래 스킬 출처 고지
 
+## 2026-08-10 일괄 채택 — choijinyi/EZER-skill (114종 추가)
+
+오너 지시로 [choijinyi/EZER-skill](https://github.com/choijinyi/EZER-skill) (MIT ·
+"EZER를 사용하는 한국인 목회자와 선교사를 위한 스킬")의 최상위 스킬 128종 중 팩에 없던
+**114종을 추가**했다. 그 저장소 자체가 [NomaDamas/k-skill](https://github.com/NomaDamas/k-skill)
+(MIT)에서 가져온 것이므로 원 출처 귀속은 아래 절과 동일하다.
+
+제외한 것: `legacy/unsupported-skills/`(업스트림이 미지원 선언) ·
+`tools/k-skill-qa-bot/test/fixtures/`(테스트 픽스처) · 이미 팩에 있던 14종(덮어쓰지 않음).
+
+★**이 채택은 아래 2026-06-12 선별 감사(96종 중 14종)를 오너 지시로 대체한 것이다.**
+당시 미채택 사유(실작동·보편성·오류 절감력)는 종별로 재검토되지 않았다.
+
+**보안 스캔 결과** (`EZERagent_skillscan.py`, 2026-08-10):
+- 114종 중 84종은 findings 가 템플릿 주석 오탐뿐이다 — `<!-- k-skill:cli-stub — generated
+  by scripts/generate-skill-stubs.js; edit skill.json / instruction.md instead -->` 한 줄이
+  P2(Hidden Instructions)·RA1(Self-Modification)에 동시 매치한다. 실질 결함 아님.
+- 30종은 실질 findings 보유(PE3 자격파일 접근·E2 환경변수 참조·AST4 subprocess·E1 외부전송).
+  표본 검사 결과는 전부 "API 스킬이 자기 API 키를 읽고 자기 공공 API를 호출"하는 정상 동작이었다
+  (예: `os.environ.get("KSKILL_BOK_ECOS_API_KEY")`, `https://data.ex.co.kr/`). 30종 전수
+  개별 검토는 하지 않았다 — 표본 근거임을 명시한다.
+
+**운영상 알아둘 것**:
+- **48종이 외부 운영자 프록시**(`k-skill-proxy.nomadamas.org`)를 기본 경로로 쓴다 — 사용자
+  질의가 제3자 서버를 경유한다. `KSKILL_PROXY_BASE_URL` 로 자가 호스팅 전환 가능.
+- **22종의 API 키 환경변수**를 요구한다. 그중 `KSKILL_KTX_ID`/`KSKILL_KTX_PASSWORD`,
+  `KSKILL_FORESTTRIP_ID`/`KSKILL_FORESTTRIP_PASSWORD` 는 **실제 예약 사이트 계정 자격증명**이다.
+  키가 없으면 해당 스킬은 동작하지 않을 뿐 다른 기능에 영향은 없다.
+
+---
+
+## 2026-06-12 선별 감사 (이력)
+
 아래 14종 스킬은 [NomaDamas/k-skill](https://github.com/NomaDamas/k-skill) (MIT License)에서
 vendoring했다. 업스트림 커밋 핀: `66f12cb43d833e4b9aa4593d430bd5524fff9d58` (2026-06-12).
 채택 기준·감사 기록은 EZERagent 선별 감사(2026-06-12, 96종 중 14종 채택 — 실작동·보편성·
