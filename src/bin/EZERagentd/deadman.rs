@@ -203,8 +203,12 @@ mod tests {
     use super::*;
 
     fn tmp_dir() -> PathBuf {
+        // ★접두를 짧게 유지한다(2026-08-10 실사고): macOS 의 sockaddr_un.sun_path 는 104바이트다.
+        //   `/var/folders/../T/` (약 50B) + 접두 + pid + nanos + `/live.sock` 이 그 한계를 넘으면
+        //   UnixListener::bind 가 패닉한다. 브랜드가 cysd(4B) → EZERagentd(10B) 로 길어지면서
+        //   경계를 넘어 aarch64 러너에서 실패했다(x86_64 는 temp 경로가 짧아 통과 — 간헐 증상).
         let d = std::env::temp_dir().join(format!(
-            "EZERagentd-deadman-test-{}-{}",
+            "ezr-dm-{}-{}",
             std::process::id(),
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
