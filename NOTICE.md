@@ -3,13 +3,12 @@
 EZERagent is licensed under the MIT License (see `LICENSE`).
 This file consolidates third-party attributions for discoverability.
 
-## Upstream
+## Lineage
 
-EZERagent is a rebranded derivative of **cys-terminal**
-(https://github.com/idoforgod/cys-terminal), MIT — Copyright (c) 2026 CYSJavis.
-The upstream copyright notice is retained in `LICENSE` as the MIT License requires.
-All `cys`/`CYSJavis` identifiers were renamed to `EZERagent`/`EZERagent`; the architecture,
-core mechanics, and pack contents originate upstream.
+EZERagent is the rebranded continuation of **cys-terminal**
+(https://github.com/idoforgod/cys-terminal) by the same author. Every `cys`/`CYSJavis`
+identifier was renamed to `EZERagent`; the architecture, core mechanics, and pack
+contents carry over unchanged. The third-party attributions below apply to both.
 
 ## Vendored code
 
