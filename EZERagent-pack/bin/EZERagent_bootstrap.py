@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """EZERagent_bootstrap.py — master 부트 시퀀스의 결정론 격상 (BOOTSTRAP_HARDENING WP-1).
 
-"너는 마스터다" 이후의 기계적 절차 전부를 단일 exit-code 체인으로 수행한다.
+"에제르시작"(마스터 선언) 이후의 기계적 절차 전부를 단일 exit-code 체인으로 수행한다.
 LLM(master)의 역할은 이 스크립트 실행·출력 인용·이후 지휘뿐이다 — 산문 단계 수행 금지.
 
 단계 체인 (실패 시 즉시 중단·단계명+원인을 stderr와 boot-last.json에 기록):

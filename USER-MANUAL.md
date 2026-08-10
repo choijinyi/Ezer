@@ -415,7 +415,7 @@ EZERagent init-pack --install-hook --claude-settings ~/.claude/settings.json   #
 
 ### 12.2 역할 선언 부트스트랩
 
-프로젝트 루트에 `CLAUDE.md.template`를 복사해 두면, 에이전트에게 "너는 마스터다/워커다"
+프로젝트 루트에 `CLAUDE.md.template`를 복사해 두면, 에이전트에게 "에제르시작"(마스터) 또는 "너는 워커다"
 라고 선언하는 것만으로 부트스트랩됩니다: 해당 디렉티브+soul.md 각성 → `EZERagent claim-role` →
 (마스터면) 결정론 프리플라이트:
 

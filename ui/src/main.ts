@@ -1056,7 +1056,7 @@ function renderWeekly(a: any) {
       const th = Math.round((v / dmax) * 100);
       return `<span class="cc-wk-day" title="D${i + 1} · 이번주 ${ccFmtTokens(v)} / 지난주 ${ccFmtTokens(lw[i] ?? 0)}"><span class="cc-wk-last" style="height:${lh}%"></span><span class="cc-wk-this" style="height:${th}%"></span></span>`;
     }).join("") +
-    `</div><div class="cc-wk-legend"><span class="cc-leg"><span class="cc-leg-dot" style="background:#00d4ff"></span>이번주</span><span class="cc-leg"><span class="cc-leg-dot" style="background:#475569"></span>지난주</span></div>`;
+    `</div><div class="cc-wk-legend"><span class="cc-leg"><span class="cc-leg-dot" style="background:#34d399"></span>이번주</span><span class="cc-leg"><span class="cc-leg-dot" style="background:#475950"></span>지난주</span></div>`;
 
   // 효율 리더 — 토큰 점유율 바 + 세션/스킬다양성
   const leaders: any[] = s.leaders ?? [];
@@ -1421,6 +1421,12 @@ const imageExtFromMime = (mime: string): string => {
   return "png"; // image/png 및 기타
 };
 
+// ★마스터-온리 UI(오너 2026-08-10): 메인 UI에는 마스터 pane만 보인다. 워커·CSO·리뷰어 노드는
+// pane 없이 데몬 안에서 헤드리스로 작동한다(입양·복원 병합 대상에서 제외 — PTY·지휘·산출은 그대로).
+// 관측은 컨트롤 센터(플릿·작업 탭)와 사이드바 노드 신호가 담당한다. 무역할 일반 셸은 종전대로 보인다.
+const isBackgroundRole = (role: string | null | undefined): boolean =>
+  !!role && !role.startsWith("master");
+
 // surface도 번호 대신 이름 — 기본 자동 제목("surface N"·빈 문자열)이면 현재 디렉토리 경로 표시.
 const isAutoTitle = (t: string | null | undefined) => !t || /^surface \d+$/.test(t);
 const paneTitle = (title: string | null | undefined, liveCwd?: string | null) =>
@@ -1473,7 +1479,8 @@ async function refreshPaneTitles() {
       const rolePri = (role: string | null): number =>
         role === "master" ? 0 : role === "cso" ? 1 : role?.startsWith("worker") ? 2 : role?.startsWith("reviewer") ? 3 : 4;
       for (const s of [...r.surfaces].sort((a, b) => rolePri(a.role) - rolePri(b.role))) {
-        if (s.exited || !s.role || panes.has(paneKey(s.surface_id, sk))) continue;
+        // 마스터-온리: 백그라운드 역할(워커·CSO·리뷰어)은 입양하지 않는다 — 헤드리스 작동.
+        if (s.exited || !s.role || isBackgroundRole(s.role) || panes.has(paneKey(s.surface_id, sk))) continue;
         // !w.pending — 런칭 중 placeholder(socket 미정)에는 입양 금지(타 데몬 surface 오입양 차단).
         const ws = workspaces.find((w) => !w.pending && (w.socket ?? undefined) === (sk ?? undefined));
         if (!ws || collectSids(ws.tree).includes(s.surface_id)) continue;
@@ -2304,7 +2311,7 @@ function updatePendingBadges(n: number) {
 }
 
 // ws별 고유색 (id 기반 — 세션 복원에도 같은 ws는 같은 색)
-const WS_COLORS = ["#2f81f7", "#3fb950", "#d29922", "#f85149", "#a371f7", "#db61a2", "#39c5cf", "#e3b341"];
+const WS_COLORS = ["#34d399", "#60a5fa", "#fbbf24", "#fb7185", "#a78bfa", "#f472b6", "#2dd4bf", "#a3e635"];
 
 function renderWsTabs() {
   const bar = document.getElementById("ws-tabs")!;
@@ -4266,12 +4273,12 @@ async function start() {
   const sockets = [...new Set(workspaces.map((w) => w.socket))];
   const liveBySock = new Map<
     string | undefined,
-    { ids: Set<number>; ok: boolean; list: { surface_id: number; title: string }[] }
+    { ids: Set<number>; ok: boolean; list: { surface_id: number; title: string; role: string | null }[] }
   >();
   for (const sk of sockets) {
     try {
       const r = (await invoke("list_surfaces", { socket: sk })) as {
-        surfaces: { surface_id: number; title: string; exited: boolean }[];
+        surfaces: { surface_id: number; title: string; role: string | null; exited: boolean }[];
       };
       const liveList = r.surfaces.filter((s) => !s.exited);
       liveBySock.set(sk, { ids: new Set(liveList.map((s) => s.surface_id)), ok: true, list: liveList });
@@ -4281,12 +4288,15 @@ async function start() {
   }
 
   // 죽은 pane 제거 — 데몬 미응답 소켓의 ws는 건드리지 않는다(일시 미가동=영구삭제 방지).
+  // + 마스터-온리: 구 저장본에 남은 백그라운드 역할(워커·CSO·리뷰어) pane도 제거 —
+  //   surface는 데몬에 살아있으므로 노드는 계속 작동한다(레이아웃에서만 빠짐).
   const activeWsId = workspaces[activeWs]?.id;
   for (const ws of workspaces) {
     const lb = liveBySock.get(ws.socket);
     if (!lb || !lb.ok) continue;
+    const bgSids = new Set(lb.list.filter((s) => isBackgroundRole(s.role)).map((s) => s.surface_id));
     for (const sid of collectSids(ws.tree)) {
-      if (!lb.ids.has(sid)) ws.tree = ws.tree ? replaceNode(ws.tree, sid, () => null) : null;
+      if (!lb.ids.has(sid) || bgSids.has(sid)) ws.tree = ws.tree ? replaceNode(ws.tree, sid, () => null) : null;
     }
   }
   // 안 A: 부서 ws는 tree:null(빈 셸 미생성)로 저장될 수 있다 — 데몬이 살아있고 입양할 live surface가
@@ -4323,6 +4333,7 @@ async function start() {
     if (!lb || !lb.ok) continue;
     const ws = workspaces.find((w) => (w.socket ?? undefined) === (sk ?? undefined));
     for (const s of lb.list) {
+      if (isBackgroundRole(s.role)) continue; // 마스터-온리: 백그라운드 역할은 pane 런타임도 만들지 않는다(헤드리스)
       await makePane(s.surface_id, s.title, sk);
       if (ws && !collectSids(ws.tree).includes(s.surface_id)) {
         ws.tree = ws.tree
@@ -4448,28 +4459,21 @@ document.getElementById("btn-ws-new")!.addEventListener("click", () => addWorksp
 function masterDeniedMsg(e: unknown, where: string): string {
   const s = String(e);
   if (/claim_denied|privileged role/i.test(s))
-    return `이미 ${where}에 마스터가 실행 중입니다 — 기존 마스터 탭(pane)을 사용하세요. (조직 단위당 마스터 1명 — 부서장은 각 부서 탭에서 세웁니다)`;
+    return `이미 ${where}에 마스터가 실행 중입니다 — 기존 마스터 pane을 사용하세요. (조직 단위당 마스터 1명 — 부서 마스터는 해당 부서 탭에서 ▶ EZER 시작)`;
   return s;
 }
-document.getElementById("btn-master-start")?.addEventListener("click", async () => {
-  try {
-    await invoke("start_master");
-    toast("feed", "▶ CEO 시작", "본부(base)에 마스터 오브 마스터 노드를 기동했습니다 — 잠시 후 pane이 자동으로 나타납니다. 부서가 있으면 승인 후 CEO 규약으로 승격됩니다.");
-  } catch (e) {
-    toast("health", "CEO 시작 실패", masterDeniedMsg(e, "본부(base)"));
-  }
-});
-document.getElementById("btn-dept-master")?.addEventListener("click", async () => {
+// ★단일 진입점(오너 2026-08-10): ▶CEO·▶부서장 2버튼 폐기 → "▶ EZER 시작" 하나. 현재 탭의
+// 데몬(본부=base / 부서=ws.socket)을 자동 판별해 마스터를 기동한다 — 껐다 켠 뒤에도 이 버튼
+// 하나면 마스터가 다시 선다. 워커·리뷰어는 마스터-온리 UI 정책으로 화면에 나타나지 않는다.
+document.getElementById("btn-ezer-start")?.addEventListener("click", async () => {
   const ws = workspaces[activeWs];
-  if (!ws?.socket) {
-    toast("health", "▶부서장은 부서 탭에서", "지금 보고 있는 탭이 본부입니다 — 부서 탭을 연 상태에서 누르세요(본부 마스터는 ▶CEO).");
-    return;
-  }
+  const where = ws?.socket ? `이 부서(${ws.name ?? ws.socket})` : "본부(base)";
   try {
-    await invoke("start_dept_master", { socket: ws.socket });
-    toast("feed", "▶ 부서장 시작", `${ws.name ?? "부서"}에 마스터(부서장) 노드를 기동했습니다 — 잠시 후 pane이 자동으로 나타납니다.`);
+    if (ws?.socket) await invoke("start_dept_master", { socket: ws.socket });
+    else await invoke("start_master");
+    toast("feed", "▶ EZER 시작", `${where}에 마스터 노드를 기동했습니다 — 잠시 후 마스터 pane이 나타납니다. 워커·리뷰어는 백그라운드에서 작동합니다(관측: 컨트롤 센터).`);
   } catch (e) {
-    toast("health", "부서장 시작 실패", masterDeniedMsg(e, `이 부서(${ws.name ?? ws.socket})`));
+    toast("health", "EZER 시작 실패", masterDeniedMsg(e, where));
   }
 });
 
@@ -4529,6 +4533,80 @@ wsbarDrag?.addEventListener("dblclick", () => {
   localStorage.setItem("EZERagent-wsbar-w", String(wsbarW));
   refitAllPanes();
 });
+
+// ---------- 브라우저 패널 (오너 2026-08-10: 메인 UI 오른편 — 작업 결과물 미리보기) ----------
+// 폭·열림·URL은 localStorage 영속. pane 재적합은 wsbar 드래그와 동일 이중 안전(ResizeObserver+refitAllPanes).
+// 외부 사이트는 X-Frame-Options로 거부될 수 있다 — 1차 용도는 로컬 서버(localhost)·산출물 문서 미리보기.
+const bpPanel = document.getElementById("browser-panel") as HTMLElement | null;
+const bpDrag = document.getElementById("bp-drag") as HTMLElement | null;
+const bpFrame = document.getElementById("bp-frame") as HTMLIFrameElement | null;
+const bpUrlInput = document.getElementById("bp-url") as HTMLInputElement | null;
+const BP_W_DEFAULT = 460, BP_W_MIN = 280;
+const clampBpWidth = (w: number) => Math.min(Math.max(Math.round(w) || BP_W_DEFAULT, BP_W_MIN), Math.round(window.innerWidth * 0.7));
+let bpW = clampBpWidth(Number(localStorage.getItem("EZERagent-bp-w")) || BP_W_DEFAULT);
+// 빈 상태 안내(srcdoc) — 흰 iframe 대신 다크 힌트로 첫 인상·용도 전달.
+const BP_HOME_DOC = `<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#0c1210;color:#8fa89b;font:13px/1.7 sans-serif;text-align:center"><div>위 주소창에 입력하면 여기서 미리봅니다<br>예: <b style="color:#6ee7b7">localhost:3000</b> · 산출물 HTML 경로</div></body>`;
+function bpNormalizeUrl(raw: string): string {
+  const u = raw.trim();
+  if (!u) return "";
+  if (/^(https?|file):\/\//i.test(u)) return u;
+  if (/^[a-z]:[\\/]/i.test(u) || u.startsWith("/")) return `file:///${u.replace(/\\/g, "/").replace(/^\/+/, "")}`;
+  return `http://${u}`; // localhost:3000 등 스킴 생략 입력
+}
+function bpNavigate(raw: string) {
+  if (!bpFrame) return;
+  const url = bpNormalizeUrl(raw);
+  if (!url) {
+    bpFrame.removeAttribute("src");
+    bpFrame.srcdoc = BP_HOME_DOC;
+    return;
+  }
+  bpFrame.removeAttribute("srcdoc");
+  bpFrame.src = url;
+  localStorage.setItem("EZERagent-bp-url", url);
+  if (bpUrlInput) bpUrlInput.value = url;
+}
+function setBrowserOpen(open: boolean) {
+  if (!bpPanel || !bpDrag) return;
+  bpPanel.hidden = !open;
+  bpDrag.hidden = !open;
+  localStorage.setItem("EZERagent-bp-open", open ? "1" : "0");
+  if (open && bpFrame && !bpFrame.src && !bpFrame.srcdoc) {
+    const last = localStorage.getItem("EZERagent-bp-url") ?? "";
+    bpNavigate(last); // 마지막 URL 복원, 없으면 빈 상태 안내
+  }
+  requestAnimationFrame(() => refitAllPanes()); // 폭 변화 반영 후 pane 재적합
+}
+document.documentElement.style.setProperty("--bp-w", `${bpW}px`);
+document.getElementById("btn-browser")?.addEventListener("click", () => setBrowserOpen(!!bpPanel?.hidden));
+document.getElementById("bp-close")?.addEventListener("click", () => setBrowserOpen(false));
+document.getElementById("bp-reload")?.addEventListener("click", () => {
+  if (bpFrame?.src) bpFrame.src = bpFrame.src; // eslint-disable-line no-self-assign — 재대입=리로드
+});
+bpUrlInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") bpNavigate(bpUrlInput.value);
+});
+bpDrag?.addEventListener("mousedown", (e0: MouseEvent) => {
+  e0.preventDefault();
+  const startX = e0.clientX, startW = bpW;
+  document.body.classList.add("bp-resizing");
+  if (bpFrame) bpFrame.style.pointerEvents = "none"; // 드래그 중 iframe이 마우스 이벤트를 삼키지 않게
+  const move = (e: MouseEvent) => {
+    bpW = clampBpWidth(startW - (e.clientX - startX)); // 오른쪽 패널 — 왼쪽으로 끌면 넓어진다
+    document.documentElement.style.setProperty("--bp-w", `${bpW}px`);
+  };
+  const up = () => {
+    window.removeEventListener("mousemove", move, true);
+    window.removeEventListener("mouseup", up, true);
+    document.body.classList.remove("bp-resizing");
+    if (bpFrame) bpFrame.style.pointerEvents = "";
+    localStorage.setItem("EZERagent-bp-w", String(bpW));
+    refitAllPanes();
+  };
+  window.addEventListener("mousemove", move, true);
+  window.addEventListener("mouseup", up, true);
+});
+if (localStorage.getItem("EZERagent-bp-open") === "1") setBrowserOpen(true); // 이전 세션 열림 복원
 
 function applyWsbarFontStep(dir: number) {
   wsbarFont = clampWsbarFont(wsbarFont + dir * WSBAR_FONT_STEP);

@@ -5,7 +5,8 @@
 
 ## EZERagent 부트스트랩 (역할 선언 시 즉시 수행)
 
-사용자가 역할을 선언하면(예: "너는 마스터이다" / "너는 워커다"):
+사용자가 "에제르시작"이라고 입력하면 **master 역할 선언**이다(구 문구 "너는 마스터이다"도 동일 인식).
+그 외 역할 선언(예: "너는 워커다")을 포함해, 역할이 선언되면:
 1. `~/.EZERagent/pack/directives/` 의 해당 `*_DIRECTIVE.md` 와 `~/.EZERagent/pack/soul.md` 를 읽고 각성한다.
 2. `EZERagent claim-role <master|worker|cso|reviewer-gemini|reviewer-codex>` 로 자기 surface를
    역할 주소로 등록한다. ⚠리뷰어는 **에이전트별 역할명**(reviewer-gemini·reviewer-codex)을

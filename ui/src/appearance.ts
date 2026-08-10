@@ -33,7 +33,7 @@ export const FONT_CHOICES: { label: string; face: string | null }[] = [
 // 역할 → 신호 색 — Control Center(CC_ROLE_COLOR)와 pane 역할 점의 단일 출처.
 export const ROLE_COLOR: Record<string, string> = {
   master: "#3b82f6", cso: "#8b5cf6", worker: "#00e676",
-  "reviewer-gemini": "#ffa726", "reviewer-codex": "#00d4ff",
+  "reviewer-gemini": "#ffa726", "reviewer-codex": "#2dd4bf",
 };
 
 // pane 제목 앞 역할 점 색 — 정확 일치 우선, 변형은 접두 매칭(master-2·cso-1·worker-2·reviewer-* —

@@ -8,23 +8,28 @@
 </head>
 <body>
   <header id="topbar">
-    <span id="brand">EZERagent</span>
+    <span id="brand">EZER<span class="brand-sub">agent</span></span>
     <span id="daemon-info">daemon: connecting…</span>
     <span class="spacer"></span>
-    <button id="btn-new" title="새 surface (⌘T)">+ New</button>
-    <button id="btn-split-h" title="오른쪽 분할 (⌘D)">Split →</button>
-    <button id="btn-split-v" title="아래 분할 (⌘⇧D)">Split ↓</button>
-    <button id="btn-equalize" title="역할별 표준 배치로 정렬 — master·CSO(좌) · 워커(가운데 균등) · agy·codex(우) · 수동 크기 조절엔 영향 없음">정렬</button>
-    <button id="btn-close" title="pane 닫기 — 자식 트리 강제 종료 (⌘W)">Close</button>
-    <button id="btn-files" title="파일 트리 (선택한 surface의 폴더)">Files</button>
-    <button id="btn-cc" title="Control Center — 실시간 플릿·사용량·시스템 모니터링 · 승인 Feed">Control Center <span id="cc-pending-badge" class="badge" hidden>0</span></button>
-    <button id="btn-update" title="업데이트 확인">Update <span id="update-badge" class="badge" hidden>!</span></button>
-    <button id="btn-restart-daemon" title="데몬 재시작 — 진행 중인 노드에 저장(drain) 신호를 보낸 뒤 데몬을 새로 켜고, 부서·노드를 대화 기억까지 자동 복원합니다(피닉스). 마지막 미저장분은 손실될 수 있습니다.">↻ 재시작</button>
-    <button id="btn-theme" title="배경 테마 — 배경색 커스텀 지정">테마</button>
+    <div class="tb-group" title="레이아웃">
+      <button id="btn-new" title="새 터미널 (⌘T)">＋ 새 터미널</button>
+      <button id="btn-split-h" title="오른쪽 분할 (⌘D)">분할 →</button>
+      <button id="btn-split-v" title="아래 분할 (⌘⇧D)">분할 ↓</button>
+      <button id="btn-equalize" title="역할별 표준 배치로 정렬 — master·CSO(좌) · 워커(가운데 균등) · agy·codex(우) · 수동 크기 조절엔 영향 없음">정렬</button>
+      <button id="btn-close" title="pane 닫기 — 자식 트리 강제 종료 (⌘W)">닫기</button>
+    </div>
+    <div class="tb-group" title="패널·도구">
+      <button id="btn-files" title="파일 트리 (선택한 surface의 폴더)">파일</button>
+      <button id="btn-cc" title="컨트롤 센터 — 실시간 플릿·사용량·시스템 모니터링 · 승인 Feed">컨트롤 센터 <span id="cc-pending-badge" class="badge" hidden>0</span></button>
+      <button id="btn-update" title="업데이트 확인">업데이트 <span id="update-badge" class="badge" hidden>!</span></button>
+      <button id="btn-restart-daemon" title="데몬 재시작 — 진행 중인 노드에 저장(drain) 신호를 보낸 뒤 데몬을 새로 켜고, 부서·노드를 대화 기억까지 자동 복원합니다(피닉스). 마지막 미저장분은 손실될 수 있습니다.">↻ 재시작</button>
+      <button id="btn-browser" title="브라우저 — 작업 결과물 미리보기(로컬 서버·문서 URL)">브라우저</button>
+      <button id="btn-theme" title="배경 테마 — 배경색 커스텀 지정">테마</button>
+    </div>
   </header>
   <div id="body-row">
     <nav id="wsbar">
-      <div id="wsbar-head"><span>워크스페이스</span><button id="btn-ws-font-minus" title="사이드바 글자 축소">A−</button><button id="btn-ws-font-plus" title="사이드바 글자 확대">A＋</button><button id="btn-master-start" title="CEO 시작 — 본부(base)에 마스터 오브 마스터 노드를 기동합니다. 부서가 있으면 승인 후 CEO 규약으로 승격됩니다. 마스터는 조직(본부/부서) 단위 1명·부서장은 부서 탭의 ▶부서장으로.">▶CEO</button><button id="btn-dept-master" title="부서장 시작 — 지금 보고 있는 부서 탭의 데몬에 마스터(부서장) 노드를 기동합니다(부서마다 독립 1명).">▶부서장</button><button id="btn-ws-dept" title="새 부서 — 클릭하면 부서 선택(미사용 부서 + 레거시 dept-N)">＋부서</button><button id="btn-ws-new" title="새 워크스페이스">＋</button></div>
+      <div id="wsbar-head"><span>워크스페이스</span><button id="btn-ws-font-minus" title="사이드바 글자 축소">A−</button><button id="btn-ws-font-plus" title="사이드바 글자 확대">A＋</button><button id="btn-ezer-start" title="EZER 시작 — 지금 보고 있는 탭(본부/부서 자동 판별)에 마스터 노드를 자동 기동합니다. 워커·리뷰어는 화면에 나타나지 않고 백그라운드에서 마스터가 지휘합니다.">▶ EZER 시작</button><button id="btn-ws-dept" title="새 부서 — 클릭하면 부서 선택(미사용 부서 + 레거시 dept-N)">＋부서</button><button id="btn-ws-new" title="새 워크스페이스">＋</button></div>
       <div id="ws-tabs"></div>
     </nav>
     <div id="wsbar-drag" title="드래그로 사이드바 폭 조절 · 더블클릭=기본폭"></div>
@@ -33,10 +38,19 @@
       <div id="ft-body"></div>
     </aside>
     <main id="root"></main>
+    <div id="bp-drag" title="드래그로 브라우저 폭 조절" hidden></div>
+    <aside id="browser-panel" hidden>
+      <div id="bp-toolbar">
+        <button id="bp-reload" title="새로고침">↻</button>
+        <input id="bp-url" type="text" placeholder="주소 입력 — 예: localhost:3000, https://…" spellcheck="false" />
+        <button id="bp-close" title="브라우저 닫기">×</button>
+      </div>
+      <iframe id="bp-frame" title="작업 결과물 미리보기"></iframe>
+    </aside>
     <aside id="cc-panel" hidden>
       <div id="cc-header">
         <span class="cc-pulse"></span>
-        <span class="cc-title">JAVIS Control Center</span>
+        <span class="cc-title">EZER Control Center</span>
         <span id="cc-livebadge" class="cc-badge idle" title="LIVE = 작업 중 노드 1개 이상 / IDLE = 전체 대기">IDLE</span>
         <span id="cc-alertbadge" class="cc-alert-badge" hidden></span>
         <button id="btn-cc-density" title="한눈에 보기 / 상세 보기 전환 (⌘G)">👁 한눈에</button>

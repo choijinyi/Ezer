@@ -4,8 +4,8 @@
 // 순수 함수라 어두운 색·밝은 색·경계값을 결정론으로 회귀 테스트할 수 있다(theme.test.ts).
 
 // 기본(다크) 배경·전경 — 하드코딩 리터럴 대신 이 상수를 단일 출처로 참조.
-export const DEFAULT_BG = "#0d1117";
-export const DARK_FG = "#c9d1d9"; // 어두운 배경용 밝은 글자(기존 값)
+export const DEFAULT_BG = "#0c1210"; // EZER 에메랄드 딥그린 팔레트(style.css --bg와 동기)
+export const DARK_FG = "#cfd8d3"; // 어두운 배경용 밝은 글자(style.css --text와 동기)
 export const LIGHT_FG = "#1f2328"; // 밝은 배경용 어두운 글자
 
 // "#rrggbb" → [r,g,b] (0-255). 형식이 아니면 null(호출측이 기본색으로 폴백).

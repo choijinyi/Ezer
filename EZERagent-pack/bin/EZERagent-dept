@@ -370,7 +370,7 @@ ceo_promote(){  # $1: "consented"면 동의 게이트 생략(오너 지명 promo
     mkdir -p "$(dirname "$CEO_PENDING")"
     printf 'pending since %s\n' "$(date +%Y-%m-%dT%H:%M:%S 2>/dev/null || echo unknown)" > "$CEO_PENDING"
     env -u EZERAGENT_SOCKET "$EZERAGENT" feed push --title "CEO 승격 보류(부트 필요)" \
-      --body "부서가 생성되었으나 base master가 아직 부트되지 않았습니다. base에서 '너는 마스터다' 또는 '마스터 시작' 버튼으로 부트를 완료하면 명령 팔레트의 'CEO 승격 진행'으로 승인할 수 있습니다." >/dev/null 2>&1 || true
+      --body "부서가 생성되었으나 base master가 아직 부트되지 않았습니다. base에서 '에제르시작' 또는 'EZER 시작' 버튼으로 부트를 완료하면 명령 팔레트의 'CEO 승격 진행'으로 승인할 수 있습니다." >/dev/null 2>&1 || true
     echo "[EZERagent-dept] CEO 승격 보류(PENDING) — base master 미부트(.master-bootstrapped 부재)" >&2
     return 0
   fi

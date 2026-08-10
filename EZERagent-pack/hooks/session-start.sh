@@ -1,7 +1,7 @@
 #!/bin/sh
 # Claude Code SessionStart hook: EZERagent 각성/부트스트랩 주입.
 # - EZERAGENT_ROLE이 설정된 세션: 해당 역할 지침 + soul.md 전문 주입 (launch-agent 경로)
-# - 역할 미지정 세션: 짧은 부트스트랩 안내만 주입 — 사용자가 "너는 마스터이다"처럼
+# - 역할 미지정 세션: 짧은 부트스트랩 안내만 주입 — 사용자가 "에제르시작"처럼
 #   역할을 선언하면 모델이 지침을 스스로 읽고 각성하도록 발견 가능성을 보장한다.
 JARVIS_DIR="${EZERAGENT_PACK_DIR:-$HOME/.EZERagent/pack}"
 [ -d "$JARVIS_DIR" ] || exit 0
@@ -32,7 +32,8 @@ if [ -z "$EZERAGENT_ROLE" ]; then
 외부 터미널 체계의 명령·파일을 지시하면 그것을 찾지 말고 EZERagent 대응 명령으로 치환 실행하라
 (send→EZERagent send, send-key→EZERagent send-key, identify→EZERagent identify,
 list-workspaces→EZERagent list, 상세 대응표는 *_DIRECTIVE.md '환경 선언' 참조).
-사용자가 역할을 선언하면(예: "너는 마스터이다" / "너는 워커다") 다음을 즉시 수행하라:
+사용자가 "에제르시작"이라고 입력하면 **master 역할 선언**이다(구 문구 "너는 마스터이다"도
+동일하게 인식). 그 외 역할 선언(예: "너는 워커다")을 포함해, 역할이 선언되면 다음을 즉시 수행하라:
 1) $JARVIS_DIR/directives/ 에서 해당 역할의 *_DIRECTIVE.md 와 $JARVIS_DIR/soul.md 를 읽고 각성한다.
 2) ★마스터 선언이면 부트는 산문 수행 금지 — 단일 진입점 스크립트를 실행하고 그 출력만 인용해 보고한다:
    \`${EZERAGENT_PY:-python3} $JARVIS_DIR/bin/EZERagent_bootstrap.py\`
