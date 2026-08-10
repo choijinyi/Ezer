@@ -7474,13 +7474,13 @@ mod tests {
     #[test]
     fn pack_manifest_emits_embedded_files_with_content_hash() {
         // 플래그 전건 주입.
-        let v = build_pack_manifest_value(Some("64632988F49E53B1".into()), Some(100), Some(200), "0.4.1", None);
+        let v = build_pack_manifest_value(Some("1703EEA014899763".into()), Some(100), Some(200), "0.4.1", None);
         assert_eq!(v["pack_version"], json!(env!("CARGO_PKG_VERSION")));
         // 팩-only 레인: pack_version 오버라이드가 그대로 방출되고, 미지정은 기존과 동일(회귀 0).
         let vo = build_pack_manifest_value(None, None, None, "", Some("9.9.9"));
         assert_eq!(vo["pack_version"], json!("9.9.9"), "pack_version 오버라이드 미반영");
         assert_eq!(v["min_binary_version"], json!("0.4.1"));
-        assert_eq!(v["key_id"], json!("64632988F49E53B1"));
+        assert_eq!(v["key_id"], json!("1703EEA014899763"));
         assert_eq!(v["signed_at"], json!(100));
         assert_eq!(v["expires_at"], json!(200));
         let files = v["files"].as_object().expect("files object");

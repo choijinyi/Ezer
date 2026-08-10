@@ -235,7 +235,7 @@ EZERagentd·EZERagent-app·세션 프로세스는 **그 무엇도 종료/재시�
 2. **트리거 UX → ★처음 수동 트리거**: `EZERagent pack-update` 명시 호출(자동 폴링 X). UI는 `install_pack_update` Tauri command(`src-tauri/src/main.rs`)가 사이드카 래핑·`pack-updated` emit. "검증 후 자동 전환"은 후속.
 3. **reinject → pack-update가 apply 후 자동**(idle·dedup 게이트). 단일 write path=`reinject.mark` RPC(`src/bin/EZERagentd/handlers.rs:1980`).
 4. **★심링크 마이그레이션 → 안 함**. ⑤ apply-lock+epoch 폴백을 **최종 채택**(live `round/` 무접촉). `with_apply_lock`+`install_from_iter`(.pack-version=epoch 맨 마지막). ★한계 정직 문서화: 외부 동시 reader(compose_directive·read_board_catalog)에 대한 multi-file SET 일관성은 writer-side 배타로만 보장(sub-second·수동트리거라 노출 창 희소·reinject는 apply 후)(`src/bin/EZERagent.rs:4193` 독스트링). 강화 옵션(reader shared-flock)은 가용성 트레이드오프로 보류·master 판단 시 추가.
-5. **서명 유효창 → 기존 Tauri 키 재사용**(신규키 X·`build.rs` embed 단일SOT key_id=64632988F49E53B1). per-manifest `expires_at`=릴리스 CI 90일(`release.yml` EXPIRES_DAYS)·키 `not_after` 필수(`src/packsig.rs`).
+5. **서명 유효창 → 기존 Tauri 키 재사용**(신규키 X·`build.rs` embed 단일SOT key_id=1703EEA014899763). per-manifest `expires_at`=릴리스 CI 90일(`release.yml` EXPIRES_DAYS)·키 `not_after` 필수(`src/packsig.rs`).
 
 **구현 상태: R2 P1~P7 전부 완료**(11 tracked +1763/-17·신규 packsig.rs·trusted-keys.json·noshutdown_verify.py·격리 E2E PASS·미커밋). 발행(git push·gh release·EZERagentd 재시작)은 오너 승인 게이트.
 

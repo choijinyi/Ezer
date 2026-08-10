@@ -13,7 +13,7 @@ EZERagent 자체 minisign 키페어를 생성해 배선했다. 업데이터 서�
 쓴다 — `build.rs`가 `tauri.conf.json`의 pubkey와 `trusted-keys.json`의 key_id를 병합해
 단일 키링을 만들기 때문이다.
 
-- **새 key_id**: `64632988F49E53B1` (업스트림 `39E60A702949D6C3` 대체)
+- **새 key_id**: `1703EEA014899763` (업스트림 `39E60A702949D6C3` 대체)
 - 배선한 곳: `src-tauri/tauri.conf.json`(pubkey) · `EZERagent-pack/trusted-keys.json`(key_id) ·
   `.github/workflows/release.yml`·`pack-release.yml`(KEY_ID) ·
   `src/packsig.rs`·`src/bin/EZERagent.rs`(키링 검증 테스트 핀)
@@ -46,7 +46,7 @@ EZERagent 자체 minisign 키페어를 생성해 배선했다. 업데이터 서�
 
 | 위치 | 반영 내용 |
 |---|---|
-| `LICENSE` | Choi jinyi 저작권을 첫 줄에, 업스트림 CYSJavis 고지를 그 아래 유지(MIT 의무) |
+| `LICENSE` | Choi jinyi 단독 저작권 (저작자 본인이므로 업스트림 고지 병기 불요) |
 | `README.md` · `README.en.md` · `SECURITY.md` | 연락처·취약점 신고처를 EZERagent 주소로 교체 |
 | `src-tauri/src/main.rs` 호스트 허용목록 | `kaea.ai.kr` (정확일치 + 서브도메인이라 `www.` 포함) |
 | `ui/src/main.ts`·`updateplan.ts`·`updateplan.test.ts` | 본체 수동 다운로드 안내를 `www.kaea.ai.kr`로 |
@@ -59,10 +59,11 @@ EZERagent 자체 minisign 키페어를 생성해 배선했다. 업데이터 서�
 > 이 문서에 이메일 주소를 문자 그대로 적지 마라 — `scripts/secret-scan.sh`가 PUBLIC 발행 전
 > 하드 게이트로 차단한다(허용은 `README.md`·`README.en.md`·`SECURITY.md`뿐).
 
-## 4. 아이콘·브랜드 아트워크
+## 4. 아이콘·브랜드 아트워크 (반영 완료)
 
-`src-tauri/icons/*`는 업스트림 아이콘 그대로다(바이너리라 리네임 대상이 아니었다).
-EZERagent 로고로 교체하려면 같은 파일명·크기로 덮어쓴다.
+`src-tauri/icons/*` 17종을 EZERagent 로고로 교체했다. 원본 로고가 가로 배너라
+좌측 E 글리프만 떼어내(흰 배경 → 알파) 1024 정사각 캔버스에 78% 크기로 배치한 뒤
+`tauri icon` 으로 세트를 생성했다. 로고를 바꾸려면 같은 절차를 반복한다.
 
 ## 5. pro 라이선스 발급키
 
