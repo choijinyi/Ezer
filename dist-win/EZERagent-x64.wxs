@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="EZERagent (EZERagent Terminal)" Language="1033" Version="0.12.66"
+  <Product Id="*" Name="EZERagent (EZERagent Terminal)" Language="1033" Version="0.12.67"
            Manufacturer="EZERAGENT" UpgradeCode="6A40F007-8276-4DFD-88A6-E91E42016669">
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine"/>
     <Media Id="1" Cabinet="aiterm.cab" EmbedCab="yes"/>

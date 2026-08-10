@@ -1,6 +1,6 @@
 [package]
 name = "EZERagent-app"
-version = "0.12.66"
+version = "0.12.67"
 edition = "2021"
 description = "EZERagent UI shell (Tauri 2) — thin client over the EZERagentd socket"
 license = "MIT"
