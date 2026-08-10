@@ -28,7 +28,7 @@ jobs:
     permissions:
       contents: write
     env:
-      KEY_ID: '39E60A702949D6C3'    # 임베드 키링(EZERagent-pack/trusted-keys.json) key_id
+      KEY_ID: '64632988F49E53B1'    # 임베드 키링(EZERagent-pack/trusted-keys.json) key_id
       EXPIRES_DAYS: '90'            # 서명 신선도 유효창(release.yml과 동일)
       # ★min_binary는 정책 파생(해법③⑤ · 2026-07-14): scripts/min-binary-policy.sh가
       # max(security-floor.txt, 지원창 하한)을 계산 — 손설정 하한의 '잊음' 실패 계급 제거.

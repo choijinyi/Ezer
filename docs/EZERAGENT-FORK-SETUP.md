@@ -4,29 +4,37 @@ EZERagent는 cys-terminal(MIT)의 리브랜딩 파생본이다. 식별자·경�
 교체됐지만, **서명키처럼 원저작자만 보유한 비밀은 승계되지 않는다.** 릴리스를 실제로
 배포하기 전에 아래를 처리해야 한다. 소스 업로드와 CI 빌드 자체는 이것들 없이도 동작한다.
 
-## 1. Tauri 업데이터 서명키 (릴리스 배포 시 필수)
+## 1. 서명키 (반영 완료 — 백업은 오너 몫)
 
-`src-tauri/tauri.conf.json`의 `plugins.updater.pubkey`는 **업스트림 키페어의 공개키**다.
-EZERagent가 자기 릴리스에 서명하려면 자체 키페어가 필요하다.
+EZERagent 자체 minisign 키페어를 생성해 배선했다. 업데이터 서명과 팩 서명이 **같은 키**를
+쓴다 — `build.rs`가 `tauri.conf.json`의 pubkey와 `trusted-keys.json`의 key_id를 병합해
+단일 키링을 만들기 때문이다.
 
-```bash
-# 키페어 생성 (Tauri CLI)
-bunx @tauri-apps/cli signer generate -w ~/.EZERagent-updater.key
-```
+- **새 key_id**: `64632988F49E53B1` (업스트림 `39E60A702949D6C3` 대체)
+- 배선한 곳: `src-tauri/tauri.conf.json`(pubkey) · `EZERagent-pack/trusted-keys.json`(key_id) ·
+  `.github/workflows/release.yml`·`pack-release.yml`(KEY_ID) ·
+  `src/packsig.rs`·`src/bin/EZERagent.rs`(키링 검증 테스트 핀)
+- GitHub Secrets: `TAURI_SIGNING_PRIVATE_KEY` · `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 
-- 출력된 **공개키**를 `src-tauri/tauri.conf.json`의 `pubkey`에 붙여 넣는다.
-- **개인키**와 암호를 GitHub 저장소 Secrets에 등록한다:
-  - `TAURI_SIGNING_PRIVATE_KEY`
-  - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-- 개인키는 저장소에 커밋하지 않는다.
+### ★개인키 백업 (오너가 직접 해야 한다)
 
-이 작업 전까지 `release.yml`·`pack-release.yml`의 서명 단계는 실패한다.
+개인키는 저장소 밖 `~/.EZERagent-signing/` 에만 있다.
+
+| 파일 | 내용 |
+|---|---|
+| `updater.key` | 개인키 — **절대 커밋 금지** |
+| `updater.key.pub` | 공개키 (공개해도 무방) |
+| `updater-key.password` | 개인키 암호 (32자 무작위) |
+
+**이 폴더를 잃으면 기존 설치본이 받아들이는 업데이트를 영구히 발행할 수 없다.** 업데이터는
+공개키 핀으로 서명을 검증하므로, 키를 새로 만들면 이미 배포된 설치본은 새 업데이트를
+거부한다. 안전한 곳(암호 관리자·오프라인 매체)에 지금 백업하라.
 
 ## 2. 팩 서명 신뢰키
 
-`EZERagent-pack/trusted-keys.json`의 `key_id`(`39E60A702949D6C3`)는 업스트림 키다.
-`pubkey` 필드는 공개 저장소에서 비어 있고 릴리스 시 주입되는 구조다. 자체 팩 채널을
-운영하려면 minisign 키페어를 만들어 `key_id`·`pubkey`를 교체하고 `not_after`를 정한다.
+위 1번 키를 공유한다. `trusted-keys.json`의 `pubkey` 필드가 공개 저장소에서 비어 있는 것은
+정상이다 — `build.rs`가 빌드 시 `tauri.conf.json`에서 주입한다. `not_after`(2030-01-01)는
+그대로 두었다.
 
 ## 3. 저작자·연락처·홈페이지 (반영 완료)
 

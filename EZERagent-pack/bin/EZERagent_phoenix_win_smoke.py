@@ -281,8 +281,11 @@ def case4_snapshot_runbook():
         import EZERagent_state_snapshot as snapmod
         la = (os.environ.get("LOCALAPPDATA") or "").replace("\\", "/").lower()
         live_srcs = [s.replace("\\", "/").lower() for s in snapmod.default_sources()]
-        main_ok = bool(la) and any(s == la + "/EZERagent/topology.json" for s in live_srcs)
-        no_unix_leak = not any("/.local/state/EZERagent/topology.json" in s for s in live_srcs)
+        # ★live_srcs·la 는 위에서 소문자화됐다 — 비교 대상도 반드시 소문자화한다.
+        #   제품명에 대문자가 있으므로(EZERagent) 리터럴을 그대로 쓰면 main_ok 는 영원히 False,
+        #   no_unix_leak 는 영원히 True(공허한 참)가 되어 누출 가드가 침묵한다.
+        main_ok = bool(la) and any(s == (la + "/EZERagent/topology.json").lower() for s in live_srcs)
+        no_unix_leak = not any("/.local/state/EZERagent/topology.json".lower() in s for s in live_srcs)
         check("④ 권고#1: LIVE default_sources 가 %LOCALAPPDATA%\\EZERagent L1 상태 포착",
               main_ok and no_unix_leak, "la=%s main_ok=%s no_unix_leak=%s" % (la, main_ok, no_unix_leak))
     finally:

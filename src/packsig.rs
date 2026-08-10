@@ -372,7 +372,7 @@ mod tests {
         let boot = kr
             .keys
             .iter()
-            .find(|k| k.key_id == "39E60A702949D6C3")
+            .find(|k| k.key_id == "64632988F49E53B1")
             .expect("부트스트랩 key_id 부재");
         assert!(!boot.pubkey.is_empty(), "build.rs가 tauri pubkey를 주입하지 않음");
         assert!(!boot.not_after.is_empty(), "not_after 부재(fail-closed 위반)");

@@ -46,7 +46,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM5RTYwQTcwMjk0OUQ2QzMKUldURDFra3BjQXJtT1dvZVBUdHk5VnlvKzBJeVNneE11UzdpWFQzVHFoMDFtUG4wZWpkdGlHZ0wK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY0NjMyOTg4RjQ5RTUzQjEKUldTeFU1NzBpQ2xqWksvVnduSDU0RDM0aG40VERtY28ra2crWDdLMXFvQUwrL09zVGNkdnYrSFQK",
       "endpoints": [
         "https://github.com/choijinyi/Ezer/releases/latest/download/latest.json"
       ]

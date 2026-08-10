@@ -231,7 +231,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     env:
-      KEY_ID: '39E60A702949D6C3'    # 임베드 키링(EZERagent-pack/trusted-keys.json) key_id — manifest.key_id
+      KEY_ID: '64632988F49E53B1'    # 임베드 키링(EZERagent-pack/trusted-keys.json) key_id — manifest.key_id
       EXPIRES_DAYS: '90'            # 서명 신선도 유효창(§6-5 트레이드오프 — Replay 차단 vs 재발행 부담)
       # ★무중단 팩 채널 안전 하한(2026-07-12 오너 확정). seed-once 상태 보호(memory/·SESSION_STATE
       # 불가침)는 0.12.48+ 바이너리 코드다 — 공란이면 ≤0.12.47 구버전 pack-update가 사용자 상태를
