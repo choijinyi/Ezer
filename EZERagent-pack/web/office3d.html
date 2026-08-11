@@ -867,21 +867,77 @@ function makeRooftop(roofY){
     transparent:true, opacity:0.5, depthWrite:false });   // 데크도 반투명 — 본부 층 가림 금지
   const deck = mesh(new THREE.BoxGeometry(SLAB_W-1, 0.12, SLAB_D-1), deckT, 0, roofY, 0, false);
   deck.receiveShadow = true; deck.userData.floorY = roofY; g.add(deck);
-  [[-4.2,1.6],[3.4,1.2]].forEach(([dx,dz],i)=>{
-    g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.9, 8), M.metal, dx, roofY+0.95, dz, false));
-    const top = new THREE.Mesh(new THREE.ConeGeometry(1.15, 0.5, 10),
-      new THREE.MeshStandardMaterial({ color: ACCENTS[i], roughness:0.85 }));
-    top.position.set(dx, roofY+2.0, dz); top.castShadow = true; g.add(top);
-    g.add(mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 12), M.wood, dx, roofY+0.75, dz, false));
-    [[0.9,0],[-0.9,0.3]].forEach(([ox,oz])=>{
-      const ch = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.9),
-        new THREE.MeshStandardMaterial({ color:0x3a4a5c, roughness:0.9 }));
-      ch.rotation.x = -0.25; ch.position.set(dx+ox, roofY+0.3, dz+oz);
-      ch.castShadow = true; g.add(ch); });
-  });
-  const neon = textSprite('C Y S J A V I S', { size:34, color:'#5fe0ff' });
+  // ── 고급 라운지 (좌측 — 구 파라솔 자리): 가죽 쇼파 3+1+1 · 골드 베이스 대리석 탁자 (오너 2026-08-11) ──
+  const leather  = new THREE.MeshStandardMaterial({ color:0x4a2c22, roughness:0.6, metalness:0.05 });
+  const leatherD = new THREE.MeshStandardMaterial({ color:0x37211a, roughness:0.65 });
+  const gold     = new THREE.MeshStandardMaterial({ color:0xc9a44a, roughness:0.35, metalness:0.6 });
+  const marble   = new THREE.MeshStandardMaterial({ color:0xe8e4da, roughness:0.25 });
+  const sofa = (px, pz, ry, wide)=>{
+    const s = new THREE.Group(); const sw = wide ? 1.7 : 0.8;
+    s.add(mesh(new THREE.BoxGeometry(sw+0.14, 0.14, 0.72), gold, 0, 0.10, 0, false));
+    s.add(mesh(new THREE.BoxGeometry(sw, 0.22, 0.6), leather, 0, 0.28, 0.02));
+    s.add(mesh(new THREE.BoxGeometry(sw, 0.52, 0.16), leatherD, 0, 0.52, -0.26));
+    [1,-1].forEach(sx=> s.add(mesh(new THREE.BoxGeometry(0.14, 0.36, 0.6), leatherD, sx*(sw/2+0.07), 0.34, 0.02)));
+    s.position.set(px, roofY, pz); s.rotation.y = ry; return s;
+  };
+  g.add(sofa(-4.6, 1.0, 0, true));
+  g.add(sofa(-5.5, 2.0,  Math.PI/2, false));
+  g.add(sofa(-3.7, 2.0, -Math.PI/2, false));
+  g.add(mesh(new THREE.CylinderGeometry(0.34, 0.28, 0.38, 14), gold, -4.6, roofY+0.19, 2.0, false));
+  g.add(mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.05, 20), marble, -4.6, roofY+0.42, 2.0));
+  // ── 회의 코너 (우측): 6인 회의 테이블 + 의자 ──
+  const confTop = new THREE.MeshStandardMaterial({ color:0x6b4a2c, roughness:0.4, metalness:0.15 });
+  const chairB  = new THREE.MeshStandardMaterial({ color:0x2e4a66, roughness:0.7 });
+  g.add(mesh(new THREE.BoxGeometry(2.6, 0.07, 1.05), confTop, 4.0, roofY+0.72, 1.9));
+  [1,-1].forEach(sx=> g.add(mesh(new THREE.BoxGeometry(0.1, 0.7, 0.9), M.metal, 4.0+sx*1.1, roofY+0.35, 1.9, false)));
+  [-0.85, 0, 0.85].forEach(ox=> [0.78, -0.78].forEach(oz=>{
+    const c = new THREE.Group();
+    c.add(mesh(new THREE.BoxGeometry(0.44, 0.07, 0.44), chairB, 0, 0.45, 0));
+    c.add(mesh(new THREE.BoxGeometry(0.44, 0.5, 0.07), chairB, 0, 0.74, 0.20));
+    c.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.45, 8), M.metal, 0, 0.22, 0, false));
+    c.position.set(4.0+ox, roofY, 1.9+oz); c.rotation.y = oz > 0 ? 0 : Math.PI;
+    g.add(c);
+  }));
+  const neon = textSprite('E Z E R', { size:34, color:'#34d399' });
   neon.position.set(0, roofY+2.9, 0); neon.scale.multiplyScalar(1.6); g.add(neon);
   return g;
+}
+
+
+// ---------- 안드로이드 청소로봇 (1층 로비 순회 — 오너 2026-08-11) ----------
+let cleanBot = null;
+function makeCleanBot(){
+  const g = new THREE.Group();
+  const shell = new THREE.MeshStandardMaterial({ color:0xd8dde2, roughness:0.35, metalness:0.55 });
+  const dark  = new THREE.MeshStandardMaterial({ color:0x2a3138, roughness:0.6 });
+  const glow  = new THREE.MeshStandardMaterial({ color:0x35e0c0, emissive:0x35e0c0, emissiveIntensity:1.2 });
+  g.add(mesh(new THREE.CylinderGeometry(0.30, 0.34, 0.16, 20), shell, 0, 0.12, 0));        // 본체(원반)
+  g.add(mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.03, 20), glow, 0, 0.215, 0, false)); // 상태 링(발광)
+  g.add(mesh(new THREE.SphereGeometry(0.11, 14, 10), dark, 0, 0.30, 0.10, false));         // 센서 돔
+  g.add(mesh(new THREE.BoxGeometry(0.05, 0.02, 0.02), glow, 0, 0.30, 0.205, false));       // 전방 카메라 LED
+  const brush = new THREE.Group(); brush.position.set(0, 0.055, 0);                        // 사이드 브러시(회전)
+  [[0.30,0.20],[-0.30,0.20]].forEach(([bx,bz])=>
+    brush.add(mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 10), dark, bx, 0, bz, false)));
+  g.add(brush);
+  return { grp:g, brush };
+}
+function buildCleanBot(){
+  const b = makeCleanBot();
+  worldGroup.add(b.grp);                     // userData 미부여 — 클릭/층 판정 오염 없음(강아지 규약 계승)
+  cleanBot = { grp:b.grp, brush:b.brush, wi:0,
+    route: [[0,3.4],[4.2,1.5],[3.6,-2.6],[-3.6,-2.6],[-4.2,1.5]] };
+  b.grp.position.set(0, 0, 3.4);             // 1층 로비 시작(재빌드 리셋)
+}
+function cleanBotTick(dt){
+  if (!cleanBot) return;
+  cleanBot.brush.rotation.y += dt*9;         // 브러시 상시 회전
+  const g = cleanBot.grp;
+  const [tx, tz] = cleanBot.route[cleanBot.wi];
+  const dx = tx-g.position.x, dz = tz-g.position.z, dist = Math.hypot(dx, dz);
+  if (dist < 0.1){ cleanBot.wi = (cleanBot.wi+1) % cleanBot.route.length; return; }
+  const s = Math.min(0.9*dt, dist);
+  g.position.x += dx/dist*s; g.position.z += dz/dist*s;
+  g.rotation.y = Math.atan2(dx, dz);
 }
 
 // 로비 전광판 (실데이터 캔버스)
@@ -1159,6 +1215,7 @@ function buildWorld(w){
   worldGroup.add(makeRooftop(roofY));      // 루프탑 데크 (파라솔·라운지체어·네온)
   worldGroup.add(makeChairmanOffice(roofY)); // 회장실 (주인 전용)
   buildOwner(roofY);                        // 👑 주인 아바타 + 엘리베이터
+  buildCleanBot();                          // 🤖 1층 청소로봇 (로비 순회)
   scene.add(worldGroup);
   baseTy = roofY / 2 + 1.2;
   worldMeta = { seq:w.seq, daemonv:w.daemon?.version||'', deps:deps.length, total };
@@ -2290,6 +2347,7 @@ function frame(now){
     pts.setXYZ(0, fl.doc.position.x, fl.doc.position.y, fl.doc.position.z);
     pts.needsUpdate = true; }
   advanceOwner(dt, t);
+  cleanBotTick(dt);
   ownerManualTick(dt);
   proxT += dt;
   if (proxT > 0.2){ proxT = 0; proximityTick(); }
