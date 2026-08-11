@@ -4376,10 +4376,12 @@ async function start() {
 // ---------- ui wiring ----------
 
 document.getElementById("btn-new")!.addEventListener("click", actionNew);
-document.getElementById("btn-split-h")!.addEventListener("click", () => actionSplit("row"));
-document.getElementById("btn-split-v")!.addEventListener("click", () => actionSplit("col"));
-document.getElementById("btn-equalize")!.addEventListener("click", actionEqualize);
-document.getElementById("btn-close")!.addEventListener("click", actionClose);
+// 홈 대시보드 개편(오너 2026-08-11): 분할·정렬·닫기 버튼은 상단바에서 제거 — 마스터-온리에서
+// 무의미(워커 pane 부재)·중복(pane 헤더 ×). 기능·단축키(⌘D·⌘⇧D·⌘W)는 그대로 산다.
+document.getElementById("btn-split-h")?.addEventListener("click", () => actionSplit("row"));
+document.getElementById("btn-split-v")?.addEventListener("click", () => actionSplit("col"));
+document.getElementById("btn-equalize")?.addEventListener("click", actionEqualize);
+document.getElementById("btn-close")?.addEventListener("click", actionClose);
 document.getElementById("btn-files")!.addEventListener("click", () => setFtOpen(!ftOpen));
 document.getElementById("btn-ft-close")!.addEventListener("click", () => setFtOpen(false));
 document.getElementById("btn-cc")!.addEventListener("click", () => setCcOpen(!ccOpen));
@@ -4466,7 +4468,7 @@ function masterDeniedMsg(e: unknown, where: string): string {
 // ★단일 진입점(오너 2026-08-10): ▶CEO·▶부서장 2버튼 폐기 → "▶ EZER 시작" 하나. 현재 탭의
 // 데몬(본부=base / 부서=ws.socket)을 자동 판별해 마스터를 기동한다 — 껐다 켠 뒤에도 이 버튼
 // 하나면 마스터가 다시 선다. 워커·리뷰어는 마스터-온리 UI 정책으로 화면에 나타나지 않는다.
-document.getElementById("btn-ezer-start")?.addEventListener("click", async () => {
+async function ezerStart() {
   const ws = workspaces[activeWs];
   const where = ws?.socket ? `이 부서(${ws.name ?? ws.socket})` : "본부(base)";
   try {
@@ -4476,7 +4478,87 @@ document.getElementById("btn-ezer-start")?.addEventListener("click", async () =>
   } catch (e) {
     toast("health", "EZER 시작 실패", masterDeniedMsg(e, where));
   }
+}
+document.getElementById("btn-ezer-start")?.addEventListener("click", () => void ezerStart());
+
+// ───────── 홈 대시보드 (오너 2026-08-11: 홈페이지형 UI — 시작 화면=홈, 터미널=작업 탭) ─────────
+// 스킬 카드는 CC 스킬 보드와 동일 카탈로그(read_board_catalog)·동일 실행 경로(runSkillButton) 재사용 —
+// 신규 실행 인프라 0. 산출물 목록도 skill_out_dir/list_dir/open_path 재사용.
+type ViewName = "home" | "work";
+function setView(view: ViewName) {
+  document.body.classList.toggle("home-mode", view === "home");
+  document.getElementById("home-view")!.hidden = view !== "home";
+  document.getElementById("nav-home")?.classList.toggle("active", view === "home");
+  document.getElementById("nav-work")?.classList.toggle("active", view === "work");
+  localStorage.setItem("EZERagent-view", view);
+  if (view === "home") void renderHome();
+  else requestAnimationFrame(() => refitAllPanes()); // 홈→작업 복귀 시 pane 재적합
+}
+async function renderHome() {
+  const greet = document.getElementById("home-greet");
+  if (greet) {
+    const h = new Date().getHours();
+    greet.textContent = h < 6 ? "평안한 밤 되세요 🌙" : h < 12 ? "좋은 아침입니다 ☀️" : h < 18 ? "안녕하세요 👋" : "좋은 저녁입니다 🌆";
+  }
+  // 마스터 생존 상태 한 줄 — 시작 버튼 옆 신호(관측만, list_surfaces 재사용)
+  const st = document.getElementById("home-status");
+  if (st) {
+    try {
+      const r = (await invoke("list_surfaces", {})) as { surfaces: { role: string | null; exited: boolean }[] };
+      const alive = r.surfaces.some((s) => !s.exited && s.role?.startsWith("master"));
+      st.textContent = alive ? "● 마스터 작동 중 — 작업 탭에서 대화할 수 있습니다" : "○ 마스터 대기 — EZER 시작을 누르세요";
+      st.classList.toggle("on", alive);
+    } catch {
+      st.textContent = "○ 데몬 연결 중…";
+      st.classList.remove("on");
+    }
+  }
+  // 스킬 카드 그리드
+  const cardsHost = document.getElementById("home-cards");
+  if (cardsHost) {
+    const cat = (await invoke("read_board_catalog").catch(() => ({ domains: [] }))) as any;
+    cardsHost.innerHTML = "";
+    for (const d of cat.domains ?? []) {
+      const sec = document.createElement("div");
+      sec.className = "home-domain";
+      sec.innerHTML = `<div class="home-domain-h">${ccEsc(d.label ?? d.id ?? "")}</div>`;
+      const grid = document.createElement("div");
+      grid.className = "home-card-grid";
+      for (const s of d.skills ?? []) {
+        if ((s.acl ?? 1) > 1) continue;
+        const c = document.createElement("button");
+        c.className = "home-card";
+        c.innerHTML = `<div class="home-card-t">${ccEsc(s.label ?? s.name)}</div><div class="home-card-s">${ccEsc(s.scope ?? "")}</div>`;
+        c.onclick = () => runSkillButton(s);
+        grid.appendChild(c);
+      }
+      sec.appendChild(grid);
+      cardsHost.appendChild(sec);
+    }
+  }
+  // 최근 산출물
+  const outs = document.getElementById("home-outs");
+  if (outs) {
+    let dirs: any[] = [];
+    try {
+      const dir = (await invoke("skill_out_dir")) as string;
+      dirs = (await invoke("list_dir", { path: dir })) as any[];
+    } catch { /* 아직 산출물 없음 */ }
+    outs.innerHTML = !dirs?.length
+      ? `<div class="home-empty">아직 산출물이 없습니다 — 위 카드로 첫 작업을 시작해 보세요.</div>`
+      : dirs.slice(0, 8).map((x: any) =>
+          `<button class="home-out" data-path="${ccEsc(x.path ?? "")}">📄 ${ccEsc(x.name ?? x.path ?? "")}</button>`).join("");
+    outs.querySelectorAll<HTMLElement>(".home-out").forEach((b) =>
+      b.addEventListener("click", () => invoke("open_path", { path: b.dataset.path }).catch(() => {})));
+  }
+}
+document.getElementById("nav-home")?.addEventListener("click", () => setView("home"));
+document.getElementById("nav-work")?.addEventListener("click", () => setView("work"));
+document.getElementById("home-ezer-start")?.addEventListener("click", async () => {
+  await ezerStart();
+  setView("work"); // 기동 직후 작업 화면으로 — 마스터 pane 등장을 바로 본다
 });
+setView((localStorage.getItem("EZERagent-view") as ViewName) || "home"); // 기본 = 홈(홈페이지형 첫인상)
 
 // ★R8(WP-2): 시작 시 1회 CEO PENDING 고지 — EZERagent-dept 알림이 가리키는 실존 컨트롤(팔레트
 // "CEO 승격 진행")로 안내. 폴링 없음(시작 1회+팔레트 온디맨드 — WINAUDIT 타이머 증식 방지).

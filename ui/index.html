@@ -9,16 +9,14 @@
 <body>
   <header id="topbar">
     <span id="brand">EZER<span class="brand-sub">agent</span></span>
+    <nav id="view-nav">
+      <button id="nav-home" class="active" title="홈 — 시작·스킬 카드·최근 산출물">홈</button>
+      <button id="nav-work" title="작업 — 마스터 터미널 화면">작업</button>
+    </nav>
     <span id="daemon-info">daemon: connecting…</span>
     <span class="spacer"></span>
-    <div class="tb-group" title="레이아웃">
-      <button id="btn-new" title="새 터미널 (⌘T)">＋ 새 터미널</button>
-      <button id="btn-split-h" title="오른쪽 분할 (⌘D)">분할 →</button>
-      <button id="btn-split-v" title="아래 분할 (⌘⇧D)">분할 ↓</button>
-      <button id="btn-equalize" title="역할별 표준 배치로 정렬 — master·CSO(좌) · 워커(가운데 균등) · agy·codex(우) · 수동 크기 조절엔 영향 없음">정렬</button>
-      <button id="btn-close" title="pane 닫기 — 자식 트리 강제 종료 (⌘W)">닫기</button>
-    </div>
     <div class="tb-group" title="패널·도구">
+      <button id="btn-new" title="새 터미널 (⌘T)">＋</button>
       <button id="btn-files" title="파일 트리 (선택한 surface의 폴더)">파일</button>
       <button id="btn-cc" title="컨트롤 센터 — 실시간 플릿·사용량·시스템 모니터링 · 승인 Feed">컨트롤 센터 <span id="cc-pending-badge" class="badge" hidden>0</span></button>
       <button id="btn-update" title="업데이트 확인">업데이트 <span id="update-badge" class="badge" hidden>!</span></button>
@@ -28,6 +26,19 @@
     </div>
   </header>
   <div id="body-row">
+    <section id="home-view" hidden>
+      <div class="home-inner">
+        <div class="home-hero">
+          <div class="home-greet" id="home-greet">안녕하세요 👋</div>
+          <div class="home-sub">무엇을 도와드릴까요? 아래 카드를 누르면 바로 시작됩니다.</div>
+          <button id="home-ezer-start" title="마스터 노드를 기동합니다 — 워커·리뷰어는 백그라운드에서 작동">▶ EZER 시작</button>
+          <div class="home-status" id="home-status"></div>
+        </div>
+        <div id="home-cards"></div>
+        <div class="home-section-h">최근 산출물</div>
+        <div id="home-outs"></div>
+      </div>
+    </section>
     <nav id="wsbar">
       <div id="wsbar-head"><span>워크스페이스</span><button id="btn-ws-font-minus" title="사이드바 글자 축소">A−</button><button id="btn-ws-font-plus" title="사이드바 글자 확대">A＋</button><button id="btn-ezer-start" title="EZER 시작 — 지금 보고 있는 탭(본부/부서 자동 판별)에 마스터 노드를 자동 기동합니다. 워커·리뷰어는 화면에 나타나지 않고 백그라운드에서 마스터가 지휘합니다.">▶ EZER 시작</button><button id="btn-ws-dept" title="새 부서 — 클릭하면 부서 선택(미사용 부서 + 레거시 dept-N)">＋부서</button><button id="btn-ws-new" title="새 워크스페이스">＋</button></div>
       <div id="ws-tabs"></div>

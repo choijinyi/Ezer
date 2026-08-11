@@ -227,6 +227,56 @@ body.ws-reordering { cursor: grabbing; -webkit-user-select: none; user-select: n
 
 #body-row { height: calc(100% - 44px); display: flex; }
 
+/* ── 홈페이지형 네비게이션 (오너 2026-08-11: 홈 대시보드 개편) ── */
+#view-nav { display: inline-flex; gap: 2px; margin-left: 14px; padding: 2px; border-radius: 10px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--hairline); }
+#view-nav button {
+  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  color: #8fa89b; font-size: 12px; font-weight: 600; padding: 5px 16px; cursor: pointer;
+}
+#view-nav button:hover { color: #6ee7b7; }
+#view-nav button.active { background: rgba(52,211,153,.14); color: #6ee7b7; border-color: rgba(52,211,153,.3); }
+
+/* ── 홈 대시보드 — 시작 화면(홈페이지 첫인상) ── */
+#home-view { flex: 1; min-width: 0; overflow-y: auto; background:
+  radial-gradient(ellipse 70% 45% at 50% -5%, rgba(52,211,153,.08), transparent), var(--bg); }
+#home-view[hidden] { display: none; } /* 짝 규칙: author display가 UA hidden을 이기는 함정 봉인 */
+/* 홈 모드: 작업 표면(사이드바·pane·브라우저) 숨김 — 상태·PTY는 그대로, 표시만 전환 */
+body.home-mode #wsbar, body.home-mode #wsbar-drag, body.home-mode #ft-panel,
+body.home-mode #root, body.home-mode #bp-drag, body.home-mode #browser-panel { display: none; }
+.home-inner { max-width: 860px; margin: 0 auto; padding: 48px 28px 40px; }
+.home-hero { text-align: center; margin-bottom: 36px; }
+.home-greet { font-size: 30px; font-weight: 800; color: #e6ede8; letter-spacing: -0.01em; }
+.home-sub { margin-top: 8px; font-size: 14px; color: #8fa89b; }
+#home-ezer-start {
+  margin-top: 22px; padding: 12px 34px; font-size: 16px; font-weight: 800;
+  background: var(--accent); color: #071510; border: none; border-radius: 12px; cursor: pointer;
+  box-shadow: 0 4px 24px rgba(52,211,153,.35);
+}
+#home-ezer-start:hover { background: #6ee7b7; }
+.home-status { margin-top: 12px; font-size: 12px; color: #6f8377; }
+.home-status.on { color: #3dd68c; }
+.home-domain { margin-bottom: 22px; }
+.home-domain-h { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: #6f8377; margin-bottom: 10px; }
+.home-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.home-card {
+  text-align: left; padding: 16px; border-radius: 14px; cursor: pointer;
+  background: rgba(255,255,255,.03); border: 1px solid var(--border);
+}
+.home-card:hover { border-color: rgba(52,211,153,.5); background: rgba(52,211,153,.06); }
+.home-card-t { font-size: 15px; font-weight: 700; color: #e6ede8; }
+.home-card-s { margin-top: 5px; font-size: 12px; color: #8fa89b; line-height: 1.5; }
+.home-section-h { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: #6f8377; margin: 6px 0 10px; }
+#home-outs { display: flex; flex-direction: column; gap: 6px; }
+.home-out {
+  text-align: left; padding: 9px 12px; border-radius: 9px; cursor: pointer; font-size: 13px;
+  background: rgba(255,255,255,.025); border: 1px solid var(--hairline); color: #cfd8d3;
+}
+.home-out:hover { border-color: rgba(52,211,153,.4); color: #6ee7b7; }
+.home-empty { font-size: 13px; color: #6f8377; padding: 10px 2px; }
+
 /* ── 브라우저 패널 (메인 UI 오른편 — 작업 결과물 미리보기) ── */
 #bp-drag { flex: none; width: 5px; cursor: col-resize; margin-right: -2px; background: transparent; z-index: 5; }
 #bp-drag:hover, body.bp-resizing #bp-drag { background: rgba(52,211,153,.35); }
