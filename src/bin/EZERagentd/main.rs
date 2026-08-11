@@ -129,7 +129,7 @@ async fn main() {
     schedule::spawn_scheduler(Arc::clone(&daemon));
     usage::spawn_usage_collector(Arc::clone(&daemon));
     usage::spawn_agy_collector(Arc::clone(&daemon));
-    // CC "🏢 오피스" 탭의 상시 가용성 — 메타버스 오피스 브리지(127.0.0.1:8642) 자동기동.
+    // CC "🏢 오피스" 탭의 상시 가용성 — 메타버스 오피스 브리지(127.0.0.1:8672) 자동기동.
     spawn_office_bridge(crate::state::state_dir(&socket_path));
     // C0: 채널 부팅 재조정(고아 선-kill→새 토큰 재스폰) — 이벤트버스·state 준비 후(§2.1-2).
     // 불사조 복원 프로토콜의 "채널 재조정" 단계. 그 다음 주기 sweep(재배달·타임아웃·재스폰) 등록.
@@ -439,7 +439,7 @@ fn spawn_office_bridge(state_dir: std::path::PathBuf) {
     let port: u16 = std::env::var("HUD_PORT")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(8642);
+        .unwrap_or(8672);
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()));

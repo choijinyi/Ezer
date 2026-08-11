@@ -157,7 +157,7 @@ class CmdKeyRegex(unittest.TestCase):
         self.assertIsNone(B.CMD_KEY_RE.match("dept-1#surface:5"))
 
     def test_gate_command_rejects_bare_and_accepts_formal(self):
-        origins = B.allowed_origins(8642)
+        origins = B.allowed_origins(8672)
         tok = secrets.token_hex(8)
         known = {"dept-1@surface:5"}
         ok, err, _ = B.gate_command({"key": "surface:5", "text": "hi"},

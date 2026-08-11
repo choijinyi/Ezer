@@ -72,11 +72,14 @@ def _extract_verb(argv):
 
     예: ['/opt/homebrew/bin/EZERagent', 'status', '--json'] → 'status'
         ['EZERagent', '--socket', '/x', 'send', ...]          → 'send'
-    EZERagent 호출이 아니면(예: yt-dlp·python) None."""
+        ['C:\\...\\EZERagent.EXE', 'status', '--json']        → 'status' (Windows)
+    EZERagent 호출이 아니면(예: yt-dlp·python) None.
+    ★Windows: shutil.which가 'EZERagent.EXE' 경로를 주므로 확장자·대소문자를 벗겨 비교한다 —
+    안 그러면 mutate 호출이 'EZERagent 아님'으로 오분류돼 감시망 전체가 무음 무력화된다(C53 실사고 2026-08-11)."""
     if not argv:
         return None
     first = os.path.basename(str(argv[0]))
-    if first != "EZERagent":
+    if os.path.splitext(first)[0].lower() != "ezeragent":
         return None
     i = 1
     while i < len(argv):
@@ -155,7 +158,13 @@ def _spy_cmd_check():
         pass
     import contextlib
     import io
+    # ★밀폐(hermetic): 실기계 PATH에 EZERagent가 없으면 cmd_check가 which=None 조기 반환해
+    #   spy가 0건을 관측한다(설치 여부에 따라 self-test 결과가 갈리는 비결정론 — C53 실사고 2026-08-11).
+    #   which를 Windows꼴 가짜 경로(.EXE)로 고정 — PATH 독립 + _extract_verb의 확장자 처리까지 함께 검증.
+    _fake_bin = os.path.join(os.sep, "fake", "EZERagent.EXE")
     with mock.patch.object(orch.subprocess, "run", side_effect=spy.run), \
+            mock.patch.object(orch.shutil, "which",
+                              side_effect=lambda name, *a, **k: _fake_bin if "ezeragent" in str(name).lower() else None), \
             contextlib.redirect_stdout(io.StringIO()):   # cmd_check 진단 출력 흡수
         orch.cmd_check(_Args())
     ok, violations = assert_observe_phase(spy.calls)

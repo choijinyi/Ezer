@@ -5,7 +5,7 @@ exclude = ["vendor/portable-pty"]
 
 [package]
 name = "EZERagent"
-version = "0.13.2"
+version = "0.13.3"
 edition = "2021"
 description = "EZERagent — AI agent fleet orchestration terminal: bidirectional socket IPC, multi-agent OS (EZERagent Pack), governance, heartbeat"
 license = "MIT"

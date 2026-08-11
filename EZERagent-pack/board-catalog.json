@@ -1,86 +1,86 @@
 {
-  "_comment": "스킬 버튼 보드 큐레이션(D5/SB-1) — 899개 전량노출 금지·도메인 대표만. acl: 1=일반노출 2=master만 3=차단. 민감(churchadmin-persecution-protection)·위험(k-skill-cleaner) 스킬은 카탈로그 미포함=암묵 차단. gate:hitl=실행 전 미리보기 모달 강제. 런타임 보드는 이 파일만 읽는다(SKILL.md 직접 파싱 안 함·환각0).",
-  "version": 1,
-  "domains": [
+ "_comment": "스킬 버튼 보드 큐레이션(D5/SB-1) — 899개 전량노출 금지·도메인 대표만. acl: 1=일반노출 2=master만 3=차단. 민감(churchadmin-persecution-protection)·위험(k-skill-cleaner) 스킬은 카탈로그 미포함=암묵 차단. gate:hitl=실행 전 미리보기 모달 강제. 런타임 보드는 이 파일만 읽는다(SKILL.md 직접 파싱 안 함·환각0).",
+ "version": 1,
+ "domains": [
+  {
+   "id": "report",
+   "label": "보고서·문서",
+   "skills": [
     {
-      "id": "report",
-      "label": "보고서·문서",
-      "skills": [
-        {
-          "name": "EZERagent-insight-report",
-          "label": "통찰보고서 만들기",
-          "scope": "본문 원고 입력 → 미래통찰보고서 PDF+docx",
-          "success": "원본 디자인 픽셀 재현 PDF + 후편집 docx 산출 · validate_ir 게이트 통과 · 구조화 미리보기 1회 확인(HITL·우회 금지) · 신뢰선 라벨 부착",
-          "acl": 1,
-          "gate": "hitl"
-        },
-        {
-          "name": "EZERagent-writingstyle",
-          "label": "오너 문체로 글쓰기",
-          "scope": "주제 입력 → 오너 문체 원고",
-          "success": "EZERagent_style_validator 70점 게이트 통과 · 시그니처 7단 구조·5요소 인용",
-          "acl": 1,
-          "gate": "hitl"
-        }
-      ]
+     "name": "pastoral-visit-report",
+     "label": "심방보고서",
+     "scope": "심방 기록 입력 → 당회 제출용 심방보고서(docx/md)",
+     "success": "6단 구조(개요·말씀나눔·형편관찰·기도제목·후속조치) · 개인정보 익명화 원칙 · 미리보기 1회 확인(HITL) · 신뢰선 부착",
+     "acl": 1,
+     "gate": "hitl"
     },
     {
-      "id": "foresight",
-      "label": "미래예측",
-      "skills": [
-        {
-          "name": "foresight-scenarios",
-          "label": "시나리오 기획",
-          "scope": "주제 입력 → 3가지 대안 시나리오",
-          "success": "plausible·internally consistent·decision-focused 3기준 충족",
-          "acl": 1,
-          "gate": "none"
-        },
-        {
-          "name": "foresight-environmental-scanning",
-          "label": "환경 스캐닝",
-          "scope": "주제 입력 → 약신호·트렌드 환경 스캐닝 보고서",
-          "success": "9 도메인 스캔·weak signal 식별·출처 L1-L6 cascade 명시",
-          "acl": 1,
-          "gate": "none"
-        }
-      ]
-    },
-    {
-      "id": "vision",
-      "label": "비전·진로",
-      "skills": [
-        {
-          "name": "vision-statement-writer",
-          "label": "비전 선언문 쓰기",
-          "scope": "입력 → 개인 비전 선언문",
-          "success": "미션 프레임·미래 약속 5기준 정합",
-          "acl": 1,
-          "gate": "none"
-        }
-      ]
-    },
-    {
-      "id": "sermon",
-      "label": "설교·목회",
-      "skills": [
-        {
-          "name": "sermon-planner-52week",
-          "label": "52주 설교 계획",
-          "scope": "교회 컨텍스트 입력 → 52주 설교 연간 계획",
-          "success": "교리 균형·절기 정합·본문 분배 일관",
-          "acl": 1,
-          "gate": "none"
-        }
-      ]
+     "name": "ministry-report",
+     "label": "사역보고서",
+     "scope": "사역 활동·지표 입력 → 기간별 사역보고서(주간/월간/분기/연간)",
+     "success": "6단 구조(요약·활동·지표·재정개요·계획) · 입력값만 사용(환각0) · 미리보기 1회 확인(HITL) · 신뢰선 부착",
+     "acl": 1,
+     "gate": "hitl"
     }
-  ],
-  "actions": [
+   ]
+  },
+  {
+   "id": "sermon-prep",
+   "label": "설교준비",
+   "skills": [
     {
-      "name": "write-a-skill",
-      "label": "＋ 새 스킬 만들기",
-      "kind": "skill-new",
-      "acl": 1
+     "name": "sermon-exegesis-preparation",
+     "label": "본문 연구·주해",
+     "scope": "본문 입력 → 원어·본문비평·구조 분석 주해 노트",
+     "success": "원어 분석·신학적 검증(GroundedClaim·SRCS)·환각 방지 규칙·단계별 HITL 검토",
+     "acl": 1,
+     "gate": "none"
+    },
+    {
+     "name": "sermon-expository-three-point",
+     "label": "3대지 설교문 작성",
+     "scope": "본문 입력 → 도입·성경이해·3대지 주해·적용 4단계 설교문",
+     "success": "그리스도 중심 해석·개혁주의 관점·구어체 · 4단계 구조 정합",
+     "acl": 1,
+     "gate": "none"
     }
-  ]
+   ]
+  },
+  {
+   "id": "media",
+   "label": "미디어제작",
+   "skills": [
+    {
+     "name": "shorts-creator",
+     "label": "쇼츠제작",
+     "scope": "주제·대본 입력 → 세로형(9:16) 60초 이내 쇼츠 영상",
+     "success": "훅·본론·CTA 구조 · 자막 필수 · 생성 전 대본·비용 확인(HITL) · video-verify 최종 게이트",
+     "acl": 1,
+     "gate": "hitl"
+    }
+   ]
+  },
+  {
+   "id": "sermon",
+   "label": "설교·목회",
+   "skills": [
+    {
+     "name": "sermon-planner-52week",
+     "label": "52주 설교 계획",
+     "scope": "교회 컨텍스트 입력 → 52주 설교 연간 계획",
+     "success": "교리 균형·절기 정합·본문 분배 일관",
+     "acl": 1,
+     "gate": "none"
+    }
+   ]
+  }
+ ],
+ "actions": [
+  {
+   "name": "write-a-skill",
+   "label": "＋ 새 스킬 만들기",
+   "kind": "skill-new",
+   "acl": 1
+  }
+ ]
 }
