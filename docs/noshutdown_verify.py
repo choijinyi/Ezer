@@ -64,7 +64,7 @@ def default_socket():
 
 def default_pack_dir():
     """src/pack.rs::pack_dir()와 동일 규칙 — EZERAGENT_PACK_DIR 우선, 없으면 ~/.EZERagent/pack."""
-    for k in ("EZERAGENT_PACK_DIR", "EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
+    for k in ("EZERAGENT_PACK_DIR",):
         v = os.environ.get(k)
         if v:
             return v

@@ -22,10 +22,10 @@ pub const ENV_ROLE: &str = "EZERAGENT_ROLE";
 
 /// 이행기 호환: EZERAGENT_* 우선 → 구 AITERM_* 폴백.
 ///
-/// ★2026-08-10 리브랜딩 정정: 업스트림은 `CYS_`(주) → `JAVIS_`(구) → `AITERM_`(더 구)
-/// 3단이었는데, 리브랜딩에서 `CYS_`와 `JAVIS_` 가 **둘 다 `EZERAGENT_`** 로 접히면서
+/// ★2026-08-10 리브랜딩 정정: 업스트림은 브랜드 접두 3단(주·구·더 구=AITERM_)이었는데,
+/// 리브랜딩에서 상위 2단이 **모두 `EZERAGENT_`** 로 접히면서
 /// 중간 단이 자기 자신을 자기 자신으로 바꾸는 no-op(치환 전후가 동일한 접두) 이 됐다.
-/// EZERagent 는 신규 제품이라 `JAVIS_` 이름을 쓰던 사용자가 존재하지 않으므로 그 단을
+/// EZERagent 는 신규 제품이라 구 접두를 쓰던 사용자가 존재하지 않으므로 그 단을
 /// 되살리지 않고 **없앤다**(죽은 분기를 남겨 계약을 흐리지 않는다). `AITERM_` 은
 /// 업스트림 이력상 실제 사용자가 있을 수 있어 유지한다.
 pub fn env_compat(primary: &str) -> Option<String> {
@@ -890,7 +890,7 @@ mod tests {
     #[test]
     fn env_compat_fallback_priority() {
         // ★2단 계약 박제(리브랜딩 정정): EZERAGENT_(primary) → AITERM_(레거시).
-        //   업스트림의 중간 단(JAVIS_)은 EZERagent 로 접히며 소멸했다 — env_compat 주석 참조.
+        //   업스트림의 중간 단은 EZERagent 로 접히며 소멸했다 — env_compat 주석 참조.
         let p = "EZERAGENT_ZZUNIQUETEST";
         let a = "AITERM_ZZUNIQUETEST";
         for k in [p, a] {

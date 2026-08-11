@@ -3,7 +3,7 @@
 #
 # 목적: pack 전체통합으로 git-추적 EZERagent-pack 전 트리가 바이너리/DMG에 자동 임베드되므로,
 #       gitignore가 못 잡는 *콘텐츠 누출*(개인 홈경로·이메일·키토큰)을 발행 전에 fail-closed로
-#       차단한다. 계정 핸들(ysfuture·cysinsight)·placeholder 경로(/Users/x/ 등)는 아키텍처
+#       차단한다. 계정 핸들(ysfuture·ezerinsight)·placeholder 경로(/Users/x/ 등)는 아키텍처
 #       식별자로 허용한다(오너 결정). 본 주석의 /Users/x/ 표기는 placeholder 예시다.
 #
 # 스캔 대상: `git ls-files EZERagent-pack` 전수(추적 파일만 — untracked 개인파일은 임베드 안 됨).
@@ -11,7 +11,7 @@
 #   - 실홈경로 /Users/<실유저> (placeholder x·you·NAME 제외) · /home/<user> (동일 placeholder 제외)
 #   - 이메일 (example.com·noreply·anthropic 제외)
 #   - 키/토큰 (sk-…·ghp_…·Bearer …·api_key="…")
-# 허용: 계정 핸들 ysfuture·cysinsight (홈경로/이메일/토큰 형태가 아니면 자연 통과) · placeholder 경로.
+# 허용: 계정 핸들 ysfuture·ezerinsight (홈경로/이메일/토큰 형태가 아니면 자연 통과) · placeholder 경로.
 #
 # 한계(정직): 정적 패턴 매칭이다 — 난독화·신종 토큰·이미지 내 텍스트는 못 잡는다(회귀 1차선).
 # exit 0=clean("OK") / 1=발견(file:line 출력) / 2=환경 오류.

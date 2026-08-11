@@ -29,7 +29,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB_DIR = os.path.join(ROOT, "web")
 STATE_DIR = os.environ.get("HUD_STATE_DIR") or os.path.join(ROOT, "state")  # 팩 편입 시 외부 지정
 BIND = "127.0.0.1"
-PORT = int(os.environ.get("HUD_PORT", "8672"))  # 8642는 cys(자비스) 브리지 포트 — 동시 설치 시 오피스 오표출 실사고(2026-08-11)로 분리. 8765는 선점 실측 → 회피
+PORT = int(os.environ.get("HUD_PORT", "8672"))  # 8642는 동계열 구제품 브리지 포트 — 동시 설치 시 오피스 오표출 실사고(2026-08-11)로 분리. 8765는 선점 실측 → 회피
 FLEET_POLL_SECS = float(os.environ.get("HUD_POLL", "2.0"))
 EZERAGENT = os.environ.get("HUD_EZERAGENT_BIN", "EZERagent")
 # P2-1 부서 이벤트 멀티 구독 슈퍼바이저

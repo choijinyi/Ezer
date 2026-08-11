@@ -50,7 +50,7 @@ those three problems first-class features.
 - **Signed pack system** — skills/directives/tools ship as a minisign-signed pack;
   zero-downtime pack updates (sessions and daemon survive) are separate from app
   binary updates (Tauri updater), both fail-closed on signature verification.
-- **Jarvis-native operations** — self-reported agent status, context-cycle executor,
+- **EZER-native operations** — self-reported agent status, context-cycle executor,
   agent-death detection and recovery, directive drift detection/reinjection,
   transcript hash-chain attestation, kill-switch, one-shot timers, typing guards.
 
@@ -105,7 +105,7 @@ Report vulnerabilities per [SECURITY.md](SECURITY.md).
 
 ## Full reference
 
-Protocol methods/events, environment variables, governance tables, the 19 Jarvis-native
+Protocol methods/events, environment variables, governance tables, the 19 EZER-native
 features, approval feed, in-flight queue semantics, and source-build instructions are
 documented in the Korean [README.md](README.md) and the
 [User Manual](USER-MANUAL.md) (the canonical references).

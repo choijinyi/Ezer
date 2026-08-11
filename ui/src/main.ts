@@ -425,7 +425,7 @@ document.getElementById("cc-radio-text")?.addEventListener("keydown", (e) => {
 });
 
 // 메타버스 오피스 탭 — 로컬 브리지(127.0.0.1:8672, 3D 실시간 오피스)를 iframe으로 내장.
-// ★8642 금지: cys(자비스) 브리지 포트 — 동시 설치 장비에서 자비스 오피스가 표출되는 실사고(2026-08-11).
+// ★8642 금지: 동계열 구제품 브리지가 쓰는 포트 — 동시 설치 장비에서 타 제품 오피스가 표출되는 실사고(2026-08-11).
 // 탭 진입 시에만 로드(상시 연결 방지)·브리지 부재 시 기동 안내만 표시.
 const OFFICE_URL = "http://127.0.0.1:8672/";
 async function openOfficeView() {

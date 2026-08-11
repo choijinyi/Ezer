@@ -133,7 +133,7 @@ def effective_required_roles(detect=None, agents=None):
 
 
 def pack_dir():
-    for key in ("EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
+    for key in ("EZERAGENT_PACK_DIR",):
         v = os.environ.get(key, "")
         if v:
             return v
@@ -1641,7 +1641,7 @@ def cmd_self_test(args):
                     os.environ["EZERAGENT_PACK_DIR"] = _saved_pd
 
         # ── 전제지식 자동주입 배터리 (OpenMontage D6 — normalize_slug 핀·resolver·티켓 byte-동일) ──
-        # ★기대값은 소문자다 — normalize_slug는 lower()를 포함한다. cys→EZERagent 일괄 리브랜딩이
+        # ★기대값은 소문자다 — normalize_slug는 lower()를 포함한다. 일괄 리브랜딩 치환이
         #   기대값 리터럴에 대문자를 섞어 넣어 자기 자신과 불일치했던 실사고(C19 2026-08-11).
         assert normalize_slug("feedback_decision-consult-EZERagent-sot.md") == "decision-consult-ezeragent-sot", \
             "normalize_slug 접두·.md 제거 규칙 드리프트(registry와 byte-동일이어야)"

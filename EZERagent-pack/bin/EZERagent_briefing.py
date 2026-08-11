@@ -98,12 +98,12 @@ def _tts_available():
     return sys.platform == "darwin" and shutil.which("say") is not None
 
 
-VOICE_JARVIS_DIR = os.path.join(ROOT, "_work", "voice-jarvis")
-SPEAKER_LOCK = os.path.join(VOICE_JARVIS_DIR, "logs", "speaker.lock")
+VOICE_EZER_DIR = os.path.join(ROOT, "_work", "voice-ezer")
+SPEAKER_LOCK = os.path.join(VOICE_EZER_DIR, "logs", "speaker.lock")
 
 
 def _voice_mode():
-    """TTS 라우팅 판정 — 'vm'(voice-jarvis 경유)|'plain'(say 직접)|'text'(발화 불가·텍스트만).
+    """TTS 라우팅 판정 — 'vm'(voice-ezer 경유)|'plain'(say 직접)|'text'(발화 불가·텍스트만).
 
     에코 루프 방어(2026-07-03 실기 결함의 재발 방지): 음성 노드가 청취 중일 때 briefing이
     독자적으로 say를 부르면 에제르 발화가 박사님 발화로 오인·재주입된다. 노드 가동 중이면
@@ -126,8 +126,8 @@ def _voice_mode():
 
 
 def _speak_via_vm(sentence, voice):
-    """voice-jarvis의 speak 계약 경유(파일 무수정 — 모듈 호출만). 성공 시 mode 문자열."""
-    sys.path.insert(0, VOICE_JARVIS_DIR)
+    """voice-ezer의 speak 계약 경유(파일 무수정 — 모듈 호출만). 성공 시 mode 문자열."""
+    sys.path.insert(0, VOICE_EZER_DIR)
     try:
         import voice_mcp as vm  # 잠금·이벤트 로그·비밀 마스킹은 vm이 소유
         args = {"text": sentence}
@@ -141,7 +141,7 @@ def _speak_via_vm(sentence, voice):
         return f"vm_failed({type(e).__name__}:{e})"
     finally:
         try:
-            sys.path.remove(VOICE_JARVIS_DIR)
+            sys.path.remove(VOICE_EZER_DIR)
         except ValueError:
             pass
 

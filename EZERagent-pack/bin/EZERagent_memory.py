@@ -65,7 +65,7 @@ def index_links(index_text):
 
 def default_memory_dir():
     """pack 위치 결정 — src/pack.rs pack_dir()의 폴백을 그대로 미러링한다."""
-    for key in ("EZERAGENT_PACK_DIR", "AITERM_JARVIS_DIR"):
+    for key in ("EZERAGENT_PACK_DIR",):
         v = os.environ.get(key, "")
         if v:
             return os.path.join(v, "memory")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test_session_start_hook.py — session-start.sh 3상태 재대조·안내문 계약 핀 (WP-1·핀ⓒ).
 
-가짜 JARVIS_DIR(디렉티브 파일)+PATH 스텁 EZERagent로 hook을 sh 실행:
+가짜 팩 디렉터리(디렉티브 파일)+PATH 스텁 EZERagent로 hook을 sh 실행:
   ⓐ claim 성공 → 디렉티브 주입(현행)
   ⓑ 명시적 거부(claim_denied) → 디렉티브 대신 self-demote 지시·exit 0
   ⓒ 데몬-불가(스텁이 비0+무패턴/응답없음) → fail-open: 디렉티브 주입+고지 1줄

@@ -52,9 +52,10 @@ EZERagent 자체 minisign 키페어를 생성해 배선했다. 업데이터 서�
 | `ui/src/main.ts`·`updateplan.ts`·`updateplan.test.ts` | 본체 수동 다운로드 안내를 `www.kaea.ai.kr`로 |
 | `docs/RELEASE.md` | 배지 안내 문구의 홈페이지 주소 교체 |
 
-남아 있는 `cysinsight` 문자열은 두 종류뿐이며 **연락처가 아니다**: ①`EZERagent-pack/bin/EZERagent_org.py`
-등의 **테스트 픽스처 계정 핸들** ②`scripts/secret-scan.sh`의 **개인 프로필 탐지 패턴**.
-둘 다 브랜드 표기가 아니라 동작 요소라 건드리지 않았다.
+구 브랜드 문자열 청소(2026-08-11): 테스트 픽스처 계정 핸들은 `ezerinsight`로 개명했고,
+레거시 env 폴백 단(업스트림-시대 전용 키)은 제거했다. 의도적으로 남긴 것은 ①`NOTICE.md`의
+업스트림 저작 귀속(MIT 라이선스 의무) ②`scripts/secret-scan.sh`의 **개인 프로필 탐지 패턴**
+(구 핸들 유출을 잡는 보안 기능이라 리터럴이 필요하다) 두 곳뿐이다.
 
 > 이 문서에 이메일 주소를 문자 그대로 적지 마라 — `scripts/secret-scan.sh`가 PUBLIC 발행 전
 > 하드 게이트로 차단한다(허용은 `README.md`·`README.en.md`·`SECURITY.md`뿐).
@@ -72,5 +73,5 @@ pro 티어 라이선스를 발급하려면 별도 서명키가 필요하다. 발
 
 ## 6. 레거시 식별자 (브랜드 아님 — 그대로 둠)
 
-`AITERM_SOCKET` 환경변수와 `ui/package.json`의 패키지명 `aiterm-ui`는 cys 브랜드가 아니라
+`AITERM_SOCKET` 환경변수와 `ui/package.json`의 패키지명 `aiterm-ui`는 구 제품 브랜드가 아니라
 업스트림의 더 오래된 내부 이름이다. 동작에 영향이 없어 리네임하지 않았다.

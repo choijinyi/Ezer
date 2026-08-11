@@ -131,9 +131,42 @@ def default_sources(home=HOME, state_root=None, depts_json=None, windows=None, l
     #   SESSION_STATE.md 는 재부팅 복원의 단일 진실인데 세대 보관 대상에서 빠져 있었다.
     #   개인경로 하드코딩 금지(pack scan gate): 프로젝트는 $EZERAGENT_ROOT(env 또는 CWD),
     #   장기기억은 HOME glob 파생만(EZERagent_wakeup.py 등과 동일 관례).
-    proj_round = os.path.join(os.environ.get("EZERAGENT_ROOT") or os.getcwd(), "_round")
-    srcs.append(os.path.join(proj_round, "SESSION_STATE.md"))
-    srcs.extend(sorted(_glob.glob(os.path.join(proj_round, "*_TODO.md"))))
+    #   ★2026-08-11 교정(CSO): 위 의도가 실제로는 발동하지 않고 있었다. 후보가 "<cwd>/_round" 하나뿐인데
+    #   ①EZERAGENT_ROOT 는 보통 미설정이라 cwd 로 폴백하고 ②팩의 실제 디렉터리명은 "_round" 가 아니라
+    #   "round" 다. 그래서 어느 cwd 에서 돌려도 SESSION_STATE.md·*_TODO.md 가 한 번도 담기지 않았다
+    #   (실측: 세대 2건 모두 '누락 3건' 중 1건이 이것). 복원 시 '없는 줄도 모르고 없는' 상태가 되고,
+    #   실제로 2026-08-11 SESSION_STATE 파괴 사고 때 세대에서 복구하지 못했다.
+    #   → 개인경로 하드코딩 없이(pack scan gate 준수) 후보를 넓힌다: 프로젝트 루트와 **이 파일이 속한
+    #     팩 루트**를 각각 round/_round 두 이름으로 본다. 존재하는 디렉터리만 소스로 넣는다.
+    _proj_base = os.environ.get("EZERAGENT_ROOT") or os.getcwd()
+    _pack_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _round_cands = []
+    for _base in (_proj_base, _pack_root):
+        for _name in ("_round", "round"):
+            _d = os.path.join(_base, _name)
+            if _d not in _round_cands:
+                _round_cands.append(_d)
+    _found = [d for d in _round_cands if os.path.isdir(d)]
+    # 하나도 없으면 1순위 후보를 그대로 넣어 '누락'으로 가시화한다(조용히 사라지지 않게).
+    #   ★2026-08-11 확장(CSO, master 지시): 대상을 SESSION_STATE+*_TODO 에서 round/ 의 모든 .md/.py 로
+    #   넓힌다. 복원에 필요한 것이 그것만이 아니었다 — 리뷰어 판정문(*_VERDICT_*.md, 3벤더 R1/R2),
+    #   ANCHOR_MAP_R2.md, promptbook_metrics.py 가 전부 빠져 있었다.
+    #   파일명을 개별 열거하지 않고 확장자 패턴으로 잡는 이유: 프로젝트별 파일명을 코드에 박으면
+    #   다음 프로젝트에서 또 빠진다(이번 버그의 재발 구조). 대형 .json 카탈로그
+    #   (capability_catalog·video_provider_catalog)는 팩 배포본이라 init-pack 으로 복원되므로 제외한다.
+    for proj_round in (_found or _round_cands[:1]):
+        srcs.append(os.path.join(proj_round, "SESSION_STATE.md"))  # 부재 시 '누락'으로 가시화
+        for _pat in ("*.md", "*.py"):
+            srcs.extend(sorted(_glob.glob(os.path.join(proj_round, _pat))))
+    # 중복 제거(SESSION_STATE.md 는 명시 추가 + 패턴 매치로 두 번 들어온다). 순서 보존.
+    _seen = set()
+    _dedup = []
+    for _s in srcs:
+        _k = os.path.normcase(os.path.abspath(_s))
+        if _k not in _seen:
+            _seen.add(_k)
+            _dedup.append(_s)
+    srcs = _dedup
     srcs.extend(sorted(_glob.glob(os.path.join(
         home, ".claude*", "projects", "*", "memory", "*.md"))))
     return srcs

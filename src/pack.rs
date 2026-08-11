@@ -51,22 +51,13 @@ pub fn embedded_pack_hash() -> String {
     format!("{:x}", h.finalize())
 }
 
-/// 설치 위치: $EZERAGENT_PACK_DIR (구 AITERM_JARVIS_DIR 폴백) 또는 ~/.EZERagent/pack
+/// 설치 위치: $EZERAGENT_PACK_DIR 또는 ~/.EZERagent/pack
 ///
-/// ★리브랜딩 정정(2026-08-10): 레거시 루프 첫 항목이 `JAVIS_PACK_DIR` → `EZERAGENT_PACK_DIR`
-/// 로 접혀 primary 와 같아졌다(env_compat 이 이미 본 키를 한 번 더 보는 죽은 분기).
-/// AITERM_JARVIS_DIR 만 남긴다 — 이 키는 env_compat 이 만들지 않으므로(그쪽은
-/// AITERM_PACK_DIR 를 만든다) 오직 이 루프로만 도달 가능하다.
+/// ★브랜드 잔재 청소(2026-08-11): 업스트림-시대 레거시 env 폴백 단은 전부 제거했다 —
+/// EZERagent 는 신규 제품이라 그 키를 쓰던 사용자가 존재하지 않는다(죽은 분기).
 pub fn pack_dir() -> PathBuf {
     if let Some(d) = crate::env_compat(ENV_PACK_DIR) {
         return PathBuf::from(d);
-    }
-    for legacy in ["AITERM_JARVIS_DIR"] {
-        if let Ok(d) = std::env::var(legacy) {
-            if !d.is_empty() {
-                return PathBuf::from(d);
-            }
-        }
     }
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -2055,17 +2046,14 @@ mod tests {
 
     #[test]
     fn pack_dir_env_precedence_and_legacy_fallbacks() {
-        // ★불변식 박제: pack_dir의 4단 폴백 우선순위.
+        // ★불변식 박제: pack_dir의 3단 폴백 우선순위.
         //   1) EZERAGENT_PACK_DIR (env_compat primary)
         //   2) AITERM_PACK_DIR   (env_compat이 primary 접두를 치환해 만드는 레거시 키)
-        //   3) AITERM_JARVIS_DIR (명시 루프 전용 — env_compat은 AITERM_PACK_DIR를 만들지
-        //      AITERM_JARVIS_DIR가 아니므로 '오직 이 루프'로만 도달 가능)
-        //   4) ~/.EZERagent/pack (기본)
-        // 마이그레이션 경로라 순서가 뒤집히면 구 설치본을 조용히 못 찾는다.
-        // ★리브랜딩 정정(2026-08-10): 업스트림의 JAVIS_PACK_DIR 단은 EZERAGENT_ 로 접히며
-        // primary와 동일해져 소멸했다(죽은 분기 제거 — pack_dir 주석 참조).
+        //   3) ~/.EZERagent/pack (기본)
+        // 순서가 뒤집히면 명시 설정을 조용히 못 찾는다.
+        // ★브랜드 잔재 청소(2026-08-11): 업스트림-시대 전용 폴백 단은 제거(pack_dir 주석 참조).
         let _g = PACK_ENV_LOCK.lock().unwrap();
-        let keys = ["EZERAGENT_PACK_DIR", "AITERM_PACK_DIR", "AITERM_JARVIS_DIR"];
+        let keys = ["EZERAGENT_PACK_DIR", "AITERM_PACK_DIR"];
         let saved: Vec<(&str, Option<String>)> =
             keys.iter().map(|k| (*k, std::env::var(k).ok())).collect();
         for k in keys {
@@ -2079,11 +2067,7 @@ mod tests {
             "기본 경로는 .EZERagent/pack: {def:?}"
         );
 
-        // AITERM_JARVIS_DIR만 → 3순위로 도달 (env_compat이 못 만드는 키, 루프 전용 경로)
-        std::env::set_var("AITERM_JARVIS_DIR", "/legacy/jarvis");
-        assert_eq!(pack_dir(), PathBuf::from("/legacy/jarvis"));
-
-        // AITERM_PACK_DIR 추가 → env_compat이 먼저 잡으므로 루프보다 우선 (2순위)
+        // AITERM_PACK_DIR만 → env_compat 레거시 단으로 도달 (2순위)
         std::env::set_var("AITERM_PACK_DIR", "/legacy/aiterm");
         assert_eq!(pack_dir(), PathBuf::from("/legacy/aiterm"));
 

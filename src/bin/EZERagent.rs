@@ -330,7 +330,7 @@ enum Command {
         status: bool,
     },
     /// Install the EZERagent Pack (multi-agent operating system templates) to ~/.EZERagent/pack
-    #[command(name = "init-pack", alias = "init-jarvis")]
+    #[command(name = "init-pack")]
     InitPack {
         /// Overwrite existing files (default: preserve user edits)
         #[arg(long)]
@@ -2390,7 +2390,7 @@ fn run_channel(action: ChannelAction) -> i32 {
     }
 }
 
-/// 스킬 라이브러리: jarvis/skills/<name>/SKILL.md (frontmatter 표지 + 4칸 본문).
+/// 스킬 라이브러리: pack/skills/<name>/SKILL.md (frontmatter 표지 + 4칸 본문).
 /// D3 비용·효율 eval baseline (producer≠evaluator) — lock=박제·diff=회귀 판정.
 /// 채점은 master(LOCKED ref launcher)가 직접 — producer(워커)가 자기채점 못 함(eval-driven 무결성).
 fn run_cost_baseline(action: CostBaselineAction) -> i32 {
@@ -3600,7 +3600,6 @@ fn diag_legacy_config(_ctx: &DoctorCtx) -> DiagItem {
     // 진단한다(런타임은 canonical EZERAGENT_* 우선). 백업·재작성은 대상 파일이 없어 해당 없음(진단만).
     let legacy_keys = [
         "EZERAGENT_PACK_DIR",
-        "AITERM_JARVIS_DIR",
         "AITERM_PACK_DIR",
         "EZERAGENT_SOCKET",
         "AITERM_SOCKET",
