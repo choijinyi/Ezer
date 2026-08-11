@@ -31,6 +31,8 @@ EZERagent boot                                        # 4종 의무 노드 부�
 python3 "${EZERAGENT_PACK_DIR:-$HOME/.EZERagent/pack}/bin/EZERagent_orchestra.py" check   # 4종 생존 결정론 확인
 EZERagent launch-agent --role worker --agent claude   # 노드 개별 기동(지침 자동 주입)
 EZERagent send --to master "..."                      # 역할 주소로 push (타이핑만)
+python3 "${EZERAGENT_PACK_DIR:-$HOME/.EZERagent/pack}/bin/EZERagent_radio.py" send --from <역할> --text "... @역할"   # 에이전트 라디오 — 작업 안 끊는 비동기 공유(멘션은 훅이 상대 턴에 자동 주입)
+python3 "${EZERAGENT_PACK_DIR:-$HOME/.EZERagent/pack}/bin/EZERagent_radio.py" inbox --role <역할> --ack             # 미확인 멘션 확인(수동 조회 — 자동 주입과 별개)
 EZERagent send-key --to master Return                 # 전송 확정 (send 후 필수)
 EZERagent send --queued --to worker "..."             # 대상이 조용할 때 자동 Return 배달 (send-key 불필요·타이핑 가드 안전)
 EZERagent status --json                               # 전 노드 1콜 스냅샷 (주기적 능동 점검·폴링 대체)

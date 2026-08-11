@@ -240,6 +240,8 @@ SELFCORR_HOOKS = [
     ("save-state.sh", [("Stop", None), ("PreCompact", None)]),
     ("reflect-scan.sh", [("Stop", None), ("SessionEnd", None)]),
     ("commit-memory-nudge.sh", [("PostToolUse", "Bash")]),
+    # AGENTRADIO(2026-08-11): 비동기 멘션 수동적 인지 — dirty 플래그 fast-path([ -f ])라 고빈도 이벤트에 무해.
+    ("radio-inject.sh", [("UserPromptSubmit", None), ("PostToolUse", "Bash")]),
 ]
 
 # work management 앵커(절대지침 5차) 4규칙 b·c의 전담 sub-skill — C22가 존재·본문을 검증한다.
