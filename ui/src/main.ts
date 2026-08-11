@@ -145,7 +145,7 @@ let ccHwTimer: number | null = null;
 let ccClockTimer: number | null = null;
 let ccUptimeBase = 0;
 let ccUptimeFetchedAt = 0;
-let ccTab: "live" | "eff" | "skills" | "sessions" | "weekly" | "learn" | "board" | "tasks" | "feed" | "office" = "office";
+let ccTab: "live" | "eff" | "skills" | "sessions" | "weekly" | "learn" | "board" | "tasks" | "feed" | "radio" | "office" = "office";
 let ccEffWindow = "today";
 let ccSkillsWindow = "today";
 let ccSessionsWindow = "7d";
@@ -344,7 +344,7 @@ async function refreshWeekly() {
   }
 }
 
-function setCcTab(view: "live" | "eff" | "skills" | "sessions" | "weekly" | "learn" | "board" | "tasks" | "feed" | "office") {
+function setCcTab(view: "live" | "eff" | "skills" | "sessions" | "weekly" | "learn" | "board" | "tasks" | "feed" | "radio" | "office") {
   ccTab = view;
   document.getElementById("cc-view-live")!.hidden = view !== "live";
   document.getElementById("cc-view-eff")!.hidden = view !== "eff";
@@ -355,6 +355,7 @@ function setCcTab(view: "live" | "eff" | "skills" | "sessions" | "weekly" | "lea
   document.getElementById("cc-view-board")!.hidden = view !== "board";
   document.getElementById("cc-view-tasks")!.hidden = view !== "tasks";
   document.getElementById("cc-view-feed")!.hidden = view !== "feed";
+  document.getElementById("cc-view-radio")!.hidden = view !== "radio";
   document.getElementById("cc-view-office")!.hidden = view !== "office";
   // 오피스 탭 전면 모드 — cc-body의 대시보드 폭 상한(780px)을 해제해 3D를 창 크기에 연동(cc-glance 패턴).
   document.body.classList.toggle("cc-office", view === "office");
@@ -373,8 +374,55 @@ function setCcTab(view: "live" | "eff" | "skills" | "sessions" | "weekly" | "lea
   if (view === "board") refreshBoard();
   if (view === "tasks") refreshTasks();
   if (view === "feed") refreshFeed();
+  if (view === "radio") void refreshRadio();
   if (view === "office") openOfficeView();
 }
+
+// ───────── 📻 에이전트 라디오 탭 (AGENTRADIO — 관측 + 오너 발신) ─────────
+// 데이터원: read_radio(파일 read). 발신: radio_send(pack CLI 경유 — id·멘션·플래그 단일 writer).
+// 탭 활성 중 5초 폴링(승인 Feed 패턴) — 파일은 자동 트림으로 상한 고정이라 저렴.
+let radioTimer: number | null = null;
+async function refreshRadio() {
+  const host = document.getElementById("cc-radio-threads");
+  if (!host) return;
+  let data: any = { threads: [] };
+  try {
+    data = (await invoke("read_radio")) as any;
+  } catch { /* 데몬 무관 — 파일 read 실패는 빈 목록 */ }
+  const threads = data.threads ?? [];
+  host.innerHTML = !threads.length
+    ? `<div class="cc-empty">아직 라디오 메시지가 없습니다 — 위에서 첫 발신을 하거나, 노드들이 작업 중 공유하면 여기 쌓입니다.</div>`
+    : threads.map((t: any) => {
+        const rows = (t.msgs ?? []).map((m: any) => {
+          const when = m.ts ? new Date(m.ts * 1000).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) : "";
+          const men = (m.mentions ?? []).length ? ` <span class="cc-radio-men">@${(m.mentions ?? []).join(" @")}</span>` : "";
+          return `<div class="cc-radio-msg"><span class="cc-radio-from">${ccEsc(m.from ?? "?")}</span><span class="cc-radio-when">${when}</span><span class="cc-radio-text">${ccEsc(m.text ?? "")}${men}</span></div>`;
+        }).join("");
+        return `<div class="cc-section"><div class="cc-h">📻 ${ccEsc(t.name)} <span class="cc-dim">(${t.count}건)</span></div>${rows}</div>`;
+      }).join("");
+  if (ccOpen && ccTab === "radio") {
+    if (radioTimer != null) clearTimeout(radioTimer);
+    radioTimer = window.setTimeout(() => void refreshRadio(), 5000);
+  }
+}
+async function radioSendFromUi(toAll: boolean) {
+  const threadEl = document.getElementById("cc-radio-thread") as HTMLInputElement | null;
+  const textEl = document.getElementById("cc-radio-text") as HTMLInputElement | null;
+  const text = textEl?.value.trim();
+  if (!text) return;
+  try {
+    await invoke("radio_send", { thread: threadEl?.value.trim() || "general", text, toAll });
+    if (textEl) textEl.value = "";
+    void refreshRadio();
+  } catch (e) {
+    toast("health", "라디오 발신 실패", String(e));
+  }
+}
+document.getElementById("cc-radio-send")?.addEventListener("click", () => void radioSendFromUi(false));
+document.getElementById("cc-radio-send-all")?.addEventListener("click", () => void radioSendFromUi(true));
+document.getElementById("cc-radio-text")?.addEventListener("keydown", (e) => {
+  if ((e as KeyboardEvent).key === "Enter") void radioSendFromUi(false);
+});
 
 // 메타버스 오피스 탭 — 로컬 브리지(127.0.0.1:8672, 3D 실시간 오피스)를 iframe으로 내장.
 // ★8642 금지: cys(자비스) 브리지 포트 — 동시 설치 장비에서 자비스 오피스가 표출되는 실사고(2026-08-11).

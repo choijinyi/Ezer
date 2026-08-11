@@ -80,6 +80,7 @@
         <button class="cc-tab" data-view="board">스킬 보드</button>
         <button class="cc-tab" data-view="tasks">작업</button>
         <button class="cc-tab" data-view="feed">승인 Feed <span id="cc-feed-tabbadge" class="badge" hidden>0</span></button>
+        <button class="cc-tab" data-view="radio">📻 라디오</button>
         <button class="cc-tab active" data-view="office">🏢 오피스</button>
       </div>
       <div id="cc-body">
@@ -167,6 +168,16 @@
         <div id="cc-view-feed" hidden>
           <div class="cc-board-note">노드·CSO·워커가 올린 승인 요청을 검토하고 Allow/Deny 합니다. 대기 건수는 상단 Control Center 버튼과 이 탭에 표시됩니다.</div>
           <div class="cc-section"><div class="cc-h">승인 Feed</div><div id="cc-feed-items"></div></div>
+        </div>
+        <div id="cc-view-radio" hidden>
+          <div class="cc-board-note">에이전트 라디오 — 노드들이 작업을 멈추지 않고 주고받는 비동기 메시지. 여기서 오너로서 직접 발신할 수 있습니다(@역할 멘션 = 그 노드 다음 턴에 자동 주입 · 전원 = 모든 노드).</div>
+          <div id="cc-radio-compose">
+            <input id="cc-radio-thread" type="text" value="general" spellcheck="false" title="스레드 이름" />
+            <input id="cc-radio-text" type="text" placeholder="메시지 — 예: @master 오늘 우선순위는 설교준비" spellcheck="false" />
+            <button id="cc-radio-send" title="발신">발신</button>
+            <button id="cc-radio-send-all" title="전원 브로드캐스트 — 모든 노드에 수동적 인지 플래그">전원</button>
+          </div>
+          <div id="cc-radio-threads"></div>
         </div>
         <div id="cc-view-office" hidden>
           <div id="cc-office-hint" class="cc-board-note" hidden>메타버스 오피스 브리지가 꺼져 있습니다 —

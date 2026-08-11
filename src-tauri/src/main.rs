@@ -1040,6 +1040,59 @@ fn read_board_catalog() -> Result<Value, String> {
     serde_json::from_str(&raw).map_err(|e| format!("카탈로그 파싱 실패: {e}"))
 }
 
+/// AGENTRADIO: 라디오 상태 읽기(~/.EZERagent/state/radio) — 정적 파일 read만(데몬 무변경).
+/// 스레드별 최근 50건 tail — CC 라디오 탭이 5초 폴링해도 파일 크기 상한(자동 트림)으로 저렴.
+#[tauri::command]
+fn read_radio() -> Result<Value, String> {
+    let dir = EZERagent::home_dir().join(".EZERagent/state/radio");
+    let mut threads: Vec<Value> = Vec::new();
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .filter_map(|e| e.file_name().into_string().ok())
+                .filter(|n| n.starts_with("t-") && n.ends_with(".jsonl"))
+                .map(|n| n[2..n.len() - 6].to_string())
+                .collect()
+        })
+        .unwrap_or_default(); // 라디오 미사용(디렉터리 부재) = 빈 목록(오류 아님)
+    names.sort();
+    for name in names {
+        let raw = std::fs::read_to_string(dir.join(format!("t-{name}.jsonl"))).unwrap_or_default();
+        let msgs: Vec<Value> = raw
+            .lines()
+            .filter_map(|l| serde_json::from_str(l.trim()).ok())
+            .collect();
+        let skip = msgs.len().saturating_sub(50);
+        let tail: Vec<Value> = msgs.iter().skip(skip).cloned().collect();
+        threads.push(json!({"name": name, "count": msgs.len(), "msgs": tail}));
+    }
+    Ok(json!({ "threads": threads }))
+}
+
+/// AGENTRADIO: 오너 발신 — pack 라디오 CLI 경유(단일 writer 규약: id 채번·@멘션 파싱·dirty
+/// 플래그·트림을 py가 소유한다 — Rust에 로직을 복제하면 두 writer가 드리프트한다).
+#[tauri::command]
+fn radio_send(thread: String, text: String, to_all: bool) -> Result<String, String> {
+    let script = EZERagent::pack::pack_dir().join("bin").join("EZERagent_radio.py");
+    if !script.is_file() {
+        return Err("EZERagent_radio.py 미설치 — 팩 업데이트 필요".into());
+    }
+    let mut cmd = std::process::Command::new("python3");
+    inject_runtime_path(&mut cmd); // RC-5: 동봉 runtime(python3.exe) PATH 주입
+    cmd.arg(&script)
+        .arg("send")
+        .args(["--thread", &thread, "--from", "owner", "--text", &text]);
+    if to_all {
+        cmd.arg("--to-all");
+    }
+    no_console(&mut cmd);
+    let output = cmd.output().map_err(|e| format!("EZERagent_radio 실행 실패: {e}"))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
 /// D6: 청중 프로파일(~/.EZERagent/profile.json·사용자 로컬·pack 밖) audience 읽기 — 없으면 "custom"(전체보기 폴백·안전).
 fn read_profile_audience() -> String {
     let path = EZERagent::home_dir().join(".EZERagent/profile.json");
@@ -2322,6 +2375,8 @@ fn main() {
             open_url,
             send_key,
             read_board_catalog,
+            read_radio,
+            radio_send,
             make_ticket,
             run_skill,
             skill_out_dir,

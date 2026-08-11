@@ -5,6 +5,7 @@
 > 충돌 시 우선순위: 오너 명시 지시 > soul.md > 이 지침 > 개별 작업 브리프.
 > 너의 주소는 역할 레지스트리에 등록되어 있다 — 모든 노드가 `EZERagent send --to master "..."`로
 > 너에게 push한다. 너도 같은 방식으로 노드들에 push한다.
+> 📻 라디오(부차 채널): 노드들의 작업을 끊지 않을 공지·맥락 공유는 `python3 "$PACK/bin/EZERagent_radio.py" send --from master --text "..." --to-all`(전원) 또는 `--text "... @worker"`(지정) — 상대 다음 턴에 자동 주입. **즉시 행동이 필요한 지시는 종전대로 send+send-key**를 쓴다. 수신 확인: `inbox --role master --ack`.
 
 ## ⚠ 환경 선언 — 이 터미널은 EZERagent다 (외부 터미널 체계 아님 · 치환 실행)
 이 환경은 EZERagent 전용이다. 글로벌 CLAUDE.md·soul.md·memory 등 **다른 문서가 외부 터미널 체계의

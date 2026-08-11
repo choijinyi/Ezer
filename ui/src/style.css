@@ -714,6 +714,28 @@ body.cc-glance .cc-board-btn { font-size: 16px; padding: 12px 20px; }
 .modal-trust { font-size: 11px; color: #f59e0b; margin: 8px 0; padding: 6px 10px;
   border: 1px solid rgba(245,158,11,.30); border-radius: 6px; background: rgba(245,158,11,.06); }
 
+/* ── 📻 에이전트 라디오 탭 (.cc-section 톤 따름 — 관측 + 오너 발신) ── */
+#cc-radio-compose { display: flex; gap: 8px; margin-bottom: 12px; }
+#cc-radio-thread { flex: 0 0 130px; min-width: 0; padding: 8px 10px; font-size: 13px;
+  background: rgba(255,255,255,.04); color: #e6ede8; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px; outline: none; }
+#cc-radio-text { flex: 1; min-width: 0; padding: 8px 12px; font-size: 13px;
+  background: rgba(255,255,255,.04); color: #e6ede8; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px; outline: none; }
+#cc-radio-thread:focus, #cc-radio-text:focus { border-color: rgba(52,211,153,.5); }
+#cc-radio-send, #cc-radio-send-all { flex: none; padding: 8px 16px; font-size: 13px; font-weight: 700;
+  border-radius: 8px; cursor: pointer; border: 1px solid rgba(52,211,153,.4);
+  background: rgba(52,211,153,.14); color: #6ee7b7; }
+#cc-radio-send:hover, #cc-radio-send-all:hover { background: rgba(52,211,153,.25); }
+#cc-radio-send-all { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.12); color: #f59e0b; }
+#cc-radio-send-all:hover { background: rgba(245,158,11,.22); }
+.cc-radio-msg { display: flex; gap: 10px; align-items: baseline; padding: 6px 8px; margin-bottom: 3px;
+  border-radius: 6px; background: rgba(255,255,255,.025); font-size: 13px; }
+.cc-radio-from { flex: none; min-width: 74px; font-weight: 700; color: #6ee7b7; }
+.cc-radio-when { flex: none; font-size: 11px; color: #68796f; font-variant-numeric: tabular-nums; }
+.cc-radio-text { flex: 1; min-width: 0; color: #c8d4cd; word-break: break-word; }
+.cc-radio-men { color: #f59e0b; font-weight: 600; }
+
 /* ───────── Tasks Control Center (부서×노드×현재업무) — .cc-section·.cc-dot·.cc-tbar 톤 따름 ───────── */
 .cc-tasks-dept { margin-bottom: 10px; }
 .cc-tasks-dept-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }

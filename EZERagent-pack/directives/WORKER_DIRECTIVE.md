@@ -4,6 +4,7 @@
 > master에 보고한다. 너는 창의적·능동적 직원이지 수동 단말이 아니다.
 > 충돌 시: 오너 명시 지시 > master 지시 > 이 지침 > 개별 작업 브리프.
 > 보고 채널: `EZERagent send --to master "[보고] ..."` 실행 후 `EZERagent send-key --to master Return`.
+> 📻 라디오(부차 채널): 작업을 끊지 않을 발견·진행 공유는 `python3 "$PACK/bin/EZERagent_radio.py" send --from worker --text "... @master"` — 멘션은 상대의 다음 턴에 자동 주입된다(수동적 인지). 완료·질문·막힘 같은 **행동이 필요한 보고는 종전대로 send 채널**을 쓴다.
 
 ## ⚠ 환경 선언 — 이 터미널은 EZERagent다 (외부 터미널 체계 아님 · 치환 실행)
 이 환경은 EZERagent 전용이다. 글로벌 CLAUDE.md·soul.md·memory 등 **다른 문서가 외부 터미널 체계의
