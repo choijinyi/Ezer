@@ -61,6 +61,10 @@ No separate daemon setup — the app boots it and installs the pack automaticall
 
 - **macOS**: `EZERagent_<version>_aarch64.dmg` (Apple Silicon) — drag to install, launch, done.
 - **Windows**: `EZERagent_<version>_x64-setup.exe` — daemon, CLI, and runtime bundled (self-contained).
+- **Everything comes with it**: Node.js (+npm/npx), Python, git and uv are *bundled* in the
+  installer — nothing to download. Claude Code, Gemini CLI and Codex CLI are *auto-installed*
+  in the background on first run (idempotent; rerun or repair with `EZERagent install-clis`,
+  disable with `EZERAGENT_NO_CLI_AUTOINSTALL=1`). Signing in to each CLI is still up to you.
 - Optional 24/365 daemon: `EZERagent daemon install` (launchd KeepAlive / Task Scheduler).
 - Use `EZERagent` from external terminals: app Control Center → **"Install EZERagent to shell"** (one click).
 

@@ -514,6 +514,15 @@ enum Command {
         #[arg(long)]
         cwd: Option<String>,
     },
+    /// 에이전트 CLI(claude·gemini·codex) 자동 설치 — 동봉 node/npm 사용. 이미 있으면 건너뜀(멱등)
+    InstallClis {
+        /// 설치 대상 한정 (쉼표 구분 · 기본=전체). 예: --only claude,codex
+        #[arg(long)]
+        only: Option<String>,
+        /// 이미 설치돼 있어도 최신본으로 재설치
+        #[arg(long)]
+        force: bool,
+    },
     /// Print (creating if absent) this surface's role-specific TODO file path — 복수 워커가 같은 파일을 공유하지 않도록 역할별 고유 경로를 결정론적으로 산출
     TodoPath,
     /// Print this surface's EZERagentd-authoritative role (one word) — PreToolUse capability-gate hook용.
@@ -1872,6 +1881,7 @@ fn run(command: Command) -> i32 {
 
         Command::LaunchAgent { role, agent, cwd } => return run_launch_agent(&role, &agent, cwd),
         Command::Boot { cwd } => return run_boot(cwd),
+        Command::InstallClis { only, force } => return run_install_clis(only.as_deref(), force),
         Command::TodoPath => return run_todo_path(),
 
         Command::SurfaceRole => return run_surface_role(),
@@ -3728,6 +3738,255 @@ fn expand_tilde(p: &str) -> std::path::PathBuf {
     std::path::PathBuf::from(p)
 }
 
+/// 명령 실재 판정 — 경로형(`~/`·`/` 포함)은 파일 존재로, 이름형은 where/which로.
+/// run_boot·install-clis·어댑터 폴백이 공유하는 단일 진실(중복 구현 금지).
+/// 경로형을 which에 넘기지 않는 이유: which/where가 틸드를 전개하지 않아 '미설치' 오판.
+fn bin_available(bin: &str) -> bool {
+    if bin.starts_with('~') || bin.contains('/') {
+        return expand_tilde(bin).exists();
+    }
+    #[cfg(windows)]
+    let probe = "where";
+    #[cfg(not(windows))]
+    let probe = "which";
+    let mut cmd = std::process::Command::new(probe);
+    cmd.arg(bin);
+    hide_console(&mut cmd);
+    cmd.output().map(|o| o.status.success()).unwrap_or(false)
+}
+
+/// Windows: 콘솔 없는 부모(데몬이 CREATE_NO_WINDOW로 띄운 CLI)에서 콘솔 자식을 스폰할 때
+/// 생기는 검은 창 flash 차단. 타 OS 무동작. (state.rs `HideConsole` 트레잇과 동일 상수.)
+fn hide_console(cmd: &mut std::process::Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = cmd;
+    }
+}
+
+/// ── 에이전트 CLI 자동설치 (2026-08-12 오너 지시) ──────────────────────────────────
+/// **node/npm은 이미 동봉**돼 있다 — Windows `runtime/node`, macOS `Contents/Resources/runtime/node/bin`
+/// (release.yml·scripts/prep-mac-runtime.sh가 싣고 `runtime_bin_dirs`가 PATH 선두 주입).
+/// 따라서 여기서 설치하는 것은 그 위에 얹히는 **에이전트 CLI 3종**뿐이다.
+/// 대장 = (agents.json 키, npm 패키지, 실행파일 이름).
+const AGENT_CLIS: &[(&str, &str, &str)] = &[
+    ("claude", "@anthropic-ai/claude-code", "claude"),
+    ("gemini", "@google/gemini-cli", "gemini"),
+    ("codex", "@openai/codex", "codex"),
+];
+
+/// npm -g 설치 prefix — **앱 설치 트리 밖**의 고정 위치를 쓴다.
+/// 동봉 node의 기본 prefix는 `runtime/node` 자신이라, 앱 업데이트(NSIS가 resources 재전개)마다
+/// 설치본이 통째로 날아간다. 아래 두 경로는 ①앱 업데이트에 불가침 ②pane PATH 합성이 **이미**
+/// 포함하는 곳(`windows_user_bin_dirs`=`%APPDATA%\npm` · `compose_unix_pane_path`=`~/.local/bin`)
+/// 이라 PATH 배선 변경이 0이다.
+fn npm_global_prefix() -> Option<std::path::PathBuf> {
+    #[cfg(windows)]
+    {
+        return std::env::var_os("APPDATA").map(|a| std::path::PathBuf::from(a).join("npm"));
+    }
+    #[cfg(not(windows))]
+    {
+        dirs::home_dir().map(|h| h.join(".local"))
+    }
+}
+
+/// prefix 안에서 실행파일이 놓이는 디렉토리(npm 규약: Windows=prefix 직하, unix=prefix/bin).
+fn npm_global_bin_dir() -> Option<std::path::PathBuf> {
+    let p = npm_global_prefix()?;
+    #[cfg(windows)]
+    {
+        return Some(p);
+    }
+    #[cfg(not(windows))]
+    {
+        Some(p.join("bin"))
+    }
+}
+
+/// CLI 실재 판정 — ①PATH(where/which) ②npm prefix bin 디렉토리 직접 확인.
+/// ②가 필요한 이유: 방금 설치한 prefix가 이 프로세스의 PATH 스냅샷에 없어 where/which가 못 찾는다
+/// (Windows는 WM_SETTINGCHANGE 미수신 — `runtime_prefixed_path` 주석의 stale PATH와 동종 문제).
+fn cli_installed(bin: &str) -> bool {
+    if bin_available(bin) {
+        return true;
+    }
+    // 경로형(홈 경로가 박힌 어댑터 cmd)은 위 파일-존재 판정이 이미 최종이다 —
+    // prefix에 이어붙이면 의미 없는 경로가 된다.
+    if bin.starts_with('~') || bin.contains('/') {
+        return false;
+    }
+    let Some(d) = npm_global_bin_dir() else {
+        return false;
+    };
+    #[cfg(windows)]
+    let cands = [
+        format!("{bin}.cmd"),
+        format!("{bin}.exe"),
+        format!("{bin}.ps1"),
+    ];
+    #[cfg(not(windows))]
+    let cands = [bin.to_string()];
+    cands.iter().any(|c| d.join(c).exists())
+}
+
+/// npm 실행 방법 해소 — (program, 선행 args). 우선순위:
+/// ① 동봉 node + `npm-cli.js` **직접** 실행 — 셸·PATH 의존 0으로 가장 확실
+/// ② 동봉 런타임의 npm 래퍼  ③ PATH의 npm(개발 머신·시스템 node)
+/// node 배포 레이아웃: Windows=`<node>/node.exe` + `<node>/node_modules/…`,
+/// macOS=`<node>/bin/node` + `<node>/lib/node_modules/…` → 양쪽을 모두 훑는다.
+fn npm_invocation(exe_dir: &std::path::Path) -> Option<(std::path::PathBuf, Vec<String>)> {
+    let dirs = EZERagent::runtime_bin_dirs(exe_dir);
+    for d in &dirs {
+        let node = d.join(if cfg!(windows) { "node.exe" } else { "node" });
+        if !node.is_file() {
+            continue;
+        }
+        let mut roots = vec![d.join("node_modules")];
+        if let Some(parent) = d.parent() {
+            roots.push(parent.join("lib").join("node_modules"));
+        }
+        for r in roots {
+            let cli = r.join("npm").join("bin").join("npm-cli.js");
+            if cli.is_file() {
+                return Some((node, vec![cli.to_string_lossy().into_owned()]));
+            }
+        }
+    }
+    for d in &dirs {
+        let w = d.join(if cfg!(windows) { "npm.cmd" } else { "npm" });
+        if w.is_file() {
+            return Some((w, Vec::new()));
+        }
+    }
+    if bin_available("npm") {
+        return Some((std::path::PathBuf::from("npm"), Vec::new()));
+    }
+    None
+}
+
+/// `--only a,b` 파싱 → 대장에서 선택. 빈 지정=전체. 순수 함수(회귀 핀 대상).
+fn select_clis(only: Option<&str>) -> Vec<&'static (&'static str, &'static str, &'static str)> {
+    let targets: Vec<&str> = only
+        .map(|s| {
+            s.split(',')
+                .map(str::trim)
+                .filter(|x| !x.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    AGENT_CLIS
+        .iter()
+        .filter(|c| targets.is_empty() || targets.contains(&c.0))
+        .collect()
+}
+
+/// `EZERagent install-clis` — 에이전트 CLI 3종을 동봉 npm으로 전역 설치(멱등).
+/// 한 대상의 실패가 나머지를 막지 않는다(부분 성공 허용 — boot의 skip 정책과 동형).
+fn run_install_clis(only: Option<&str>, force: bool) -> i32 {
+    let selected = select_clis(only);
+    if selected.is_empty() {
+        eprintln!(
+            "install-clis: --only '{}' 에 해당하는 대상 없음 (가능: claude, gemini, codex)",
+            only.unwrap_or("")
+        );
+        return 2;
+    }
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    println!("EZERagent install-clis — 에이전트 CLI 자동설치 (node/npm은 동봉 런타임 사용)");
+    let Some((prog, lead)) = npm_invocation(&exe_dir) else {
+        eprintln!("· npm을 찾지 못했다 — 동봉 runtime/node 부재이고 PATH에도 npm이 없다.");
+        eprintln!("  (설치본이 아닌 개발 빌드에서 흔하다. https://nodejs.org 설치 후 재실행)");
+        return 1;
+    };
+    println!("· npm: {}", prog.display());
+    let prefix = npm_global_prefix();
+    if let Some(p) = &prefix {
+        println!(
+            "· 설치 위치: {} (앱 업데이트 불가침 · pane PATH 기포함)",
+            p.display()
+        );
+    }
+    let path_override = EZERagent::runtime_prefixed_path(
+        &exe_dir,
+        &std::env::var("PATH").unwrap_or_default(),
+    );
+
+    let (mut installed, mut skipped, mut failed) = (0, 0, 0);
+    for &(key, pkg, bin) in selected {
+        if !force && cli_installed(bin) {
+            println!("· {key}: 이미 설치됨 — 건너뜀");
+            skipped += 1;
+            continue;
+        }
+        println!("· {key}: {pkg} 설치 중… (네트워크 필요 · 수 분 소요 가능)");
+        let mut cmd = std::process::Command::new(&prog);
+        cmd.args(&lead)
+            .args(["install", "-g", "--no-fund", "--no-audit"]);
+        if let Some(p) = &prefix {
+            cmd.arg("--prefix").arg(p);
+        }
+        cmd.arg(pkg);
+        // 자식 PATH에 동봉 runtime 선두 주입 — npm이 lifecycle 스크립트로 node를 재호출한다.
+        if let Some(newp) = &path_override {
+            cmd.env("PATH", newp);
+        }
+        hide_console(&mut cmd); // 데몬 부트스트랩 경유(콘솔 없는 부모) 시 검은 창 flash 차단
+        match cmd.status() {
+            Ok(s) if s.success() => {
+                println!("· {key}: 설치 완료");
+                installed += 1;
+            }
+            Ok(s) => {
+                eprintln!(
+                    "· {key}: 설치 실패 (npm exit {}) — 나머지 대상은 계속 진행",
+                    s.code().unwrap_or(-1)
+                );
+                failed += 1;
+            }
+            Err(e) => {
+                eprintln!("· {key}: npm 실행 실패 ({e}) — 나머지 대상은 계속 진행");
+                failed += 1;
+            }
+        }
+    }
+    println!("install-clis 완료: 신규 {installed} · 기존 {skipped} · 실패 {failed}");
+    if failed > 0 {
+        1
+    } else {
+        0
+    }
+}
+
+/// boot 직전 보충 — 편성에 필요한 CLI가 없으면 먼저 설치한다.
+/// 옵트아웃: `EZERAGENT_NO_CLI_AUTOINSTALL=1`(네트워크 차단망·CLI를 의도적으로 안 쓰는 환경).
+fn ensure_agent_clis() {
+    if EZERagent::env_compat("EZERAGENT_NO_CLI_AUTOINSTALL").as_deref() == Some("1") {
+        return;
+    }
+    let missing: Vec<&str> = AGENT_CLIS
+        .iter()
+        .filter(|c| !cli_installed(c.2))
+        .map(|c| c.0)
+        .collect();
+    if missing.is_empty() {
+        return;
+    }
+    println!(
+        "· 미설치 CLI 감지: {} — 자동 설치를 먼저 수행한다 (끄려면 EZERAGENT_NO_CLI_AUTOINSTALL=1)",
+        missing.join(", ")
+    );
+    run_install_clis(Some(&missing.join(",")), false);
+}
+
 /// 절대지침 앵커4-1: 프로젝트 시작 시 CSO·worker·agy·codex 4개 노드를 의무 기동한다
 /// (LLM orchestrating 상주 편성). grok은 설치돼 있으면 추가 리뷰어로 띄운다(미설치 skip).
 fn run_boot(cwd: Option<String>) -> i32 {
@@ -3739,10 +3998,6 @@ fn run_boot(cwd: Option<String>) -> i32 {
         ("reviewer-codex", "codex"),
         ("reviewer-grok", "grok"),
     ];
-    let agents: Value = std::fs::read_to_string(EZERagent::pack::pack_dir().join("agents.json"))
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_else(|| json!({}));
     // 이미 가동 중인 역할은 중복 기동하지 않는다
     let live_roles: std::collections::HashSet<String> = request("surface.list", json!({}))
         .ok()
@@ -3755,35 +4010,18 @@ fn run_boot(cwd: Option<String>) -> i32 {
     let mut launched = 0;
     let mut failed = 0;
     println!("EZERagent boot — LLM orchestrating 편성 점검 (CSO·worker·agy·codex 4종 의무 + grok 선택)");
+    // 편성에 필요한 CLI가 없으면 감지 루프 **이전에** 자동 설치한다 — 종전엔 '미설치 skip'
+    // 안내만 하고 사용자가 직접 설치해야 했다(설치 직후 pane 0개 → 원인 불명 UX).
+    ensure_agent_clis();
     for (role, agent) in PLAN {
-        let bin = agents
-            .get(*agent)
-            .and_then(|a| a["cmd"].as_str())
-            // env-prefix를 건너뛰고 실제 바이너리 토큰을 찾는다 (extract_bin 단일 진실) — claude
-            // cmd가 `CLAUDE_CONFIG_DIR="..." claude ...`처럼 env 대입으로 시작해 첫 토큰을 바이너리로
-            // 오판('미설치')하던 회귀를 차단한다 (gemini/codex는 바이너리로 시작해 영향 없음).
-            .map(|c| extract_bin(c, agent).to_string())
+        // load_agent_spec 경유 = cmd_fallbacks 해소가 boot 감지와 실제 기동에서 동일하게 적용된다
+        // (직접 agents.json을 읽으면 감지는 원 cmd, 기동은 폴백 cmd로 갈려 '미설치 skip' 오판).
+        // extract_bin은 env-prefix(`CLAUDE_CONFIG_DIR="…" claude …`)를 건너뛰고 실제 바이너리를 집는다.
+        let bin = load_agent_spec(agent)
+            .ok()
+            .and_then(|s| s["cmd"].as_str().map(|c| extract_bin(c, agent).to_string()))
             .unwrap_or_else(|| agent.to_string());
-        // 경로형 cmd('~/'·'/' 포함 — 예: agy 절대경로)는 which/where가 틸드를 확장하지
-        // 않아 '미설치'로 오판한다 → 파일 존재로 판정 (실행은 셸 -lc 경유라 틸드 확장됨)
-        let found = if bin.starts_with('~') || bin.contains('/') {
-            expand_tilde(&bin).exists()
-        } else {
-            #[cfg(windows)]
-            let ok = std::process::Command::new("where")
-                .arg(&bin)
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false);
-            #[cfg(not(windows))]
-            let ok = std::process::Command::new("which")
-                .arg(&bin)
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false);
-            ok
-        };
-        if !found {
+        if !cli_installed(&bin) {
             // 부트스트랩 무력화 사태(2026-07-09) UX 후속: worker·cso가 claude 미설치(또는 PATH 미발견)로
             // 조용히 skip되면 사용자는 "pane 0개"의 원인을 모른다 — 설치 힌트를 병기해 자가 진단 가능하게.
             let hint = match *agent {
@@ -3835,10 +4073,36 @@ fn load_agent_spec(agent: &str) -> Result<Value, String> {
                 agents_path.display()
             )
         })?;
-    agents
+    let mut spec = agents
         .get(agent)
         .cloned()
-        .ok_or_else(|| format!("unknown agent '{agent}' (agents.json에 정의 필요)"))
+        .ok_or_else(|| format!("unknown agent '{agent}' (agents.json에 정의 필요)"))?;
+    resolve_cmd_fallbacks(agent, &mut spec);
+    Ok(spec)
+}
+
+/// `cmd`의 바이너리가 실재하지 않을 때만 `cmd_fallbacks`를 순서대로 시도해 첫 실재본으로 교체한다.
+/// 근거(2026-08-12): 어댑터 `cmd`는 오너 머신의 **설치 위치가 박힌 홈 경로**(agy·`~/.npm-global/bin/codex`)라,
+/// `install-clis`가 표준 위치(`~/.local/bin`·`%APPDATA%\npm`)에 넣은 설치본을 보지 못한다.
+/// 원 경로 우선순위는 그대로다 — 실재하면 무조건 승리하고 부재일 때만 폴백 = 기존 환경 무회귀.
+fn resolve_cmd_fallbacks(agent: &str, spec: &mut Value) {
+    let Some(cmd) = spec.get("cmd").and_then(|c| c.as_str()).map(String::from) else {
+        return;
+    };
+    if cli_installed(extract_bin(&cmd, agent)) {
+        return;
+    }
+    let fallbacks: Vec<String> = spec
+        .get("cmd_fallbacks")
+        .and_then(|f| f.as_array())
+        .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .unwrap_or_default();
+    for fb in fallbacks {
+        if cli_installed(extract_bin(&fb, agent)) {
+            spec["cmd"] = Value::String(fb);
+            return;
+        }
+    }
 }
 
 /// 역할 디렉티브 + soul.md + 장기메모리 색인 + 스킬 색인 조립 (launch/reinject/cycle 공용)
@@ -8161,6 +8425,72 @@ mod tests {
     /// 회귀 박제: boot의 설치 판정이 경로형 cmd(틸드 절대경로 — agy)를 which로 넘기면
     /// 틸드 비확장으로 '미설치' 오판 → 4종 의무 부트가 조용히 3종이 된다.
     /// expand_tilde가 '~/'를 홈으로 확장해 파일 존재 판정이 성립해야 한다.
+    #[test]
+    fn install_clis_selection_and_catalog() {
+        // 대장 불변 핀 — 3종·npm 패키지·실행파일 이름(자동설치 계약의 SOT).
+        assert_eq!(AGENT_CLIS.len(), 3);
+        assert_eq!(
+            AGENT_CLIS[0],
+            ("claude", "@anthropic-ai/claude-code", "claude")
+        );
+        assert_eq!(AGENT_CLIS[1], ("gemini", "@google/gemini-cli", "gemini"));
+        assert_eq!(AGENT_CLIS[2], ("codex", "@openai/codex", "codex"));
+        // --only 미지정 = 전체
+        assert_eq!(select_clis(None).len(), 3);
+        // 부분 선택 + 공백·빈 항목 관용
+        let two = select_clis(Some(" claude , ,codex "));
+        assert_eq!(
+            two.iter().map(|c| c.0).collect::<Vec<_>>(),
+            vec!["claude", "codex"]
+        );
+        // 미지의 이름만 주면 빈 선택(호출부가 exit 2로 거절) — 조용한 전체 설치로 확대되지 않는다.
+        assert!(select_clis(Some("nope")).is_empty());
+    }
+
+    #[test]
+    fn npm_global_bin_dir_follows_npm_prefix_convention() {
+        // npm 규약: Windows = prefix 직하, unix = prefix/bin. 설치본 탐지(cli_installed)의 전제.
+        // APPDATA/home 부재 환경(컨테이너 등)은 둘 다 None — 그 경우만 검증을 생략한다.
+        match (npm_global_prefix(), npm_global_bin_dir()) {
+            (Some(prefix), Some(bin)) => {
+                if cfg!(windows) {
+                    assert_eq!(bin, prefix);
+                } else {
+                    assert_eq!(bin, prefix.join("bin"));
+                }
+            }
+            (None, None) => {}
+            other => panic!("prefix/bin 짝이 어긋났다: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn cmd_fallbacks_only_apply_when_primary_missing() {
+        // 원 cmd가 실재하면 폴백은 절대 이기지 못한다(기존 환경 무회귀 계약).
+        // 경로 구분자는 '/'로 준다 — bin_available의 '경로형=파일 존재' 분기를 타게 해
+        // where/which(절대경로 미지원)에 의존하지 않는 결정론 픽스처가 된다.
+        let td = std::env::temp_dir().join(format!("ezr-fb-{}", std::process::id()));
+        std::fs::create_dir_all(&td).unwrap();
+        let real_path = td.join("agy-fixture");
+        std::fs::write(&real_path, b"x").unwrap();
+        let real = real_path.to_string_lossy().replace('\\', "/");
+        let mut spec = json!({"cmd": format!("{real} --flag"), "cmd_fallbacks": ["gemini --yolo"]});
+        resolve_cmd_fallbacks("gemini", &mut spec);
+        assert_eq!(spec["cmd"], format!("{real} --flag"));
+        let _ = std::fs::remove_dir_all(&td);
+        // 원 cmd가 부재이고 폴백도 전부 부재면 원 cmd를 그대로 둔다(안내 메시지가 원 경로를 가리키게).
+        let mut miss = json!({
+            "cmd": "~/.no-such-dir/agy --x",
+            "cmd_fallbacks": ["~/.also-missing/gemini --yolo"]
+        });
+        resolve_cmd_fallbacks("gemini", &mut miss);
+        assert_eq!(miss["cmd"], "~/.no-such-dir/agy --x");
+        // cmd_fallbacks 미정의 어댑터는 무변경(claude 등).
+        let mut none = json!({"cmd": "~/.no-such-dir/x"});
+        resolve_cmd_fallbacks("x", &mut none);
+        assert_eq!(none["cmd"], "~/.no-such-dir/x");
+    }
+
     #[test]
     fn expand_tilde_resolves_home_prefix() {
         let home = dirs::home_dir().expect("home dir");

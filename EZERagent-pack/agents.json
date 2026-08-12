@@ -1,5 +1,5 @@
 {
-  "_doc": "에이전트 어댑터 정의. launch-agent가 사용: 기동 명령 → inject_delay_secs 대기 → 역할 디렉티브를 stdin push. clear_cmd=cycle-agent의 컨텍스트 초기화 명령, resume_arg=restore/node-recover의 대화 기억 복원 플래그, approval_patterns=데몬 승인 격상 스캔(자동 응답 절대 없음 — 감지·feed 격상만). 사용자 환경에 맞게 수정 가능(~/.EZERagent/pack/agents.json).",
+  "_doc": "에이전트 어댑터 정의. launch-agent가 사용: 기동 명령 → inject_delay_secs 대기 → 역할 디렉티브를 stdin push. clear_cmd=cycle-agent의 컨텍스트 초기화 명령, resume_arg=restore/node-recover의 대화 기억 복원 플래그, cmd_fallbacks=cmd의 바이너리가 부재할 때만 순서대로 시도하는 대체 명령(EZERagent install-clis가 표준 위치에 넣은 설치본을 홈 경로 고정 cmd가 못 볼 때 구제 — 원 cmd가 실재하면 항상 우선), approval_patterns=데몬 승인 격상 스캔(자동 응답 절대 없음 — 감지·feed 격상만). 사용자 환경에 맞게 수정 가능(~/.EZERagent/pack/agents.json).",
   "claude": {
     "cmd": "claude --dangerously-skip-permissions",
     "env": { "CLAUDE_CONFIG_DIR": "${EZERAGENT_ACCOUNT_DIR:-$HOME/.EZERagent/claude}" },
@@ -24,6 +24,7 @@
   },
   "gemini": {
     "cmd": "~/.local/bin/agy --dangerously-skip-permissions",
+    "cmd_fallbacks": ["gemini --yolo"],
     "inject_delay_secs": 12,
     "ready_marker": "? for shortcuts",
     "notes": "Antigravity CLI(agy) — 구 Gemini CLI가 2026-06-18 소비자 티어(무료·AI Pro·Ultra) 중단되어 이주(오너 Google AI Ultra 연동 실측 2026-06-13). 키 이름 'gemini' 유지: 역할(reviewer-gemini)·orchestra check·boot PLAN 계약 무변. 로그인은 사람 단계(Google OAuth — 첫 기동 시 화면 안내). 절대경로인 이유: 설치 스크립트가 ~/.profile에만 PATH를 넣어 zsh 비로그인 셸에서 'agy'가 안 잡힌다.",
@@ -46,6 +47,7 @@
   },
   "codex": {
     "cmd": "~/.npm-global/bin/codex --dangerously-bypass-approvals-and-sandbox",
+    "cmd_fallbacks": ["codex --dangerously-bypass-approvals-and-sandbox"],
     "inject_delay_secs": 12,
     "notes": "OpenAI Codex CLI (YOLO 모드 — EZERagent 터미널 소켓 push 무프롬프트). 첫 실행 update 프롬프트는 Skip. 홈 기반 경로(~)인 이유: brew 본 /opt/homebrew/bin/codex가 dangling symlink(Caskroom 0.76.0 타깃 소멸)라 PATH 순서·로그인셸 차이에 따라 끊긴 본을 잡을 수 있다 → npm 설치본(~/.npm-global/bin/codex)으로 고정해 회피. ~ 는 로그인셸이 전개(gemini agy 어댑터와 동일 방식). 설치 위치가 다르면 이 경로를 수정.",
     "clear_cmd": "/new",

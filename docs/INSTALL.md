@@ -27,7 +27,32 @@
    스킬 트리가 아니라 **`EZERagent pack-manifest`(임베드 권위 SOT)가 지정한 파일집합만으로 만든 결정론 단일
    tar blob** 입니다 — 개인정보·미추적 쓰레기 파일 박제를 구조적으로 회피합니다.
 
+5. **런타임 동봉(Node.js·Python·git·uv)** — 순정 머신엔 이 도구들이 없습니다. 설치본 안에
+   `runtime/`(Windows) · `Contents/Resources/runtime/`(macOS)로 **Node.js(+npm/npx)·CPython·git·uv**가
+   함께 들어가고, 데몬이 모든 pane의 `PATH` 선두에 주입합니다. **별도 설치가 필요 없습니다.**
+6. **에이전트 CLI 자동설치(claude·gemini·codex)** — 첫 데몬 기동 시 백그라운드로 1회 수행합니다
+   (동봉 npm 사용 · 로그: `~/.EZERagent/logs/cli-bootstrap.log`). `EZERagent boot`도 편성에 필요한
+   CLI가 없으면 먼저 설치합니다. 수동 실행·재시도는 `EZERagent install-clis`.
+   (옵트아웃: `EZERAGENT_NO_CLI_AUTOINSTALL=1` — 폐쇄망·CLI를 의도적으로 안 쓰는 환경)
+
 → 따라서 GUI만 쓰는 사용자는 **앱을 더블클릭하면 끝**입니다.
+
+### 에이전트 CLI 자동설치 — 상세
+
+| 대상 | 방식 | 설치 위치 |
+|---|---|---|
+| Node.js · npm · npx | **설치본에 동봉**(다운로드 없음) | `runtime/node` (앱 내부) |
+| Claude Code | `npm i -g @anthropic-ai/claude-code` | Windows `%APPDATA%\npm` · macOS/Linux `~/.local/bin` |
+| Gemini CLI | `npm i -g @google/gemini-cli` | 〃 |
+| Codex CLI | `npm i -g @openai/codex` | 〃 |
+
+- 설치 위치를 앱 트리 **밖**으로 고정한 이유: 앱 업데이트가 `runtime/`을 재전개하므로 그 안에
+  설치하면 업데이트마다 CLI가 사라집니다. 위 두 경로는 pane PATH 합성이 이미 포함합니다.
+- **멱등**입니다 — 이미 있으면 건너뜁니다. 최신본 강제 재설치는 `EZERagent install-clis --force`.
+- 일부만: `EZERagent install-clis --only claude,codex`
+- 한 대상이 실패해도 나머지는 계속 설치합니다(부분 성공 허용).
+- **로그인은 사람 단계**입니다 🧑 — 설치는 자동이지만 각 CLI의 최초 계정 인증(Claude/Google/OpenAI)은
+  사용자가 직접 해야 합니다.
 
 ## 🚧 설치 경계 (Boundaries — 무조건 정지·오너 보고)
 
@@ -170,7 +195,8 @@ rm -rf ~/.EZERagent ~/.local/state/EZERagent             # pack·트랜스크립
 
 ## 환경 변수 (요약)
 
-`EZERAGENT_SOCKET` · `EZERAGENT_NO_AUTOSTART`(1=CLI 자동기동 끔) · `EZERAGENT_PACK_DIR` ·
+`EZERAGENT_SOCKET` · `EZERAGENT_NO_AUTOSTART`(1=데몬 자동기동 끔) ·
+`EZERAGENT_NO_CLI_AUTOINSTALL`(1=에이전트 CLI 자동설치 끔) · `EZERAGENT_PACK_DIR` ·
 거버넌스: `EZERAGENT_LOAD_THRESHOLD`·`EZERAGENT_PROC_THRESHOLD`·`EZERAGENT_DUP_THRESHOLD`·`EZERAGENT_AUTOKILL_DUP`·`EZERAGENT_IDLE_SECONDS` ·
 에제르: `EZERAGENT_TYPING_GUARD_SECS`·`EZERAGENT_FEED_REMIND_SECS`·`EZERAGENT_MASTER_DEADMAN_SECS`·`EZERAGENT_AGENT_AUTORESTART`·`EZERAGENT_RECALL_RETAIN_DAYS`·`EZERAGENT_TODO_DIRS`
 (상세는 README.md)

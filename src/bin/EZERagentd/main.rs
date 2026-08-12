@@ -119,6 +119,12 @@ async fn main() {
             Err(e) => eprintln!("[EZERagentd] pack auto-install skipped: {e}"),
         }
     }
+    // 온보딩③(2026-08-12 오너 지시): 에이전트 CLI(claude·gemini·codex) 최초 1회 자동설치.
+    // node/npm은 동봉 런타임이라 대상이 아니다(runtime/node — 이미 자기완결).
+    // 설치기(NSIS/DMG) 안에서 하지 않는 이유 ①DMG는 드래그 설치라 설치 스크립트 자체가 없다
+    // (플랫폼 파리티 0) ②설치기 안에서 수 분짜리 네트워크 작업을 돌리면 "설치가 멈춘 것처럼"
+    // 보이고, 실패하면 설치 전체가 abort된다. → 첫 데몬 기동 시 분리 프로세스로 백그라운드 수행.
+    spawn_agent_cli_bootstrap();
     let socket_path = EZERagent::socket_path();
     let daemon = Daemon::new(socket_path.clone());
 
@@ -500,6 +506,55 @@ fn spawn_office_bridge(state_dir: std::path::PathBuf) {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
         }
     });
+}
+
+/// 온보딩③: 에이전트 CLI 3종 최초 1회 자동설치를 **분리 프로세스**로 띄운다(데몬 기동 무지연).
+/// 실제 설치 로직은 CLI의 `EZERagent install-clis` 단일 진실 — 여기서 재구현하지 않는다.
+/// 마커는 **기동 전**에 찍는다: 설치가 실패하든 오래 걸리든 매 부트마다 npm이 재폭주하지 않게.
+/// 사후 보정은 명시 경로(`EZERagent install-clis`)와 `EZERagent boot`의 자동 보충이 담당한다.
+/// 옵트아웃: `EZERAGENT_NO_CLI_AUTOINSTALL=1`.
+fn spawn_agent_cli_bootstrap() {
+    if EZERagent::env_compat("EZERAGENT_NO_CLI_AUTOINSTALL").as_deref() == Some("1") {
+        return;
+    }
+    let Some(root) = EZERagent::pack::pack_dir().parent().map(|p| p.to_path_buf()) else {
+        return;
+    };
+    let marker = root.join(".clis-bootstrapped");
+    if marker.exists() {
+        return;
+    }
+    // 형제 CLI 해소는 state::sibling_cli_path 단일 진실(부재 시 파일명만 반환 → PATH 탐색).
+    let cli = crate::state::sibling_cli_path();
+    let _ = std::fs::create_dir_all(&root);
+    let _ = std::fs::write(&marker, "1");
+    // 로그는 파일로 남긴다 — 백그라운드라 화면에 안 보이는 설치 결과를 사후 진단 가능하게.
+    let log_path = root.join("logs").join("cli-bootstrap.log");
+    let _ = std::fs::create_dir_all(root.join("logs"));
+    let (out, err) = match std::fs::File::create(&log_path) {
+        Ok(f) => match f.try_clone() {
+            Ok(f2) => (
+                std::process::Stdio::from(f),
+                std::process::Stdio::from(f2),
+            ),
+            Err(_) => (std::process::Stdio::null(), std::process::Stdio::null()),
+        },
+        Err(_) => (std::process::Stdio::null(), std::process::Stdio::null()),
+    };
+    // hide_console: Win11에서 데몬이 스폰하는 콘솔 자식이 검은 창을 순간 띄우는 flash 차단.
+    let mut cmd = std::process::Command::new(&cli);
+    cmd.arg("install-clis")
+        .stdin(std::process::Stdio::null())
+        .stdout(out)
+        .stderr(err);
+    crate::state::HideConsole::hide_console(&mut cmd);
+    match cmd.spawn() {
+        Ok(_) => eprintln!(
+            "[EZERagentd] agent CLI bootstrap started in background (claude/gemini/codex) → {}",
+            log_path.display()
+        ),
+        Err(e) => eprintln!("[EZERagentd] agent CLI bootstrap skipped: {e}"),
+    }
 }
 
 /// ★B3: 동봉 runtime python3 절대경로(exe 옆 번들). runtime_bin_dirs(pane 자식과 동일 SOT)에서 python3 실행파일을

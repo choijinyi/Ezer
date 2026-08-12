@@ -60,6 +60,16 @@ Ezer (에제르)의 뜻: 도움, 돕는 자, 조력자
 - 24/365 상시 가동(선택): `EZERagent daemon install` (launchd KeepAlive / 작업 스케줄러).
 - 외부 터미널에서 `EZERagent` 명령 쓰기: 앱 Control Center → **"셸에 EZERagent 설치"** 1클릭.
 
+### 필요한 것이 전부 함께 깔립니다
+
+| 대상 | 방식 |
+|---|---|
+| **Node.js**(+npm/npx) · Python · git · uv | 설치본에 **동봉** — 다운로드조차 없음 |
+| **Claude Code · Gemini CLI · Codex CLI** | 첫 실행 시 동봉 npm으로 **자동 설치**(백그라운드·1회·멱등) |
+
+수동 실행·재시도는 `EZERagent install-clis`(`--only claude,codex` · `--force`), 끄려면
+`EZERAGENT_NO_CLI_AUTOINSTALL=1`. 각 CLI의 **계정 로그인은 사용자가 직접** 해야 합니다.
+
 설치·제거 상세는 [docs/INSTALL.md](docs/INSTALL.md), 사용법 전체는
 [User Manual](USER-MANUAL.md).
 
