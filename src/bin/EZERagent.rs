@@ -1264,12 +1264,38 @@ fn spawn_detached_daemon(path: &std::path::Path) -> std::io::Result<()> {
     cmd.spawn().map(|_| ())
 }
 
-/// socket-ready 실측 폴링(최대 4초=40×100ms). launchd kickstart·sibling spawn 양 경로가 공유.
-fn poll_socket_ready() -> Option<ConnStream> {
-    for _ in 0..40 {
+/// autostart 대기창(초) — 기본 30s. `EZERAGENT_AUTOSTART_WAIT_SECS`로 조정([4,300] 클램프).
+/// ★4s→30s 확대(2026-08-13 CI PTY 스모크 실패 실측): 첫 기동의 데몬은 named pipe를 바인드하기
+/// **전에** 팩 320여 파일을 fsync하며 설치한다(EZERagentd main의 `pack::install`). 느린 디스크에서
+/// 이 작업이 4초를 넘기면 호출부가 "데몬 미응답"으로 포기했고, 호출부의 재시도는 **기다리는 대신
+/// 데몬을 하나 더 띄워** 같은 디스크를 두들겨 상황을 악화시켰다(CI 러너에서 EZERagentd 5개 동시
+/// 생존·바인드 0 실측). 데몬은 죽은 게 아니라 준비 중이었으므로 대기창을 늘리는 쪽이 옳다.
+/// 순수부 — 부재·비정수는 기본값 30, 정수는 [4,300]으로 클램프(테스트 가능하게 env에서 분리).
+fn clamp_autostart_wait(raw: Option<&str>) -> u64 {
+    raw.and_then(|v| v.trim().parse::<u64>().ok())
+        .map(|v| v.clamp(4, 300))
+        .unwrap_or(30)
+}
+
+fn autostart_wait_secs() -> u64 {
+    clamp_autostart_wait(EZERagent::env_compat("EZERAGENT_AUTOSTART_WAIT_SECS").as_deref())
+}
+
+/// socket-ready 실측 폴링(100ms 간격 · 상한 = 인자 초). launchd kickstart·sibling spawn 양 경로가 공유.
+/// 5초를 넘기면 **1회만** 진행 상황을 알린다 — 첫 기동의 팩 설치는 정상적으로 수십 초가 걸릴 수
+/// 있는데, 아무 출력 없이 멈춰 있으면 사용자가 멎은 것으로 오해한다.
+fn poll_socket_ready(secs: u64) -> Option<ConnStream> {
+    let mut noticed = false;
+    for i in 0..secs.saturating_mul(10) {
         std::thread::sleep(std::time::Duration::from_millis(100));
         if let Ok(s) = connect_raw() {
             return Some(s);
+        }
+        if !noticed && i >= 50 {
+            noticed = true;
+            eprintln!(
+                "[EZERagent] EZERagentd 기동 대기 중 — 첫 기동은 팩 설치로 최대 {secs}초 걸릴 수 있습니다"
+            );
         }
     }
     None
@@ -1293,17 +1319,18 @@ fn connect() -> Result<ConnStream, String> {
             {
                 return Err(first);
             }
+            let wait = autostart_wait_secs();
             // launchd 위임 우선(macOS·적재 시). 실패 시 아래 sibling 경로로 폴백.
             #[cfg(target_os = "macos")]
             {
                 if EZERagent::launchd::should_delegate_autostart(EZERagent::launchd::is_loaded()) {
                     eprintln!("[EZERagent] EZERagentd not serving — delegating to launchd (launchctl kickstart)");
                     if EZERagent::launchd::kickstart() {
-                        if let Some(s) = poll_socket_ready() {
+                        if let Some(s) = poll_socket_ready(wait) {
                             return Ok(s);
                         }
                         eprintln!(
-                            "[EZERagent] launchd kickstart did not yield a socket within 4s — falling back to sibling spawn"
+                            "[EZERagent] launchd kickstart did not yield a socket within {wait}s — falling back to sibling spawn"
                         );
                     } else {
                         eprintln!("[EZERagent] launchctl kickstart failed — falling back to sibling spawn");
@@ -1317,8 +1344,9 @@ fn connect() -> Result<ConnStream, String> {
             if spawn_detached_daemon(&daemon).is_err() {
                 return Err(first);
             }
-            poll_socket_ready()
-                .ok_or_else(|| format!("{first} (autostarted EZERagentd did not come up within 4s)"))
+            poll_socket_ready(wait).ok_or_else(|| {
+                format!("{first} (autostarted EZERagentd did not come up within {wait}s)")
+            })
         }
     }
 }
@@ -8493,6 +8521,21 @@ mod tests {
         );
         // 미지의 이름만 주면 빈 선택(호출부가 exit 2로 거절) — 조용한 전체 설치로 확대되지 않는다.
         assert!(select_clis(Some("nope")).is_empty());
+    }
+
+    #[test]
+    fn autostart_wait_defaults_to_30s_and_clamps() {
+        // 부재·빈값·비정수 = 기본 30s (4s 고정이던 종전 동작을 되살리지 않는다).
+        assert_eq!(clamp_autostart_wait(None), 30);
+        assert_eq!(clamp_autostart_wait(Some("")), 30);
+        assert_eq!(clamp_autostart_wait(Some("abc")), 30);
+        // 정상 지정은 그대로, 공백은 무시.
+        assert_eq!(clamp_autostart_wait(Some("45")), 45);
+        assert_eq!(clamp_autostart_wait(Some(" 45 ")), 45);
+        // 하한 4s — 0 지정으로 폴링을 통째로 끄지 못한다(즉시 실패 회귀 차단).
+        assert_eq!(clamp_autostart_wait(Some("0")), 4);
+        // 상한 300s — 오타 하나로 CLI가 영영 매달리지 않는다.
+        assert_eq!(clamp_autostart_wait(Some("99999")), 300);
     }
 
     #[test]
