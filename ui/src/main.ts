@@ -1337,6 +1337,12 @@ let groups: GroupMeta[] = []; // 06: 그룹 메타 배열(진실원=localStorage
 let groupCounter = 1; // 06: 그룹 id 발급(ws의 wsCounter와 분리)
 let focusedSid: number | null = null;
 const panes = new Map<string, PaneRuntime>(); // 키 = paneKey(sid, socket)
+// ★부트 셸(2026-08-12 오너 실측): 데몬에 surface가 0개일 때 복원이 만드는 **자동 생성 빈 셸**의
+// paneKey. 마스터-온리 시절엔 "빈 셸 + 마스터" 2칸이라 눈에 안 띄었지만, 전 노드 가시화에서는
+// 역할 5칸 옆에 빈 터미널이 한 칸을 통째로 차지한다. 역할 노드가 입양되면 이 셸은 역할을 다한다.
+// 사용자가 **한 글자라도 입력하면** 목록에서 빠져(sendRaw) 자동 정리 대상이 아니게 된다 —
+// 시작 전에 셸에서 작업하던 사람의 pane을 빼앗지 않기 위한 안전장치.
+const autoShells = new Set<string>();
 // 부서 데몬 socket_slug(F3 백엔드 단일진실) → socket 경로. launch_dept_daemon 반환·daemon-event로 채운다.
 const socketForSlug = new Map<string, string>();
 // 사이드바 노드 신호 캐시(B3) — org.status 응답을 워크스페이스 행 집계용으로 보관.
@@ -1557,6 +1563,18 @@ async function refreshPaneTitles() {
       }
     }
     if (adopted) {
+      // 역할 노드가 들어온 ws의 **손대지 않은 부트 셸**은 역할을 다했다 — 닫는다.
+      // 안 그러면 역할 5칸 옆에 빈 터미널이 한 칸을 통째로 차지한다(오너 실측 2026-08-12).
+      // 사람이 입력한 셸은 sendRaw가 이미 autoShells에서 빼 두어 여기 걸리지 않는다.
+      for (const ws of adoptedWs) {
+        for (const sid of collectSids(ws.tree)) {
+          const key = paneKey(sid, ws.socket);
+          if (!autoShells.has(key)) continue;
+          autoShells.delete(key);
+          await invoke("close_surface", { socket: ws.socket, surfaceId: sid }).catch(() => {});
+          removeDeadPane(sid, ws.socket);
+        }
+      }
       // 입양은 위에서 "오른쪽 끝에 컬럼 덧붙이기"로 끝난다 — 편성 노드가 하나씩 뜨는 동안
       // 판이 사슬처럼 늘어지지 않게, 입양이 일어난 ws만 역할 타일로 재배치한다(마스터/CSO·워커·리뷰어).
       for (const ws of adoptedWs) await retileByRole(ws);
@@ -1739,6 +1757,7 @@ async function makePane(sid: number, title: string, socket?: string): Promise<Pa
   let sendChain: Promise<unknown> = Promise.resolve();
   const sendRaw = (data: string) => {
     follow = true; // 입력 = 프롬프트 사용 의사 — 바닥 고정 재개(xterm scrollOnUserInput과 정합)
+    autoShells.delete(paneKey(sid, socket)); // 사람이 쓴 셸 = 자동 정리 대상 아님(모든 입력의 단일 관문)
     sendChain = sendChain
       .then(() => invoke("send_input", { socket, surfaceId: sid, data }))
       .catch(() => {});
@@ -4422,18 +4441,22 @@ async function start() {
     if (ws.tree || ws.socket == null || liveBySock.get(ws.socket)?.ok !== true) continue;
     const sid = await newSurface(null, ws.socket);
     ws.tree = { type: "pane", sid };
+    autoShells.add(paneKey(sid, ws.socket)); // 충전용 빈 셸 — 역할 노드가 들어오면 자동 정리
   }
   if (!current().tree) {
     // 복원 시 current()가 미응답(ok===false) 부서 ws일 수 있다(필터의 ok===false 절로 보존·activeWs가 선택,
     // 충전 루프는 ok!==true라 스킵) — 죽은 부서 socket에 newSurface하면 backend가 reject해 복원이 깨진다.
     // 기본 데몬(socket undefined·상시 가용)으로 폴백해 빈 화면/미처리 rejection을 막는다(정상 경로 불변).
     let sid: number;
+    let sk = current().socket;
     try {
-      sid = await newSurface(null, current().socket);
+      sid = await newSurface(null, sk);
     } catch {
+      sk = undefined;
       sid = await newSurface(null, undefined);
     }
     current().tree = { type: "pane", sid };
+    autoShells.add(paneKey(sid, sk)); // 부트 셸 — ▶ EZER 시작으로 역할 노드가 들어오면 자동 정리
   }
   // 병합된 고아 노드는 위에서 '오른쪽 끝 컬럼 덧붙이기'로 들어온다 — 마스터-온리 시절 저장본
   // (pane 1개)에 편성 4종이 한꺼번에 붙으면 사슬이 된다. 복원 직후 한 번 역할 타일로 정돈한다.

@@ -124,7 +124,14 @@ async fn main() {
     // 설치기(NSIS/DMG) 안에서 하지 않는 이유 ①DMG는 드래그 설치라 설치 스크립트 자체가 없다
     // (플랫폼 파리티 0) ②설치기 안에서 수 분짜리 네트워크 작업을 돌리면 "설치가 멈춘 것처럼"
     // 보이고, 실패하면 설치 전체가 abort된다. → 첫 데몬 기동 시 분리 프로세스로 백그라운드 수행.
-    spawn_agent_cli_bootstrap();
+    // ★부트 경로에서 반드시 비켜세운다(CI PTY 스모크 실패 실측 2026-08-12): 종전엔 이 호출이
+    // 소켓 바인드보다 **앞**이라 파일 IO·프로세스 스폰·뒤이은 npm 부하가 named pipe 준비를
+    // 늦췄고, CLI autostart 대기창(4s)을 5회 연속 놓쳐 "데몬 미응답"이 됐다. 지연 스레드로
+    // 떼어내면 데몬 가용성과 완전히 분리된다(설치는 어차피 수 분짜리 백그라운드 작업이다).
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        spawn_agent_cli_bootstrap();
+    });
     let socket_path = EZERagent::socket_path();
     let daemon = Daemon::new(socket_path.clone());
 
