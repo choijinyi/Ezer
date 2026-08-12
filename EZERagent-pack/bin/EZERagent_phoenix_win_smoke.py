@@ -315,10 +315,24 @@ def case5_stub_restore():
         if not check("⑤ 테스트 데몬 기동", up):
             return
         _cp("⑤ restore")
-        r = run_phoenix(pipe, "restore", "--ticket", "WS", "--stub", timeout=90)
-        txt = r.stdout or ""
-        i = txt.find("{")
-        j = json.loads(txt[i:]) if i >= 0 else {}
+        # ★LEASE_HELD 재시도(2026-08-13 실측 · run 31648058104): 방금 띄운 테스트 데몬이 콜드부트
+        #   auto-restore 를 먼저 걸어 lease 를 쥐고 있으면, 이 명시 restore 호출은 LEASE_HELD 로 즉시
+        #   skip 된다 — 그것이 **제품의 정상 동작**이다(이중 스폰 차단). 종전엔 그 정상 동작을 그대로
+        #   실패로 읽어 간헐 허위 FAIL 이 났다. run_deploy 는 이미 같은 교훈으로 backoff 재시도를 두고
+        #   있고(EZERagent_phoenix.py P2-7/W1 — "else 로 떨어져 FAILED(허위)로 강등됐다"), 여기도 같은
+        #   규약으로 맞춘다. lease 는 짧게 잡히므로 몇 초면 풀린다.
+        #   ★게이트는 무르게 하지 않는다: 재시도를 다 쓰고도 VERIFIED 가 아니면 여전히 실패한다.
+        #   진짜 restore 회귀(FAILED·DEGRADED·CORRUPT)는 재시도 없이 첫 판정에서 그대로 잡힌다.
+        j = {}
+        for _attempt in range(4):
+            r = run_phoenix(pipe, "restore", "--ticket", "WS", "--stub", timeout=90)
+            txt = r.stdout or ""
+            i = txt.find("{")
+            j = json.loads(txt[i:]) if i >= 0 else {}
+            if j.get("phoenix_restore") != "LEASE_HELD":
+                break
+            _cp("⑤ lease held — 다른 restore 진행 중, 재시도 %d/3" % (_attempt + 1))
+            time.sleep(1.5 * (_attempt + 1))
         check("⑤ phoenix_restore=VERIFIED", j.get("phoenix_restore") == "VERIFIED", j.get("phoenix_restore"))
         check("⑤ completeness=COMPLETE", j.get("completeness") == "COMPLETE", j.get("completeness"))
     finally:
