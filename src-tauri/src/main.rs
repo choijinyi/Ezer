@@ -1756,6 +1756,31 @@ async fn start_master() -> Result<(), String> {
     }
 }
 
+/// ★전 노드 가시화(오너 2026-08-12): "▶ EZER 시작"이 마스터에 이어 **표준 편성**(CSO·worker·
+/// reviewer×2 + 선택 grok)을 기동한다 — 종전엔 마스터 1개만 떠서 화면이 한 칸이었다.
+/// 기동 자체는 `EZERagent boot` 에 일임한다(설치된 CLI만 감지·기동, 미설치는 skip — 단일 진실).
+/// 소켓 규약은 start_master/start_dept_master 와 동일(None=base, Some=부서 데몬).
+/// ★완료를 기다리지 않는다: 노드당 지침 주입 대기(10~12s)가 있어 편성 전체가 40초를 넘고,
+///   첫 기동이면 CLI 자동설치까지 붙는다. UI를 붙잡지 않고 백그라운드로 던지면 pane은
+///   3초 폴러(refreshPaneTitles)가 뜨는 대로 하나씩 입양한다(진행이 눈에 보이는 편이 낫다).
+#[tauri::command]
+async fn start_fleet(socket: Option<String>) -> Result<(), String> {
+    let ezer = resolve_sidecar("EZERagent");
+    // 핸들을 즉시 버린다 = 태스크 분리(계속 실행). 커맨드는 바로 반환해 UI를 붙잡지 않는다.
+    let _ = tokio::task::spawn_blocking(move || {
+        let mut cmd = std::process::Command::new(&ezer);
+        inject_runtime_path(&mut cmd);
+        match socket.as_deref() {
+            Some(s) => cmd.env("EZERAGENT_SOCKET", s),
+            None => cmd.env_remove("EZERAGENT_SOCKET"),
+        };
+        cmd.arg("boot");
+        no_console(&mut cmd);
+        let _ = cmd.output(); // 결과는 pane 등장으로 관측된다(실패해도 마스터는 이미 서 있다)
+    });
+    Ok(())
+}
+
 /// ★R8(WP-2·적대검증 W2): CEO 승격 대기(PENDING) 여부 — EZERagent-dept가 기록한 상태 파일 존재 검사.
 /// 프론트가 시작 시 1회+팔레트 온디맨드로 읽는다(신규 타이머 금지 — WINAUDIT 타이머 증식 방지).
 #[tauri::command]
@@ -2339,6 +2364,7 @@ fn main() {
             dept_tombstone_by_socket,
             dept_tombstones,
             start_master,
+            start_fleet,
             start_dept_master,
             ceo_pending,
             promote_pending_ceo,

@@ -3886,6 +3886,47 @@ fn select_clis(only: Option<&str>) -> Vec<&'static (&'static str, &'static str, 
         .collect()
 }
 
+/// 동시 설치 방지 락. 데몬 첫 기동의 백그라운드 부트스트랩과 사용자의 `▶ EZER 시작`(→ boot →
+/// ensure_agent_clis)이 **같은 순간에** 겹치는 것은 예외가 아니라 기본 시나리오다(설치 직후 첫 실행).
+/// npm 전역 설치 2개가 같은 prefix에 동시에 쓰면 트리가 깨진다 — 원자적 create_new로 한 쪽만 통과시킨다.
+/// 죽은 프로세스가 남긴 락은 STALE(30분) 경과 시 회수한다(영구 봉쇄 방지).
+struct InstallLock(std::path::PathBuf);
+impl InstallLock {
+    const STALE: std::time::Duration = std::time::Duration::from_secs(30 * 60);
+    fn acquire() -> Option<Self> {
+        let path = EZERagent::pack::pack_dir().parent()?.join(".clis-installing");
+        if let Some(d) = path.parent() {
+            let _ = std::fs::create_dir_all(d);
+        }
+        for _ in 0..2 {
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+            {
+                Ok(_) => return Some(Self(path)),
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    let stale = std::fs::metadata(&path)
+                        .and_then(|m| m.modified())
+                        .map(|t| t.elapsed().map(|d| d > Self::STALE).unwrap_or(false))
+                        .unwrap_or(false);
+                    if !stale {
+                        return None;
+                    }
+                    let _ = std::fs::remove_file(&path); // 회수 후 1회 재시도
+                }
+                Err(_) => return None, // 쓰기 불가 경로 — 설치를 강행하지 않는다
+            }
+        }
+        None
+    }
+}
+impl Drop for InstallLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
 /// `EZERagent install-clis` — 에이전트 CLI 3종을 동봉 npm으로 전역 설치(멱등).
 /// 한 대상의 실패가 나머지를 막지 않는다(부분 성공 허용 — boot의 skip 정책과 동형).
 fn run_install_clis(only: Option<&str>, force: bool) -> i32 {
@@ -3902,6 +3943,13 @@ fn run_install_clis(only: Option<&str>, force: bool) -> i32 {
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
         .unwrap_or_else(|| std::path::PathBuf::from("."));
     println!("EZERagent install-clis — 에이전트 CLI 자동설치 (node/npm은 동봉 런타임 사용)");
+    // 락은 이 함수의 수명 동안 유지된다(_lock drop = 해제). 다른 설치가 진행 중이면 여기서 물러난다 —
+    // 대기하지 않는 이유: 호출부가 데몬 부트스트랩(백그라운드)과 boot(사용자 대기 중)이라, 겹쳤을 때
+    // 한쪽을 몇 분간 붙잡는 것보다 즉시 양보하고 다음 boot에서 보충하는 편이 낫다.
+    let Some(_lock) = InstallLock::acquire() else {
+        println!("· 다른 설치가 이미 진행 중이다 — 건너뛴다 (완료 후 `EZERagent install-clis`로 확인)");
+        return 0;
+    };
     let Some((prog, lead)) = npm_invocation(&exe_dir) else {
         eprintln!("· npm을 찾지 못했다 — 동봉 runtime/node 부재이고 PATH에도 npm이 없다.");
         eprintln!("  (설치본이 아닌 개발 빌드에서 흔하다. https://nodejs.org 설치 후 재실행)");

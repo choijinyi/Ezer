@@ -1470,11 +1470,11 @@ const imageExtFromMime = (mime: string): string => {
   return "png"; // image/png 및 기타
 };
 
-// ★마스터-온리 UI(오너 2026-08-10): 메인 UI에는 마스터 pane만 보인다. 워커·CSO·리뷰어 노드는
-// pane 없이 데몬 안에서 헤드리스로 작동한다(입양·복원 병합 대상에서 제외 — PTY·지휘·산출은 그대로).
-// 관측은 컨트롤 센터(플릿·작업 탭)와 사이드바 노드 신호가 담당한다. 무역할 일반 셸은 종전대로 보인다.
-const isBackgroundRole = (role: string | null | undefined): boolean =>
-  !!role && !role.startsWith("master");
+// ★전 노드 가시화(오너 2026-08-12 — 2026-08-10 "마스터-온리" 정책 철회): 마스터·CSO·워커·
+// 리뷰어가 **동시에** 한 화면에 타일로 보인다. 종전엔 마스터 외 역할이 pane 없이 헤드리스로만
+// 돌아 화면이 한 칸이었다. 되돌리려면 이 함수만 구 정의(`!!role && !role.startsWith("master")`)로
+// 바꾸면 된다 — 호출부(입양·복원 2곳)는 그대로 두고 이 한 곳이 정책 스위치다.
+const isBackgroundRole = (_role: string | null | undefined): boolean => false;
 
 // surface도 번호 대신 이름 — 기본 자동 제목("surface N"·빈 문자열)이면 현재 디렉토리 경로 표시.
 const isAutoTitle = (t: string | null | undefined) => !t || /^surface \d+$/.test(t);
@@ -1503,6 +1503,7 @@ async function refreshPaneTitles() {
     // 멀티마스터 F4: workspace별 소켓을 순회 — 각 데몬의 surface를 그 소켓 ws에만 귀속시킨다.
     const sockets = [...new Set(workspaces.map((w) => w.socket))];
     let adopted = false;
+    const adoptedWs = new Set<Workspace>(); // 입양이 실제로 일어난 ws만 역할 타일로 재배치(무관 탭 불변)
     for (const sk of sockets) {
       const r = (await invoke("list_surfaces", { socket: sk })) as {
         surfaces: {
@@ -1528,7 +1529,7 @@ async function refreshPaneTitles() {
       const rolePri = (role: string | null): number =>
         role === "master" ? 0 : role === "cso" ? 1 : role?.startsWith("worker") ? 2 : role?.startsWith("reviewer") ? 3 : 4;
       for (const s of [...r.surfaces].sort((a, b) => rolePri(a.role) - rolePri(b.role))) {
-        // 마스터-온리: 백그라운드 역할(워커·CSO·리뷰어)은 입양하지 않는다 — 헤드리스 작동.
+        // 전 노드 가시화: 역할 surface는 전부 입양한다(isBackgroundRole은 현재 상시 false — 정책 스위치).
         if (s.exited || !s.role || isBackgroundRole(s.role) || panes.has(paneKey(s.surface_id, sk))) continue;
         // !w.pending — 런칭 중 placeholder(socket 미정)에는 입양 금지(타 데몬 surface 오입양 차단).
         const ws = workspaces.find((w) => !w.pending && (w.socket ?? undefined) === (sk ?? undefined));
@@ -1537,10 +1538,14 @@ async function refreshPaneTitles() {
         ws.tree = ws.tree
           ? { type: "split", dir: "row", a: ws.tree, b: { type: "pane", sid: s.surface_id } }
           : { type: "pane", sid: s.surface_id };
+        adoptedWs.add(ws);
         adopted = true;
       }
     }
     if (adopted) {
+      // 입양은 위에서 "오른쪽 끝에 컬럼 덧붙이기"로 끝난다 — 편성 노드가 하나씩 뜨는 동안
+      // 판이 사슬처럼 늘어지지 않게, 입양이 일어난 ws만 역할 타일로 재배치한다(마스터/CSO·워커·리뷰어).
+      for (const ws of adoptedWs) await retileByRole(ws);
       render();
       // 자동입양으로 pane이 생긴 활성 ws에 유효 포커스가 없으면 그 첫 pane에 포커스(포커스 회수, 탈취 아님).
       // 안 A: 부서 master 첫 등장 시 — 빈 셸이 없으므로 master pane으로 직행한다.
@@ -2302,7 +2307,13 @@ function roleLayout(sids: number[], roleOf: Map<number, string | null>): Node {
 }
 
 async function actionEqualize() {
-  const ws = current();
+  await retileByRole(current());
+}
+
+/// 지정 workspace의 pane들을 역할 타일(roleLayout)로 재배치한다.
+/// 팔레트의 "패널 균등화"와 **자동입양 직후**가 공유하는 단일 진실 — 노드가 하나 뜰 때마다
+/// 오른쪽 끝에 컬럼이 덧붙는 사슬 대신, 마스터/CSO·워커·리뷰어 자리가 잡힌 판이 유지된다.
+async function retileByRole(ws: Workspace | null | undefined) {
   if (!ws?.tree) return;
   const live = collectSids(ws.tree).filter((sid) => panes.has(paneKey(sid, ws.socket))); // 죽은/placeholder 노드 제외 (F4 복합키)
   if (live.length < 2) return; // 0~1개는 정렬할 대상이 없음
@@ -4337,8 +4348,8 @@ async function start() {
   }
 
   // 죽은 pane 제거 — 데몬 미응답 소켓의 ws는 건드리지 않는다(일시 미가동=영구삭제 방지).
-  // + 마스터-온리: 구 저장본에 남은 백그라운드 역할(워커·CSO·리뷰어) pane도 제거 —
-  //   surface는 데몬에 살아있으므로 노드는 계속 작동한다(레이아웃에서만 빠짐).
+  // + isBackgroundRole 로 걸러낼 역할 pane(현 정책=없음, 전 노드 가시화)도 같은 자리에서 제거한다 —
+  //   구 "마스터-온리"로 되돌릴 때 이 지점이 저장 레이아웃을 정리하는 경로다.
   const activeWsId = workspaces[activeWs]?.id;
   for (const ws of workspaces) {
     const lb = liveBySock.get(ws.socket);
@@ -4382,7 +4393,7 @@ async function start() {
     if (!lb || !lb.ok) continue;
     const ws = workspaces.find((w) => (w.socket ?? undefined) === (sk ?? undefined));
     for (const s of lb.list) {
-      if (isBackgroundRole(s.role)) continue; // 마스터-온리: 백그라운드 역할은 pane 런타임도 만들지 않는다(헤드리스)
+      if (isBackgroundRole(s.role)) continue; // 정책 스위치(현재 전 노드 가시화 → 통과). 구 마스터-온리에선 여기서 헤드리스 처리.
       await makePane(s.surface_id, s.title, sk);
       if (ws && !collectSids(ws.tree).includes(s.surface_id)) {
         ws.tree = ws.tree
@@ -4410,6 +4421,9 @@ async function start() {
     }
     current().tree = { type: "pane", sid };
   }
+  // 병합된 고아 노드는 위에서 '오른쪽 끝 컬럼 덧붙이기'로 들어온다 — 마스터-온리 시절 저장본
+  // (pane 1개)에 편성 4종이 한꺼번에 붙으면 사슬이 된다. 복원 직후 한 번 역할 타일로 정돈한다.
+  await retileByRole(current());
   render();
   const first = collectSids(current().tree)[0];
   if (first != null) setFocus(first);
@@ -4426,6 +4440,9 @@ async function start() {
 document.getElementById("btn-new")!.addEventListener("click", actionNew);
 // 홈 대시보드 개편(오너 2026-08-11): 분할·정렬·닫기 버튼은 상단바에서 제거 — 마스터-온리에서
 // 무의미(워커 pane 부재)·중복(pane 헤더 ×). 기능·단축키(⌘D·⌘⇧D·⌘W)는 그대로 산다.
+// ★2026-08-12: 전 노드 가시화로 판이 여러 칸이 되면서 "판 정돈"(btn-equalize)만 상단바에 되살렸다
+// — 사용자가 분할선을 끌어 흐트러진 배치를 역할 타일로 한 번에 되돌리는 유일한 가시적 경로다.
+// 분할 버튼(btn-split-*)은 되살리지 않는다(단축키·팔레트로 충분 — 상단바 혼잡 방지).
 document.getElementById("btn-split-h")?.addEventListener("click", () => actionSplit("row"));
 document.getElementById("btn-split-v")?.addEventListener("click", () => actionSplit("col"));
 document.getElementById("btn-equalize")?.addEventListener("click", actionEqualize);
@@ -4515,16 +4532,26 @@ function masterDeniedMsg(e: unknown, where: string): string {
 }
 // ★단일 진입점(오너 2026-08-10): ▶CEO·▶부서장 2버튼 폐기 → "▶ EZER 시작" 하나. 현재 탭의
 // 데몬(본부=base / 부서=ws.socket)을 자동 판별해 마스터를 기동한다 — 껐다 켠 뒤에도 이 버튼
-// 하나면 마스터가 다시 선다. 워커·리뷰어는 마스터-온리 UI 정책으로 화면에 나타나지 않는다.
+// 하나면 마스터가 다시 선다.
+// ★편성 전체 기동(오너 2026-08-12): 마스터에 이어 CSO·워커·리뷰어까지 띄워 화면을 타일로 채운다.
+// 순서가 중요하다 — 마스터를 **먼저 세운 뒤** 편성을 던진다(마스터 단일소유 가드가 거절될 때
+// 편성까지 날리지 않게). 편성은 완료를 기다리지 않는다(노드당 지침 주입 대기로 40초+).
 async function ezerStart() {
   const ws = workspaces[activeWs];
   const where = ws?.socket ? `이 부서(${ws.name ?? ws.socket})` : "본부(base)";
   try {
     if (ws?.socket) await invoke("start_dept_master", { socket: ws.socket });
     else await invoke("start_master");
-    toast("feed", "▶ EZER 시작", `${where}에 마스터 노드를 기동했습니다 — 잠시 후 마스터 pane이 나타납니다. 워커·리뷰어는 백그라운드에서 작동합니다(관측: 컨트롤 센터).`);
   } catch (e) {
-    toast("health", "EZER 시작 실패", masterDeniedMsg(e, where));
+    // 마스터가 이미 서 있는 경우(claim_denied)도 여기로 온다 — 그때도 편성은 채워야 하므로
+    // 알리기만 하고 아래 편성 기동으로 계속 진행한다.
+    toast("health", "마스터 기동", masterDeniedMsg(e, where));
+  }
+  try {
+    await invoke("start_fleet", { socket: ws?.socket ?? null });
+    toast("feed", "▶ EZER 시작", `${where}에 조직을 기동했습니다 — 마스터·CSO·워커·리뷰어 pane이 준비되는 대로 하나씩 화면에 채워집니다(최대 1분). 설치되지 않은 CLI의 노드는 건너뜁니다.`);
+  } catch (e) {
+    toast("health", "편성 기동 실패", `마스터는 기동했으나 나머지 노드 기동에 실패했습니다: ${String(e)}`);
   }
 }
 document.getElementById("btn-ezer-start")?.addEventListener("click", () => void ezerStart());
