@@ -1523,6 +1523,20 @@ async function refreshPaneTitles() {
         if (rt.titleEl.isContentEditable) continue; // 이름 편집 중에는 덮어쓰지 않음
         rt.titleEl.textContent = paneTitle(s.title, s.live_cwd) + (s.exited ? " [exited]" : "");
       }
+      // ★유령 pane 청소(2026-08-12 실측): 데몬에서 완전히 사라진(사망→reaped) surface의 pane이
+      // 판에 남는다. 종전 마스터-온리에서는 pane이 1개뿐이라 드러나지 않았지만, 전 노드 가시화에서는
+      // 노드가 죽고 재기동될 때마다 빈 칸이 하나씩 쌓인다(실측: cso 재기동 후 cso pane 2칸 — 데몬
+      // surface는 5개인데 화면은 6칸). surface.exited/closed/reaped 이벤트를 놓친 경우의 그물이다.
+      // r.surfaces = 이 소켓의 권위 목록. 응답을 받은 소켓에 한해서만 판정한다(미응답 소켓은 위
+      // invoke가 throw해 이 블록에 오지 않는다 = 일시 미가동으로 pane을 지우지 않는다).
+      // exited=true 로 아직 남아있는 surface는 목록에 있으므로 지우지 않는다 — 마지막 출력을 읽을 수 있게.
+      const liveIds = new Set(r.surfaces.map((s) => s.surface_id));
+      for (const ws of workspaces) {
+        if (ws.pending || (ws.socket ?? undefined) !== (sk ?? undefined)) continue;
+        for (const sid of collectSids(ws.tree)) {
+          if (!liveIds.has(sid)) removeDeadPane(sid, sk); // collectSids는 스냅샷이라 순회 중 변경 안전
+        }
+      }
       // 자동 입양: 그 소켓의 role surface 중 UI에 없는 것 → '같은 소켓을 가진 ws'에만 표출.
       // ★소켓 일치 가드 — 부서A 노드가 부서B 탭에 잘못 입양되는 격리 누수 차단(검증 mustFix).
       // role 우선순위(master>cso>worker>reviewer) 정렬 — 부서 첫 입양 시 master가 첫 pane(좌측·focus)이 되도록.
