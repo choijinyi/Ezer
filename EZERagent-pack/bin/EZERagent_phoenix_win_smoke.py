@@ -128,9 +128,22 @@ def run_phoenix(pipe, *args, timeout=90):
     return _PH._run_capture(cmd, _phoenix_env({"PHOENIX_EZERAGENT": EZERAGENT_BIN}), timeout)
 
 
-def spawn_test_daemon(pipe):
-    """테스트 전용 파이프에 EZERagentd 직접 기동(EZERAGENT_SOCKET 오버라이드). 반환 Popen(추적·정리용)."""
-    env = _phoenix_env({"EZERAGENT_SOCKET": pipe})
+def spawn_test_daemon(pipe, no_autorestore=False):
+    """테스트 전용 파이프에 EZERagentd 직접 기동(EZERAGENT_SOCKET 오버라이드). 반환 Popen(추적·정리용).
+
+    ★no_autorestore(2026-08-13 실측 · run 31648058104·31650052894): EZERagentd 는 콜드부트마다
+    `phoenix restore --auto` 를 스폰한다. 그 자체는 정상 동작이고 **케이스⑧이 전담 검증**하지만,
+    그것을 시험하지 **않는** 케이스(③ 재시작 프리미티브 · ⑤ 명시 restore)에서는 순수한 간섭이다:
+      · ⑤ — auto-restore 가 restore lease 를 쥐고 있어 명시 호출이 LEASE_HELD 로 skip 된다
+             (제품은 옳게 동작 — 이중 스폰 차단. 스모크가 그 정상 동작을 실패로 읽었다).
+      · ③ — auto-restore 가 자식 프로세스를 늘려 `taskkill /PID <d> /T /F` 가 트리 열거와 실제
+             kill 사이의 경합으로 비0 을 반환한다(자식이 먼저 죽으면 rc≠0 · 의도한 kill 은 성공).
+    각 케이스를 자기가 시험하려는 것만 남기고 격리한다 — 재시도로 덮는 대신 경합을 없앤다.
+    """
+    extra = {"EZERAGENT_SOCKET": pipe}
+    if no_autorestore:
+        extra["EZERAGENT_NO_AUTORESTORE"] = "1"
+    env = _phoenix_env(extra)
     CREATE_NO_WINDOW = 0x08000000 if IS_WIN else 0
     return subprocess.Popen([EZERAGENTD_BIN], env=env, stdin=subprocess.DEVNULL,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -215,7 +228,9 @@ def case3_restart_primitive():
         cr = _PH._schtasks("/Create", "/TN", task, "/TR", bat, "/SC", "ONLOGON", "/RL", "LIMITED", "/F")
         if not check("③ 재기동 태스크 등록(schtasks /Create)", getattr(cr, "returncode", 1) == 0, getattr(cr, "stderr", "")):
             return
-        tracked = spawn_test_daemon(pipe)   # 초기 데몬 직접 기동(안정적) → identify 대상
+        # ③은 재시작 프리미티브(kill→파이프 해제→schtasks /Run 재기동)만 시험한다 — 콜드부트
+        # auto-restore 는 자식 트리를 늘려 taskkill 경합을 만들 뿐이므로 끈다(⑧이 전담 검증).
+        tracked = spawn_test_daemon(pipe, no_autorestore=True)   # 초기 데몬 직접 기동(안정적) → identify 대상
         up = False
         for _ in range(50):
             _cp("③ waiting initial daemon")
@@ -300,7 +315,9 @@ def case5_stub_restore():
     tracked = None
     try:
         shutil.rmtree(sd, ignore_errors=True)
-        tracked = spawn_test_daemon(pipe)
+        # ⑤는 **명시** restore(CLI 경로)를 시험한다 — 데몬의 콜드부트 auto-restore 를 켜두면 그쪽이
+        # lease 를 먼저 쥐어 이 호출이 LEASE_HELD 로 skip 된다. auto-restore 실경로는 ⑧이 전담한다.
+        tracked = spawn_test_daemon(pipe, no_autorestore=True)
         up = False
         for _ in range(50):
             _cp("⑤ waiting daemon")
