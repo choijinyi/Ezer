@@ -117,27 +117,31 @@ jobs:
           set -euo pipefail
           RT="src-tauri/runtime"
           rm -rf "$RT"; mkdir -p "$RT"
+          # ★다운로드 재시도(2026-08-13 실측): 무재시도 `curl -fL`은 배포 CDN이 연결을 한 번 끊는
+          # 것만으로(curl 52 Empty reply from server) 릴리스 빌드 전체를 죽인다. windows-build.yml과
+          # 같은 규약으로 맞춘다 — 일시 장애만 흡수하고 404·죽은 URL은 그대로 실패시킨다.
+          dl() { curl -fL --retry 5 --retry-all-errors --retry-delay 3 --connect-timeout 30 "$@"; }
           echo "== PortableGit 2.55.0 (bash + coreutils + git) =="
-          curl -fL -o pg.7z.exe "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.1/PortableGit-2.55.0-64-bit.7z.exe"
+          dl -o pg.7z.exe "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.1/PortableGit-2.55.0-64-bit.7z.exe"
           7z x pg.7z.exe -o"$RT/git" -y >/dev/null
           rm -rf "$RT/git/mingw64/share/doc" "$RT/git/usr/share/doc" \
                  "$RT/git/mingw64/share/man" "$RT/git/usr/share/man" 2>/dev/null || true
           echo "== Python 3.12.10 embeddable (stdlib + _sqlite3 + ssl) =="
-          curl -fL -o py.zip "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
+          dl -o py.zip "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
           7z x py.zip -o"$RT/python" -y >/dev/null
           cp "$RT/python/python.exe" "$RT/python/python3.exe"
           printf 'python312.zip\n.\nimport site\n' > "$RT/python/python312._pth"
           # ── pip 부트스트랩 (embeddable은 pip 미포함 → 'No module named pip' 방지) ──
-          curl -fL -o "$RT/python/get-pip.py" "https://bootstrap.pypa.io/get-pip.py"
+          dl -o "$RT/python/get-pip.py" "https://bootstrap.pypa.io/get-pip.py"
           "$RT/python/python.exe" "$RT/python/get-pip.py" --no-warn-script-location
           rm -f "$RT/python/get-pip.py"
           # ── uv/uvx 동봉 (serena·nlm-mcp-cli가 uvx 전제 → C20/C43 FAIL 방지). runtime/python은 EZERagentd가 PATH 주입. ──
-          curl -fL -o uv.zip "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-x86_64-pc-windows-msvc.zip"
+          dl -o uv.zip "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-x86_64-pc-windows-msvc.zip"
           7z x uv.zip -o"$RT/python" -y >/dev/null
           ls -la "$RT/python/uv.exe" "$RT/python/uvx.exe"
           # ── node + npm/npx 동봉 (mac 0.7.0 파리티 — 순정 Windows엔 node 부재. runtime/node는 EZERagentd가 PATH 주입) ──
           echo "== Node.js 22.17.1 (npm/npx — win-x64, mac과 동일 핀) =="
-          curl -fL -o node.zip "https://nodejs.org/dist/v22.17.1/node-v22.17.1-win-x64.zip"
+          dl -o node.zip "https://nodejs.org/dist/v22.17.1/node-v22.17.1-win-x64.zip"
           7z x node.zip -o"$RT" -y >/dev/null
           mv "$RT/node-v22.17.1-win-x64" "$RT/node"
           ls -la "$RT/node/node.exe" "$RT/node/npm.cmd"
