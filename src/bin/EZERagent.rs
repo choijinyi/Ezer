@@ -1014,15 +1014,35 @@ fn inject_text(sid: u64, text: &str) -> Result<(), String> {
     // authoritative: 디렉티브·과업 주입은 타이핑 가드를 면제한다 — 막 기동한 에이전트
     // pane에 사람 미완성 입력이 없고, GUI 활성 pane의 사람-입력 잔향이 주입을 영구
     // 차단하던 경로(human is typing 무한)를 끊는다. ACL은 데몬에서 그대로 집행된다.
-    request(
+    //
+    // ★단, 그 면제는 **호출자에 따라 거부된다**(데몬 `authoritative_caller_ok`: master/cso pane
+    //   안 또는 복원 자손만 인정). `▶ EZER 시작`처럼 GUI가 분리 프로세스로 부른 경로는 둘 다
+    //   아니라 거부되고, 그때 타이핑 가드에 막혀 주입이 통째로 실패한다(2026-08-13 실측).
+    //   → 거부/차단 시 **큐 배달로 폴백**한다. 큐는 pane이 조용해질 때 데몬이 Inject(붙여넣기+CR)로
+    //   배달하므로 가드와 경쟁하지 않고, 보안 경계도 손대지 않는다.
+    //   면제가 인정되는 기존 경로(master/cso 발신·복원)는 종전 직접 주입 그대로 — 회귀 0.
+    let direct = request(
         "surface.send_text",
         json!({"surface_id": sid, "text": wrapped, "quiet": true, "authoritative": true}),
-    )?;
-    std::thread::sleep(std::time::Duration::from_millis(800));
-    request(
-        "surface.send_key",
-        json!({"surface_id": sid, "key": "Return", "authoritative": true}),
-    )?;
+    );
+    match direct {
+        Ok(_) => {
+            std::thread::sleep(std::time::Duration::from_millis(800));
+            request(
+                "surface.send_key",
+                json!({"surface_id": sid, "key": "Return", "authoritative": true}),
+            )?;
+        }
+        Err(e) if e.starts_with("typing_guard") => {
+            // 큐 배달은 CR 제출까지 하므로 별도 Return을 넣지 않는다(빈 줄 추가 방지).
+            eprintln!("[inject] 타이핑 가드 — 큐 배달로 전환(pane이 조용해질 때 주입)");
+            request(
+                "surface.send_text",
+                json!({"surface_id": sid, "text": wrapped, "quiet": true, "queued": true}),
+            )?;
+        }
+        Err(e) => return Err(e),
+    }
     Ok(())
 }
 
@@ -4603,7 +4623,18 @@ fn boot_agent_on_surface(
         compose_directive(role)?
     };
 
-    // 1) 에이전트 기동 (authoritative: launch-agent의 모든 시스템 주입은 타이핑 가드 면제)
+    // 1) 에이전트 기동.
+    // ★큐 배달로 전환(2026-08-13 오너 머신 실측 — v0.13.7 편성 실패의 근본):
+    //   종전엔 `authoritative: true` 직접 주입이었는데, 그 면제는 데몬의
+    //   `authoritative_caller_ok` 가 ⓐ호출자가 master/cso **pane 안**이거나 ⓑ복원 자손일 때만
+    //   인정한다. 그런데 `▶ EZER 시작`은 GUI 가 `EZERagent boot` 를 **분리 프로세스**로 띄우므로
+    //   둘 다 아니다 → 면제 거부 → 타이핑 가드 발동 → **방금 만든 surface 를 닫고 기동 실패**.
+    //   사용자가 버튼을 누르고 화면을 보며 조작하는 순간이 정확히 가드 조건(3초 창)이라,
+    //   5노드 편성이 claude 노드부터 통째로 무너졌다(실측: master·cso·worker 0개, 리뷰어 2개만 생존).
+    //   큐 배달은 pane 이 **조용해질 때** 데몬 배달자가 주입하므로 가드와 경쟁하지 않는다.
+    //   보안 경계(authoritative_caller_ok)는 손대지 않는다 — 가드의 방어력은 그대로다.
+    //   ★Return 은 따로 보내지 않는다: 큐 배달은 WriteReq::Inject(붙여넣기+CR 제출)라 제출까지 한다.
+    //   별도 Return 을 큐에 더 넣으면 빈 줄이 하나 더 들어가 TUI 를 흔든다.
     // RC-3(B′): OS-aware 렌더 — unix는 `KEY="val" cmd` 인라인(기존 byte-identical·셸 전개),
     // windows는 순수 cmd(env는 surface.create가 pane env로 주입). send_env는 여기선 미사용
     // (주입은 run_launch_agent_opts의 surface.create에서 이미 수행) — send 문자열만 취한다.
@@ -4612,11 +4643,7 @@ fn boot_agent_on_surface(
     let (send, _send_env) = render_launch(&cmd, &env_pairs);
     request(
         "surface.send_text",
-        json!({"surface_id": sid, "text": send, "quiet": true, "authoritative": true}),
-    )?;
-    request(
-        "surface.send_key",
-        json!({"surface_id": sid, "key": "Return", "authoritative": true}),
+        json!({"surface_id": sid, "text": send, "quiet": true, "queued": true}),
     )?;
     // ★Phase 5 ①a: agent_meta를 기동 직후(readiness 폴링 前)에 등록한다. 등록이 폴링 뒤(step 5)에만
     // 있으면 readiness 미확인·restore 중 stall 시 meta=None으로 남아 → 사망감지 스킵(governance.rs)
@@ -4660,10 +4687,20 @@ fn boot_agent_on_surface(
         }
         if flat.contains("trustthisfolder") || flat.contains("Doyoutrust") {
             eprintln!("[launch-agent] folder-trust prompt detected → confirming");
-            request(
+            // 여기서도 authoritative 면제가 거부될 수 있다(위 inject_text 주석) — 가드에 막히면
+            // 큐 Return 으로 폴백한다. 폴더 신뢰 확인을 못 눌러 기동이 통째로 실패하지 않게.
+            if let Err(e) = request(
                 "surface.send_key",
                 json!({"surface_id": sid, "key": "Return", "authoritative": true}),
-            )?;
+            ) {
+                if !e.starts_with("typing_guard") {
+                    return Err(e);
+                }
+                request(
+                    "surface.send_key",
+                    json!({"surface_id": sid, "key": "Return", "queued": true}),
+                )?;
+            }
             std::thread::sleep(std::time::Duration::from_secs(2));
             continue;
         }
