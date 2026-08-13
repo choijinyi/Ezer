@@ -1461,11 +1461,25 @@ async fn ensure_daemon() -> Result<(), String> {
     command
         .spawn()
         .map_err(|e| format!("failed to start EZERagentd ({}): {e}", program.display()))?;
-    if wait_for_connect(40).await {
+    // ★4s→30s 확대(2026-08-13): 첫 기동의 데몬은 소켓 바인드 **전에** 팩 320여 파일을 fsync하며
+    // 설치한다(EZERagentd main). 느린 디스크에서 그 작업이 4초를 넘기면 앱이 "데몬 미기동"으로
+    // 포기해 첫 실행이 실패했다 — 데몬은 죽은 게 아니라 준비 중이었다. CLI 쪽 대기창
+    // (EZERagent.rs `autostart_wait_secs`)과 같은 기본값·같은 env로 맞춘다.
+    let secs = daemon_wait_secs();
+    if wait_for_connect((secs * 10) as u32).await {
         Ok(())
     } else {
-        Err("EZERagentd did not come up within 4s".into())
+        Err(format!("EZERagentd did not come up within {secs}s"))
     }
+}
+
+/// 자동 기동한 데몬을 기다리는 상한(초) — CLI와 동일 규약: 기본 30 · `EZERAGENT_AUTOSTART_WAIT_SECS` · [4,300].
+fn daemon_wait_secs() -> u64 {
+    std::env::var("EZERAGENT_AUTOSTART_WAIT_SECS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .map(|v| v.clamp(4, 300))
+        .unwrap_or(30)
 }
 
 /// Background: 한 데몬의 push 이벤트 스트림을 구독해 webview로 전달.

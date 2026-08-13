@@ -582,6 +582,7 @@ EZERagent cost-baseline lock / diff   # 비용·효율 baseline 잠금·전후 �
 | `EZERAGENT_CONTROL_REDACT` | 0 | Control Center 세션 PII 가림 |
 | `EZERAGENT_TODO_DIRS` | — | todo 감시 추가 루트(콜론 구분) |
 | `EZERAGENT_NO_AUTOSTART` / `EZERAGENT_NO_AUTORESTORE` | — | 자동 기동/자동 복원 끄기 |
+| `EZERAGENT_AUTOSTART_WAIT_SECS` | 30 | 자동 기동한 데몬을 기다리는 상한(초 · 4~300). 첫 기동은 팩 설치로 오래 걸릴 수 있다 |
 | `EZERAGENT_APPROVAL_SECRET_B64` | 자동 생성 | 승인 서명 시크릿 오버라이드 |
 | `EZERAGENT_CHANNEL_RETAIN_DAYS` / `EZERAGENT_CHANNEL_OUTBOUND_TIMEOUT_SECS` | 7 / 30 | 채널 보존·발신 타임아웃 |
 | `EZERAGENT_CLAUDE_CTX_WINDOW` | 200k (`[1m]`=1M) | 컨텍스트 창 크기 힌트 |

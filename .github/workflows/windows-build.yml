@@ -43,31 +43,36 @@ jobs:
           set -euo pipefail
           RT="src-tauri/runtime"
           rm -rf "$RT"; mkdir -p "$RT"
+          # ★다운로드 재시도(2026-08-13 실측): 종전 `curl -fL`은 무재시도라 배포 CDN이 연결을 한 번만
+          # 끊어도(curl 52 Empty reply from server) 빌드 전체가 죽었다 — run 31621150939에서 PortableGit
+          # 내려받기가 2연속 그렇게 실패해 PTY 스모크까지 가보지도 못했다. 5회 재시도로 일시 장애를
+          # 흡수한다(진짜 죽은 URL·404는 그대로 실패 — 게이트는 무르게 하지 않는다).
+          dl() { curl -fL --retry 5 --retry-all-errors --retry-delay 3 --connect-timeout 30 "$@"; }
           echo "== PortableGit 2.55.0 (bash + coreutils + git) =="
-          curl -fL -o pg.7z.exe "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.1/PortableGit-2.55.0-64-bit.7z.exe"
+          dl -o pg.7z.exe "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.1/PortableGit-2.55.0-64-bit.7z.exe"
           7z x pg.7z.exe -o"$RT/git" -y >/dev/null
           # 안전한 경량화: 문서·매뉴얼만 제거(런타임 기능 무관).
           rm -rf "$RT/git/mingw64/share/doc" "$RT/git/usr/share/doc" \
                  "$RT/git/mingw64/share/man" "$RT/git/usr/share/man" 2>/dev/null || true
           echo "== Python 3.12.10 embeddable (stdlib + _sqlite3 + ssl) =="
-          curl -fL -o py.zip "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
+          dl -o py.zip "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
           7z x py.zip -o"$RT/python" -y >/dev/null
           cp "$RT/python/python.exe" "$RT/python/python3.exe"
           # embeddable ._pth: 스크립트 dir(.) + site 활성화(형제 import·표준 경로 계산 존중).
           printf 'python312.zip\n.\nimport site\n' > "$RT/python/python312._pth"
           # ── pip 부트스트랩 (embeddable은 pip 미포함 → 'No module named pip' 방지) ──
           echo "== get-pip (embeddable python pip 부트스트랩) =="
-          curl -fL -o "$RT/python/get-pip.py" "https://bootstrap.pypa.io/get-pip.py"
+          dl -o "$RT/python/get-pip.py" "https://bootstrap.pypa.io/get-pip.py"
           "$RT/python/python.exe" "$RT/python/get-pip.py" --no-warn-script-location
           rm -f "$RT/python/get-pip.py"
           # ── uv/uvx 동봉 (serena·nlm-mcp-cli가 uvx 전제 → C20/C43 FAIL 방지). runtime/python은 EZERagentd가 PATH 주입. ──
           echo "== uv 0.11.26 (x86_64-pc-windows-msvc) 동봉 =="
-          curl -fL -o uv.zip "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-x86_64-pc-windows-msvc.zip"
+          dl -o uv.zip "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-x86_64-pc-windows-msvc.zip"
           7z x uv.zip -o"$RT/python" -y >/dev/null
           ls -la "$RT/python/uv.exe" "$RT/python/uvx.exe"
           # ── node + npm/npx 동봉 (mac 0.7.0 파리티 — 순정 Windows엔 node 부재. runtime/node는 EZERagentd가 PATH 주입) ──
           echo "== Node.js 22.17.1 (npm/npx — win-x64, mac과 동일 핀) =="
-          curl -fL -o node.zip "https://nodejs.org/dist/v22.17.1/node-v22.17.1-win-x64.zip"
+          dl -o node.zip "https://nodejs.org/dist/v22.17.1/node-v22.17.1-win-x64.zip"
           7z x node.zip -o"$RT" -y >/dev/null
           mv "$RT/node-v22.17.1-win-x64" "$RT/node"
           ls -la "$RT/node/node.exe" "$RT/node/npm.cmd"
@@ -137,19 +142,33 @@ jobs:
           if (-not $inst) { throw "설치된 EZERagentd.exe 미발견" }
           $dir = $inst.Directory.FullName
           $EZERagent = Join-Path $dir 'EZERagent.exe'
-          # list가 형제 EZERagentd를 자동 기동(4초 대기 내장) — ping은 순수 프로브라 autostart가
-          # 의도적으로 꺼져 있어(EZERagent.rs) 부트스트랩에 못 쓴다. 첫 시도 실패 시 1회 재시도.
-          # ★재시도 5회로 확대(2026-08-10): autostart 내장 대기가 4초 고정인데 러너 부하가 높으면
-          #   그 안에 named pipe 가 안 열린다. 4회 중 2회 실패한 간헐 결함이었고 제품 결함이 아니다
-          #   (같은 커밋 재실행이 통과). 데몬이 실제로 죽는 회귀는 5회 전부 실패로 여전히 잡힌다.
+          # list가 형제 EZERagentd를 자동 기동(대기 내장) — ping은 순수 프로브라 autostart가
+          # 의도적으로 꺼져 있어(EZERagent.rs) 부트스트랩에 못 쓴다.
+          # ★재시도 구조 수정(2026-08-13 실측): 종전 "5회 재시도"는 **기다리는 게 아니라 데몬을
+          #   하나 더 띄웠다.** `EZERagent list`는 연결 실패 시 형제 EZERagentd를 autostart 하므로
+          #   대기창을 놓칠 때마다 데몬이 하나씩 늘어 같은 디스크를 함께 두들겼다 — run 31614671192의
+          #   잡 종료 로그에 orphan EZERagentd **5개 생존·바인드 0**이 찍혔다. 첫 기동의 데몬은 소켓
+          #   바인드 **전에** 팩 320여 파일을 fsync하며 설치하므로(EZERagentd main) 종전 4초 창으로는
+          #   느린 러너에서 애초에 모자랐다. → 대기창을 넉넉히 주고 스폰 횟수를 2회로 줄인다.
+          #   데몬이 실제로 죽는 회귀는 2회 전부 실패로 여전히 잡힌다(게이트 무력화 아님).
+          $env:EZERAGENT_AUTOSTART_WAIT_SECS = '90'
           $up = $false
-          for ($i = 1; $i -le 5; $i++) {
+          for ($i = 1; $i -le 2; $i++) {
             & $EZERagent list
             if ($LASTEXITCODE -eq 0) { $up = $true; Write-Host "EZERagentd 기동 확인 (시도 $i)"; break }
-            Write-Host "EZERagentd 미응답 — 재시도 $i/5"
-            Start-Sleep -Seconds 5
+            Write-Host "EZERagentd 미응답 — 재시도 $i/2"
           }
-          if (-not $up) { throw "EZERagentd 기동 실패 (named pipe 미응답 · 5회 재시도)" }
+          if (-not $up) {
+            # 진단(2026-08-13 추가): "데몬이 죽었다"와 "준비 중이라 아직 안 열렸다"를 구분한다.
+            # 프로세스 생존 + 파이프 부재 = 바인드 전 단계에서 지연 중 → 대기창을 늘릴 문제다.
+            Write-Host "== 진단: EZERagentd 프로세스 =="
+            Get-Process EZERagentd -ErrorAction SilentlyContinue |
+              Format-Table Id, StartTime -AutoSize | Out-String | Write-Host
+            Write-Host "== 진단: named pipe =="
+            Get-ChildItem -Path '\\.\pipe\' -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -match 'EZERagent' } | Out-String | Write-Host
+            throw "EZERagentd 기동 실패 (named pipe 미응답 · 스폰 2회 · 대기창 90s)"
+          }
           $ref = (& $EZERagent new-surface --title pty-smoke | Select-Object -Last 1).Trim()
           if (-not $ref) { throw "new-surface 실패" }
           Write-Host "surface: $ref"
