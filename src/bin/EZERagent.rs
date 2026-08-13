@@ -3837,6 +3837,97 @@ fn npm_global_bin_dir() -> Option<std::path::PathBuf> {
     }
 }
 
+/// prefix 안에서 패키지가 풀리는 디렉토리(npm 규약: Windows=prefix/node_modules, unix=prefix/lib/node_modules).
+fn npm_global_pkg_dir(pkg: &str) -> Option<std::path::PathBuf> {
+    let p = npm_global_prefix()?;
+    #[cfg(windows)]
+    let root = p.join("node_modules");
+    #[cfg(not(windows))]
+    let root = p.join("lib").join("node_modules");
+    // 스코프 패키지(@scope/name)는 세그먼트로 이어붙인다 — 통째로 join 하면 구분자가 섞인다.
+    Some(pkg.split('/').fold(root, |acc, seg| acc.join(seg)))
+}
+
+/// package.json 의 `bin` 이 가리키는 상대경로들 — 순수부(테스트 가능하게 파일시스템에서 분리).
+/// npm 은 두 형태를 허용한다: 문자열(`"./cli.js"`) · 객체(`{"claude":"bin/claude.exe"}`).
+fn npm_bin_targets(v: &Value) -> Vec<String> {
+    match v.get("bin") {
+        Some(Value::String(s)) => vec![s.clone()],
+        Some(Value::Object(m)) => m.values().filter_map(|x| x.as_str().map(String::from)).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// npm 전역 패키지의 **bin 대상 파일이 실제로 있는가** — 깨진 심(shim) 감지.
+/// Some(true)=깨짐 · Some(false)=정상 · None=판정 불가(이 prefix에 npm으로 깔린 패키지가 아님).
+///
+/// ★왜 필요한가 (2026-08-13 오너 머신 실측 · 하루 3회 재현): Claude Code 는 Windows 에서 자기
+/// 업데이트 시 실행 중인 exe 를 덮어쓸 수 없어 `claude.exe` → `claude.exe.old.<ts>` 로 밀어낸 뒤
+/// 새 파일을 놓는데, 그 사이(또는 실패 시) **대상이 사라진다.** 심(claude.cmd/.ps1)은 그대로라
+/// PATH 탐색만 하는 `cli_installed` 는 "설치됨"으로 오판하고, 자동설치가 복구를 건너뛴다.
+/// 실제로 09:46:15 에 밀려난 직후 09:46:17 에 뜬 노드가 CommandNotFoundException 으로 죽었다.
+///
+/// 검사는 **stat 뿐**이다(실행하지 않는다) — 부트 경로에 들어가므로 비용이 0에 가까워야 한다.
+fn npm_pkg_bin_broken(pkg: &str) -> Option<bool> {
+    let dir = npm_global_pkg_dir(pkg)?;
+    let raw = std::fs::read_to_string(dir.join("package.json")).ok()?;
+    let v: Value = serde_json::from_str(&raw).ok()?;
+    let targets = npm_bin_targets(&v);
+    if targets.is_empty() {
+        return None; // bin 선언이 없으면 판정 대상이 아니다
+    }
+    Some(targets.iter().any(|t| {
+        !t.split('/')
+            .fold(dir.clone(), |acc, seg| {
+                if seg == "." { acc } else { acc.join(seg) }
+            })
+            .exists()
+    }))
+}
+
+/// 깨진 npm 전역 패키지 복구 — 패키지의 `scripts.postinstall` 을 **다시 실행**한다.
+///
+/// ★npm 명령으로는 못 고친다(2026-08-13 오너 머신 실측 · 3종 전부 실패):
+///   · `npm install -g <pkg>`        → `changed 2 packages in 2s` (재설치 안 함)
+///   · `npm rebuild -g <pkg>`        → `rebuilt dependencies successfully` 라 말하고 **아무것도 안 함**
+///   · `npm install -g --force <pkg>`→ 위와 동일
+/// 이유: 사라진 `bin/claude.exe` 는 **패키지에 담겨 배포되는 파일이 아니라 postinstall 산출물**이라
+/// (install.cjs 가 optionalDependency 의 네이티브 바이너리를 복사한다) npm 이 훼손으로 인지하지
+/// 못한다. 그래서 postinstall 을 직접 돌린다 — 네트워크 불요·수 초·uninstall 위험 0.
+/// ★셋 다 exit 0 + "성공" 문구를 냈다는 점이 중요하다: **복구 성공 판정은 종료코드가 아니라
+/// bin 대상 재확인(stat)으로만 한다.**
+fn repair_npm_pkg(pkg: &str, path_override: Option<&str>) -> bool {
+    let Some(dir) = npm_global_pkg_dir(pkg) else {
+        return false;
+    };
+    let Ok(raw) = std::fs::read_to_string(dir.join("package.json")) else {
+        return false;
+    };
+    let script = serde_json::from_str::<Value>(&raw)
+        .ok()
+        .and_then(|v| {
+            v.get("scripts")
+                .and_then(|s| s.get("postinstall"))
+                .and_then(|s| s.as_str())
+                .map(String::from)
+        });
+    let Some(script) = script else {
+        return false; // postinstall 이 없는 패키지는 이 경로로 복구할 수 없다
+    };
+    #[cfg(windows)]
+    let (sh, flag) = ("cmd", "/C");
+    #[cfg(not(windows))]
+    let (sh, flag) = ("sh", "-c");
+    let mut cmd = std::process::Command::new(sh);
+    cmd.arg(flag).arg(&script).current_dir(&dir);
+    if let Some(p) = path_override {
+        cmd.env("PATH", p); // postinstall 은 node 를 재호출한다 — 동봉 런타임을 선두에
+    }
+    hide_console(&mut cmd);
+    let _ = cmd.status(); // 종료코드는 믿지 않는다(위 주석) — 아래 실측만이 판정이다
+    npm_pkg_bin_broken(pkg) == Some(false)
+}
+
 /// CLI 실재 판정 — ①PATH(where/which) ②npm prefix bin 디렉토리 직접 확인.
 /// ②가 필요한 이유: 방금 설치한 prefix가 이 프로세스의 PATH 스냅샷에 없어 where/which가 못 찾는다
 /// (Windows는 WM_SETTINGCHANGE 미수신 — `runtime_prefixed_path` 주석의 stale PATH와 동종 문제).
@@ -3999,9 +4090,23 @@ fn run_install_clis(only: Option<&str>, force: bool) -> i32 {
     let (mut installed, mut skipped, mut failed) = (0, 0, 0);
     for &(key, pkg, bin) in selected {
         if !force && cli_installed(bin) {
-            println!("· {key}: 이미 설치됨 — 건너뜀");
-            skipped += 1;
-            continue;
+            // ★깨진 심 복구(2026-08-13): PATH 에 심이 있어도 그것이 가리키는 bin 대상이 사라졌을 수
+            // 있다(자기 업데이트가 실행 중 exe 를 밀어내고 새 파일을 못 놓는 경로 — npm_pkg_bin_broken
+            // 주석 참조). 종전엔 여기서 "이미 설치됨"으로 넘겨 자동설치가 고칠 기회를 놓쳤다.
+            if npm_pkg_bin_broken(pkg) == Some(true) {
+                println!("· {key}: 심은 있으나 실행 대상 없음 — postinstall 재실행으로 복구 시도");
+                if repair_npm_pkg(pkg, path_override.as_deref()) {
+                    println!("· {key}: 복구 완료(실행 대상 재확인됨)");
+                    installed += 1;
+                    continue;
+                }
+                println!("· {key}: postinstall 복구 실패 — 재설치로 넘어간다");
+                // 아래 일반 설치 경로로 폴백(패키지 자체가 손상된 경우)
+            } else {
+                println!("· {key}: 이미 설치됨 — 건너뜀");
+                skipped += 1;
+                continue;
+            }
         }
         println!("· {key}: {pkg} 설치 중… (네트워크 필요 · 수 분 소요 가능)");
         let mut cmd = std::process::Command::new(&prog);
@@ -4048,16 +4153,18 @@ fn ensure_agent_clis() {
     if EZERagent::env_compat("EZERAGENT_NO_CLI_AUTOINSTALL").as_deref() == Some("1") {
         return;
     }
+    // 미설치뿐 아니라 **깨진 설치**(심은 있는데 실행 대상 없음)도 대상에 넣는다 —
+    // 그래야 자기 업데이트가 남긴 반쪽 상태를 부트가 스스로 복구한다(npm_pkg_bin_broken 주석).
     let missing: Vec<&str> = AGENT_CLIS
         .iter()
-        .filter(|c| !cli_installed(c.2))
+        .filter(|c| !cli_installed(c.2) || npm_pkg_bin_broken(c.1) == Some(true))
         .map(|c| c.0)
         .collect();
     if missing.is_empty() {
         return;
     }
     println!(
-        "· 미설치 CLI 감지: {} — 자동 설치를 먼저 수행한다 (끄려면 EZERAGENT_NO_CLI_AUTOINSTALL=1)",
+        "· 미설치·손상 CLI 감지: {} — 자동 설치·복구를 먼저 수행한다 (끄려면 EZERAGENT_NO_CLI_AUTOINSTALL=1)",
         missing.join(", ")
     );
     run_install_clis(Some(&missing.join(",")), false);
@@ -8521,6 +8628,37 @@ mod tests {
         );
         // 미지의 이름만 주면 빈 선택(호출부가 exit 2로 거절) — 조용한 전체 설치로 확대되지 않는다.
         assert!(select_clis(Some("nope")).is_empty());
+    }
+
+    #[test]
+    fn npm_bin_targets_parses_both_declared_shapes() {
+        // 객체형 — @anthropic-ai/claude-code 의 실제 모양. 이 대상이 사라진 것이 2026-08-13 사고다.
+        let obj = json!({"bin": {"claude": "bin/claude.exe"}});
+        assert_eq!(npm_bin_targets(&obj), vec!["bin/claude.exe".to_string()]);
+        // 문자열형 — 단일 bin 패키지의 축약 표기.
+        let s = json!({"bin": "./cli.js"});
+        assert_eq!(npm_bin_targets(&s), vec!["./cli.js".to_string()]);
+        // 다중 bin — 하나라도 없으면 깨진 것으로 봐야 하므로 전부 수집한다.
+        let multi = json!({"bin": {"a": "bin/a", "b": "bin/b"}});
+        let mut got = npm_bin_targets(&multi);
+        got.sort();
+        assert_eq!(got, vec!["bin/a".to_string(), "bin/b".to_string()]);
+        // bin 선언 없음 / 형태 불명 = 판정 대상 아님(빈 벡터 → 호출부가 None 으로 접는다).
+        assert!(npm_bin_targets(&json!({"name": "x"})).is_empty());
+        assert!(npm_bin_targets(&json!({"bin": 42})).is_empty());
+    }
+
+    #[test]
+    fn npm_global_pkg_dir_handles_scoped_packages() {
+        // 스코프 패키지는 @scope 와 name 이 **별도 디렉토리**다 — 통째로 join 하면 구분자가 섞인다.
+        let Some(d) = npm_global_pkg_dir("@anthropic-ai/claude-code") else {
+            return; // APPDATA/home 부재 환경(컨테이너)에서는 검증 생략
+        };
+        assert!(d.ends_with(std::path::Path::new("@anthropic-ai").join("claude-code")));
+        let Some(plain) = npm_global_pkg_dir("codex") else {
+            return;
+        };
+        assert!(plain.ends_with("codex"));
     }
 
     #[test]
