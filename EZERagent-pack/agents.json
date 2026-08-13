@@ -24,10 +24,10 @@
   },
   "gemini": {
     "cmd": "~/.local/bin/agy --dangerously-skip-permissions",
-    "cmd_fallbacks": ["gemini --yolo"],
+    "cmd_fallbacks": ["~/AppData/Local/agy/bin/agy.exe --dangerously-skip-permissions", "agy --dangerously-skip-permissions", "gemini --yolo"],
     "inject_delay_secs": 12,
     "ready_marker": "? for shortcuts",
-    "notes": "Antigravity CLI(agy) — 구 Gemini CLI가 2026-06-18 소비자 티어(무료·AI Pro·Ultra) 중단되어 이주(오너 Google AI Ultra 연동 실측 2026-06-13). 키 이름 'gemini' 유지: 역할(reviewer-gemini)·orchestra check·boot PLAN 계약 무변. 로그인은 사람 단계(Google OAuth — 첫 기동 시 화면 안내). 절대경로인 이유: 설치 스크립트가 ~/.profile에만 PATH를 넣어 zsh 비로그인 셸에서 'agy'가 안 잡힌다.",
+    "notes": "Antigravity CLI(agy) — 구 Gemini CLI가 2026-06-18 소비자 티어(무료·AI Pro·Ultra) 중단되어 이주(오너 Google AI Ultra 연동 실측 2026-06-13). 키 이름 'gemini' 유지: 역할(reviewer-gemini)·orchestra check·boot PLAN 계약 무변. 로그인은 사람 단계(Google OAuth — 첫 기동 시 화면 안내). 절대경로인 이유: 설치 스크립트가 ~/.profile에만 PATH를 넣어 zsh 비로그인 셸에서 'agy'가 안 잡힌다. ★Windows 경로 추가(2026-08-13 오너 머신 실측): agy 는 Windows 에서 %LOCALAPPDATA%\\agy\\bin\\agy.exe 에 깔리는데 cmd 의 유닉스 경로(~/.local/bin/agy)만 있어 fallback 이 **폐기된 구 gemini CLI**로 떨어졌고, 그게 'This client is no longer supported … migrate to Antigravity' 인증 실패로 리뷰어 노드를 죽였다. 순서가 계약이다 — Windows 절대경로 → PATH 의 agy → 최후에만 구 gemini(설치기 미도달 환경의 잔여 호환).",
     "clear_cmd": "/clear",
     "resume_arg": "--continue",
     "capabilities": [
