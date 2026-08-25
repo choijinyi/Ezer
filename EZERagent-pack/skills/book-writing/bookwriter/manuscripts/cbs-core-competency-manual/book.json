@@ -1,0 +1,57 @@
+{
+  "title": "AI 뉴스 콘텐츠 자동화 실무 매뉴얼",
+  "subtitle": "CBS M&C 핵심역량교육 80시간(7회) 과정 교재 · AI 기반 뉴스 콘텐츠 제작·기사 생성 자동화 실무",
+  "authors": [],
+  "lang": "ko",
+  "template": "typst-classic",
+  "outputs": [
+    "pdf"
+  ],
+  "chapters": [
+    {
+      "file": "00-preface.md",
+      "role": "frontmatter",
+      "title": "머리말"
+    },
+    {
+      "file": "01-chapter.md",
+      "role": "body",
+      "title": "1회차 · AI 기술 심화와 프롬프트 엔지니어링"
+    },
+    {
+      "file": "02-chapter.md",
+      "role": "body",
+      "title": "2회차 · 음성 AI와 STT 기술 실무"
+    },
+    {
+      "file": "03-chapter.md",
+      "role": "body",
+      "title": "3회차 · 영상 분석 AI와 멀티모달 처리"
+    },
+    {
+      "file": "04-chapter.md",
+      "role": "body",
+      "title": "4회차 · 데이터 분석과 검색·추천 기술"
+    },
+    {
+      "file": "05-chapter.md",
+      "role": "body",
+      "title": "5회차 · AI 기반 영상 제작과 기사 생성 자동화"
+    },
+    {
+      "file": "06-chapter.md",
+      "role": "body",
+      "title": "6회차 · PBL 프로젝트 — CBS 업무 과제 해결"
+    },
+    {
+      "file": "07-chapter.md",
+      "role": "body",
+      "title": "7회차 · CBL 도전 과제 — AI 업무 효율화 설계"
+    },
+    {
+      "file": "99-references.md",
+      "role": "backmatter",
+      "title": "부록·참고자료"
+    }
+  ]
+}

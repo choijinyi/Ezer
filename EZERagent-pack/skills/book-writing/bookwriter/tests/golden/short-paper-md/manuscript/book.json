@@ -1,0 +1,15 @@
+{
+  "title": "작은 논문 한 편",
+  "authors": ["익명"],
+  "lang": "ko",
+  "template": "typst-classic",
+  "outputs": ["pdf"],
+  "chapters": [
+    { "file": "00-abstract.md",     "role": "frontmatter", "title": "초록" },
+    { "file": "01-introduction.md", "title": "서론" },
+    { "file": "02-methods.md",      "title": "방법" },
+    { "file": "03-results.md",      "title": "결과" },
+    { "file": "04-conclusion.md",   "title": "결론" },
+    { "file": "99-references.md",   "role": "backmatter",  "title": "참고문헌" }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "title": "스포츠 문화로서 축구 선교 활동이 교회에 미치는 영향에 관한 연구",
+  "subtitle": "용인 서부교회 축구 선교 활동을 중심으로",
+  "authors": [
+    "김태진"
+  ],
+  "lang": "ko",
+  "template": "typst-classic",
+  "outputs": [
+    "pdf"
+  ],
+  "chapters": [
+    {
+      "file": "00-abstract.md",
+      "role": "frontmatter",
+      "title": "국문 초록"
+    },
+    {
+      "file": "01-introduction.md",
+      "role": "body",
+      "title": "제1장 서론"
+    },
+    {
+      "file": "02-literature.md",
+      "role": "body",
+      "title": "제2장 이론적 배경"
+    },
+    {
+      "file": "03-method.md",
+      "role": "body",
+      "title": "제3장 연구 계획 및 방법"
+    },
+    {
+      "file": "04-results.md",
+      "role": "body",
+      "title": "제4장 연구결과 및 분석"
+    },
+    {
+      "file": "05-conclusion.md",
+      "role": "body",
+      "title": "제5장 결론"
+    },
+    {
+      "file": "98-appendix.md",
+      "role": "backmatter",
+      "title": "부록"
+    },
+    {
+      "file": "99-references.md",
+      "role": "backmatter",
+      "title": "참고문헌"
+    }
+  ]
+}

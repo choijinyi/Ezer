@@ -1,0 +1,25 @@
+{
+  "title": "OC 전문점 디자이너 시술 교육 교재",
+  "subtitle": "올리베타 에너지 OC · 21종 시술 상세 프로토콜",
+  "authors": ["하베스 뷰티그룹 · 올리베타 OC 전문점 네트워크"],
+  "lang": "ko",
+  "template": "book.json.template",
+  "chapters": [
+    { "file": "00-guide.md",   "title": "교재 사용 설명서", "role": "frontmatter" },
+    { "file": "01-chapter.md", "title": "OC 시스템의 이해" },
+    { "file": "02-chapter.md", "title": "두피·모발 기초 이론" },
+    { "file": "03-chapter.md", "title": "상담·진단·고객 차트" },
+    { "file": "04-chapter.md", "title": "위생·안전·표현 규정" },
+    { "file": "05-chapter.md", "title": "OC 커트" },
+    { "file": "06-chapter.md", "title": "두피 케어 프로그램" },
+    { "file": "07-chapter.md", "title": "모발 케어 프로그램" },
+    { "file": "08-chapter.md", "title": "컬러 시술" },
+    { "file": "09-chapter.md", "title": "펌 시술" },
+    { "file": "10-chapter.md", "title": "매직 시술" },
+    { "file": "11-chapter.md", "title": "대상별 케어 라인" },
+    { "file": "12-chapter.md", "title": "프리미엄 토탈 케어" },
+    { "file": "13-chapter.md", "title": "고객 안내·홈케어·재방문 설계" },
+    { "file": "14-chapter.md", "title": "검수·평가·트레이닝 로드맵" },
+    { "file": "98-appendix.md", "title": "부록", "role": "backmatter" }
+  ]
+}

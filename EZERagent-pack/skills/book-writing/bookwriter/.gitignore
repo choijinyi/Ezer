@@ -1,0 +1,29 @@
+# bookwriter
+build/
+dist/
+!build/.gitkeep
+!dist/.gitkeep
+
+# manuscripts: by default user-tracked, but ignore one-off scratch
+manuscripts/_scratch/
+
+# node
+node_modules/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+*.swp

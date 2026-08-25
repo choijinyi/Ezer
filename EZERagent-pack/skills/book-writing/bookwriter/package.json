@@ -1,0 +1,24 @@
+{
+  "name": "bookwriter",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "deps": "node scripts/check-deps.ts",
+    "new": "node scripts/pipeline/new.ts",
+    "run-pipeline": "node scripts/pipeline/run.ts",
+    "status": "node scripts/pipeline/status.ts",
+    "test:golden": "node scripts/run-golden.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.93.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0"
+  }
+}

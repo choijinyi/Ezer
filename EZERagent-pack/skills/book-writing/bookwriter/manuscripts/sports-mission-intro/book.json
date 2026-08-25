@@ -1,0 +1,113 @@
+{
+  "title": "스포츠선교학개론",
+  "subtitle": "문화로서의 스포츠 선교, 그리고 축구선교학",
+  "authors": [
+    "김태진"
+  ],
+  "lang": "ko",
+  "template": "typst-classic",
+  "outputs": [
+    "pdf"
+  ],
+  "chapters": [
+    {
+      "file": "00-preface.md",
+      "title": "여는 글 — 왜 지금 스포츠선교학인가",
+      "role": "frontmatter"
+    },
+    {
+      "file": "01-culture.md",
+      "title": "문화란 무엇인가",
+      "role": "body",
+      "part": "제1부 · 총론: 문화로서의 스포츠 선교학"
+    },
+    {
+      "file": "02-sport.md",
+      "title": "스포츠란 무엇인가",
+      "role": "body",
+      "part": "제1부 · 총론: 문화로서의 스포츠 선교학"
+    },
+    {
+      "file": "03-mission.md",
+      "title": "선교란 무엇인가",
+      "role": "body",
+      "part": "제1부 · 총론: 문화로서의 스포츠 선교학"
+    },
+    {
+      "file": "04-theology.md",
+      "title": "신학이란 무엇인가",
+      "role": "body",
+      "part": "제1부 · 총론: 문화로서의 스포츠 선교학"
+    },
+    {
+      "file": "05-sportsmissiology.md",
+      "title": "스포츠선교학이란 무엇인가",
+      "role": "body",
+      "part": "제1부 · 총론: 문화로서의 스포츠 선교학"
+    },
+    {
+      "file": "06-bible-body.md",
+      "title": "성경 속의 몸과 경기",
+      "role": "body",
+      "part": "제2부 · 신학적·성경적 기초"
+    },
+    {
+      "file": "07-incarnation.md",
+      "title": "성육신과 선교적 교회",
+      "role": "body",
+      "part": "제2부 · 신학적·성경적 기초"
+    },
+    {
+      "file": "08-ethics.md",
+      "title": "스포츠선교의 정당성과 윤리",
+      "role": "body",
+      "part": "제2부 · 신학적·성경적 기초"
+    },
+    {
+      "file": "09-soccer.md",
+      "title": "축구란 무엇인가 — 세상이 사랑하는 게임",
+      "role": "body",
+      "part": "제3부 · 각론: 축구선교학"
+    },
+    {
+      "file": "10-soccermissiology.md",
+      "title": "축구선교학이란 무엇인가",
+      "role": "body",
+      "part": "제3부 · 각론: 축구선교학"
+    },
+    {
+      "file": "11-identity.md",
+      "title": "축구인·선교인·축구선교인",
+      "role": "body",
+      "part": "제3부 · 각론: 축구선교학"
+    },
+    {
+      "file": "12-field.md",
+      "title": "축구선교의 현장 — 사례와 간증",
+      "role": "body",
+      "part": "제3부 · 각론: 축구선교학"
+    },
+    {
+      "file": "13-method.md",
+      "title": "스포츠선교의 방법론과 사역 모델",
+      "role": "body",
+      "part": "제4부 · 실천과 미래"
+    },
+    {
+      "file": "14-future.md",
+      "title": "다음 세대와 스포츠선교의 미래",
+      "role": "body",
+      "part": "제4부 · 실천과 미래"
+    },
+    {
+      "file": "98-glossary.md",
+      "title": "용어 정리",
+      "role": "backmatter"
+    },
+    {
+      "file": "99-references.md",
+      "title": "참고문헌",
+      "role": "backmatter"
+    }
+  ]
+}

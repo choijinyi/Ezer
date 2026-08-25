@@ -1,0 +1,92 @@
+{
+  "title": "testbook",
+  "subtitle": "",
+  "authors": [],
+  "lang": "ko",
+  "template": "typst-classic",
+  "outputs": [
+    "pdf"
+  ],
+  "chapters": [
+    {
+      "file": "00-preface.md",
+      "role": "frontmatter",
+      "title": "머리말"
+    },
+    {
+      "file": "01-chapter.md",
+      "role": "body",
+      "title": "1장"
+    },
+    {
+      "file": "02-chapter.md",
+      "role": "body",
+      "title": "2장"
+    },
+    {
+      "file": "03-chapter.md",
+      "role": "body",
+      "title": "3장"
+    },
+    {
+      "file": "04-chapter.md",
+      "role": "body",
+      "title": "4장"
+    },
+    {
+      "file": "05-chapter.md",
+      "role": "body",
+      "title": "5장"
+    },
+    {
+      "file": "06-chapter.md",
+      "role": "body",
+      "title": "6장"
+    },
+    {
+      "file": "07-chapter.md",
+      "role": "body",
+      "title": "7장"
+    },
+    {
+      "file": "08-chapter.md",
+      "role": "body",
+      "title": "8장"
+    },
+    {
+      "file": "09-chapter.md",
+      "role": "body",
+      "title": "9장"
+    },
+    {
+      "file": "10-chapter.md",
+      "role": "body",
+      "title": "10장"
+    },
+    {
+      "file": "11-chapter.md",
+      "role": "body",
+      "title": "11장"
+    },
+    {
+      "file": "12-chapter.md",
+      "role": "body",
+      "title": "12장"
+    },
+    {
+      "file": "13-chapter.md",
+      "role": "body",
+      "title": "13장"
+    },
+    {
+      "file": "14-chapter.md",
+      "role": "body",
+      "title": "14장"
+    },
+    {
+      "file": "99-references.md",
+      "role": "backmatter",
+      "title": "참고문헌"
+    }
+  ]
+}

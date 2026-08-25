@@ -1,0 +1,391 @@
+# 3회차 · 영상 분석 AI와 멀티모달 처리
+
+| 회차 | 시간 | 구성 | 선수 지식 |
+|---|---|---|---|
+| 3 / 7 | 12H | 핵심 개념 · 멀티모달 분석 · 실습 3종 | 1회차(LLM API·구조화 출력) · 2회차(STT·WhisperX 자막) |
+
+## 학습 목표
+
+이 회차를 마치면 다음을 할 수 있다.
+
+- 한 모델이 텍스트·이미지·오디오·영상을 함께 이해하는 멀티모달의 원리(공통 표현 공간)와 한계를 자기 말로 설명할 수 있다.
+- Gemini API의 File API로 영상을 업로드하고, 프롬프트로 장면 요약·태깅·타임코드 추출을 시킬 수 있다.
+- 1회차에서 익힌 구조화 출력(JSON)으로 **장면별 메타데이터**를 받아 후속 코드에 흘려보낼 수 있다.
+- 영상에서 하이라이트·숏폼 컷 후보를 시간 구간과 함께 구조화해 뽑아낼 수 있다.
+- 2회차 STT 자막(말한 내용)과 영상 태깅(보인 내용)을 하나의 타임라인으로 병합해, 풍부한 색인·검색 자료를 만들 수 있다.
+
+---
+
+## 1. 멀티모달 AI 원리
+
+2회차에서 음성을 텍스트로 바꿨다면, 이번 회차는 한 걸음 더 나아가 **"보이는 것"까지 한 모델이 이해**하게 한다. 멀티모달(multimodal)은 텍스트·이미지·오디오·영상 같은 서로 다른 형식(modality)을 하나의 모델이 함께 다루는 방식이다.
+
+### 1.1 공통 표현 공간 — 다른 형식을 같은 좌표로
+
+**[개념]** 1회차에서 토큰이 **임베딩**(의미가 담긴 숫자 벡터)으로 바뀐다고 배웠다. 멀티모달 모델의 핵심은 **이미지·오디오·영상도 같은 임베딩 공간으로 끌어들인다**는 것이다. "강아지"라는 단어, 강아지 사진, 강아지 짖는 소리가 이 공간에서 서로 가까운 좌표에 놓인다. 형식은 달라도 *의미*가 가까우면 거리도 가깝다.
+
+그래서 멀티모달 모델은 "이 영상에 무엇이 보이느냐"는 질문에 텍스트로 답할 수 있다. 영상을 표현 공간으로 옮긴 뒤, 그 좌표에 가까운 *말*을 1회차에서 배운 "다음 토큰 예측"으로 이어 붙이는 것이다.
+
+### 1.2 영상은 어떻게 토큰이 되는가 — 프레임 샘플링 + 오디오
+
+**[개념]** 영상은 그 자체로 모델에 들어가지 않는다. 모델은 영상을 두 갈래로 쪼개 토큰화한다.
+
+- **시각(프레임 샘플링)** — 영상을 매 초 몇 장(예: 1초당 1프레임)으로 *샘플링*해 이미지 시퀀스로 만든 뒤, 각 프레임을 이미지 토큰으로 바꾼다.
+- **청각(오디오)** — 영상에 딸린 소리를 오디오 토큰으로 바꾼다. 말소리·음악·현장음이 여기 담긴다.
+
+| 입력 형식 | 토큰화 방식 | 한 마디로 |
+|---|---|---|
+| 텍스트 | 단어·단어 조각으로 분할 | "글자 → 토큰" |
+| 이미지 | 격자 패치로 분할해 벡터화 | "한 장 = 토큰 묶음" |
+| 영상 | 초당 N프레임 샘플링 + 오디오 | "시간 따라 이미지+소리" |
+
+**[팁]** 프레임을 촘촘히 샘플링할수록 세밀하지만 **토큰 수=비용**이 커진다(1.4의 컨텍스트 윈도우를 떠올리자). 10분짜리 영상을 초당 여러 프레임으로 넣으면 토큰이 폭증한다. 긴 영상은 구간을 나눠 처리하거나 샘플링 밀도를 낮추는 설계가 곧 비용 설계다.
+
+### 1.3 멀티모달의 가능과 한계
+
+**[개념]** 멀티모달이 잘하는 일과 못하는 일을 구분해야 실무에서 헛심을 쓰지 않는다.
+
+| 잘하는 것(가능) | 약한 것(한계) |
+|---|---|
+| 장면 전반의 내용·분위기 요약 | 프레임 단위의 정확한 프레임 번호 |
+| "사람이 있다/없다", 실내/실외 같은 거친 태깅 | 특정 인물이 *누구인지* 신원 식별 |
+| 대략적 타임코드("초반부에 인터뷰") | 1초 미만 정밀 컷 타이밍 |
+| 자막·현장음과 화면을 함께 고려한 해석 | 화면 속 작은 글자·로고의 정확한 판독 |
+
+**[주의]** 모델이 돌려주는 타임코드는 *근사값*이다. 샘플링한 프레임 기준이라 실제 컷과 수백 ms 어긋날 수 있다. 1회차의 환각 원칙은 영상에서도 그대로다 — **자동 태깅 결과는 모두 초안이며, 방송에 쓰기 전 사람이 화면을 직접 확인**해야 한다. 특히 "누가 나오는지"는 모델 추측이 아니라 사람이 확정한다.
+
+### 1.4 왜 STT와 영상 분석을 함께 쓰는가
+
+**[개념]** 같은 영상이라도 **말한 내용(STT)**과 **보인 내용(영상 태깅)**은 다른 정보다. 인터뷰 영상에서 STT는 발언 텍스트를, 영상 분석은 "화자가 실내에 앉아 있다, 자료 화면이 삽입됐다"를 알려준다. 둘을 같은 타임라인에 겹치면 **"언제, 무슨 말을 하며, 화면에 무엇이 보였는가"**가 한눈에 잡힌다. 이 결합 데이터가 3절의 핵심이며, 4·5회차의 검색·숏폼 자동화의 원천이 된다.
+
+---
+
+## 2. Gemini로 영상 이해하기
+
+CBS가 이미 쓰는 Gemini를 기본 도구로 삼는다. 1회차에서 텍스트로 호출했던 그 API에 **영상을 입력**으로 넣는 것이 전부다.
+
+### 2.1 File API 업로드 vs inline 전달
+
+**[개념]** 영상을 모델에 넣는 길은 두 가지다.
+
+| 방식 | 언제 쓰나 | 특징 |
+|---|---|---|
+| inline(바이트 직접 전달) | 아주 짧고 작은 영상 | 코드가 단순하나 용량 한도가 작다 |
+| **File API 업로드** | 뉴스 영상 등 대부분 | 먼저 업로드→처리 완료 대기→그 핸들을 프롬프트에 첨부. 큰 파일·재사용에 유리 |
+
+뉴스 아카이브 영상은 대개 용량이 크므로 **File API 업로드**를 기본으로 쓴다. 업로드 직후 파일은 잠시 `PROCESSING` 상태이며, `ACTIVE`가 된 뒤에야 분석에 쓸 수 있다(실습 1에서 대기 코드를 다룬다).
+
+```python
+import os
+from google import genai  # pip install google-genai
+
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+# 영상 업로드 → 핸들(file 객체)을 받는다
+video = client.files.upload(file="news_clip.mp4")
+```
+
+### 2.2 프롬프트로 시키기 — 요약·태깅·타임코드
+
+**[개념]** 업로드한 영상 핸들과 텍스트 프롬프트를 함께 `contents`에 넣으면, 모델이 화면과 소리를 보고 답한다. 1회차의 프롬프트 기법(역할 고정·명확한 지시)이 그대로 적용된다.
+
+```python
+resp = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=[video, "이 뉴스 영상을 30초 단위로 끊어 무슨 장면인지 한국어로 요약해라. 화면에 보이는 것 위주로, 추측은 적지 마라."],
+)
+print(resp.text)
+```
+
+**[팁]** "추측은 적지 마라", "화면에 보이는 것만"처럼 **한계를 명시**하면 환각이 줄어든다. 타임코드는 `mm:ss` 형식으로 명시적으로 요구한다("각 장면 시작 시각을 mm:ss로 표기").
+
+### 2.3 구조화 출력으로 장면별 메타데이터 받기
+
+**[개념]** 사람이 읽는 줄글이 아니라 **프로그램이 바로 쓰는 JSON**을 받는 것이 자동화의 핵심이다(1회차 2.3). 영상 분석도 1회차에서 쓴 `response_schema`를 그대로 적용해, 장면 배열을 받는다. 실습 1에서 전체 코드를 돌린다.
+
+```python
+from google.genai import types
+
+scene_schema = {
+    "type": "object",
+    "properties": {
+        "scenes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "start": {"type": "string", "description": "장면 시작 mm:ss"},
+                    "description": {"type": "string", "description": "화면 묘사 1문장"},
+                    "keywords": {"type": "array", "items": {"type": "string"}},
+                    "has_person": {"type": "boolean", "description": "사람 등장 여부"},
+                },
+                "required": ["start", "description", "keywords", "has_person"],
+            },
+        }
+    },
+    "required": ["scenes"],
+}
+```
+
+---
+
+## 3. 영상→텍스트 구조화 & 하이브리드 분석
+
+### 3.1 영상에서 구조를 뽑는다 — 컷·하이라이트·등장요소
+
+**[개념]** 장면 요약을 넘어, 편집과 검색에 바로 쓸 **구조**를 뽑는다. 대표적으로 세 가지다.
+
+- **컷/장면 전환** — 화면이 크게 바뀌는 지점. 편집의 단위가 된다.
+- **하이라이트 후보** — 발언이 강하거나 장면이 인상적인 구간. 숏폼·요약 영상의 재료(5회차로 연결).
+- **등장 요소 태깅** — 사람 유무, 실내/실외, 자료 화면 삽입 여부 등 거친 메타데이터.
+
+핵심은 이 모든 것을 **시간 구간(start~end)과 함께** 받는 것이다. 시간이 붙어야 자막·검색·편집과 맞물린다.
+
+### 3.2 타임라인 결합의 원리 — 말 + 영상
+
+**[개념]** 2회차 WhisperX는 자막을 **단어/구간별 타임스탬프**와 함께 돌려준다(예: `start`, `end`, `text`). 3회차 영상 태깅도 타임코드를 갖는다. 둘 다 *시간 축*이 있으니, **같은 타임라인에 겹쳐** 하나의 표로 만들 수 있다.
+
+```
+시간축(초)  0────10────20────30────40────50──→
+STT(말)     │ 앵커 멘트  │ 인터뷰 발언      │ 마무리 │
+영상(보임)  │ 스튜디오   │ 인물 클로즈업    │ 자료화면│
+                          ↑ 같은 구간: "이 발언을 하는 동안 인물 클로즈업"
+```
+
+이렇게 겹치면 "30초 지점에서 *이 말*을 하며 *이 화면*이 보였다"가 한 줄로 색인된다. 검색(4회차)에서 "말 + 화면"을 함께 질의할 수 있고, 숏폼 자동화(5회차)에서 "강한 발언 + 인물 화면" 구간을 컷 후보로 바로 집을 수 있다.
+
+### 3.3 병합 설계 — 겹치는 구간을 어떻게 맞출까
+
+**[개념]** STT 구간과 영상 장면의 시간 경계는 딱 떨어지지 않는다. 가장 단순하고 견고한 방법은 **시간 겹침(overlap) 판정**이다. 두 구간 `[a_start, a_end]`와 `[b_start, b_end]`가 겹치는 조건은 `a_start < b_end and b_start < a_end` 하나다. 이 한 줄이 실습 3 병합 로직의 심장이다. 복잡한 정렬 알고리즘은 필요 없다 — 겹치면 같은 순간으로 묶는다.
+
+**[주의]** STT 타임스탬프와 영상 타임코드는 **기준이 다를 수 있다**(영상은 샘플링 근사값). 초 단위로는 충분히 맞지만, 프레임 단위 정밀 동기화를 기대하지 말 것. 정밀 컷이 필요하면 사람이 편집 단계에서 미세 조정한다.
+
+---
+
+## 4. 실습
+
+> 공통 준비: 파이썬 3.10+, `pip install google-genai`, 환경 변수 `GEMINI_API_KEY` 설정. 입력 영상은 짧은 뉴스 클립(`news_clip.mp4`)을 쓴다. 2회차에서 만든 STT 결과(JSON)를 실습 3에서 재사용한다. (사내 정책상 외부 API가 제한되면 강사가 안내하는 사내 게이트웨이/대체 키를 사용한다.)
+
+> **[주의] 외부 업로드 전 점검** — 영상을 외부 API에 올리기 전, ①미공개 취재 영상·내부 자료가 아닌지 ②영상 속 인물의 초상권, 배경 음악의 저작권, 아카이브 영상의 사용 권리에 문제가 없는지 확인한다. 민감 영상은 업로드 자체를 피하고 사내 처리 방안을 따른다(머리말 4원칙).
+
+### [실습 1] Gemini로 뉴스 영상 장면 요약·태깅 (90분)
+
+영상을 업로드해, **타임코드별 장면 메타데이터**를 JSON으로 받는다. 자동 색인·검색의 출발점이다.
+
+```python
+# pip install google-genai
+import os, json, time
+from google import genai
+from google.genai import types
+
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+# 1) 영상 업로드 후 처리 완료(ACTIVE)까지 대기
+video = client.files.upload(file="news_clip.mp4")
+while video.state.name == "PROCESSING":
+    time.sleep(3)
+    video = client.files.get(name=video.name)
+if video.state.name != "ACTIVE":
+    raise RuntimeError(f"업로드 실패 상태: {video.state.name}")
+
+# 2) 장면 배열 스키마(2.3과 동일)
+scene_schema = {
+    "type": "object",
+    "properties": {
+        "scenes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "start": {"type": "string", "description": "장면 시작 mm:ss"},
+                    "description": {"type": "string", "description": "화면 묘사 1문장"},
+                    "keywords": {"type": "array", "items": {"type": "string"}},
+                    "has_person": {"type": "boolean"},
+                },
+                "required": ["start", "description", "keywords", "has_person"],
+            },
+        }
+    },
+    "required": ["scenes"],
+}
+
+# 3) 구조화 출력으로 분석 요청
+resp = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=[
+        video,
+        "이 뉴스 영상을 장면 단위로 나눠 분석해라. 각 장면의 시작 시각(mm:ss), "
+        "화면 묘사 1문장, 키워드, 사람 등장 여부를 채워라. 화면에 보이는 것만 적고 추측은 하지 마라.",
+    ],
+    config=types.GenerateContentConfig(
+        temperature=0.1,                       # 사실 추출: 낮게(1회차)
+        response_mime_type="application/json",
+        response_schema=scene_schema,
+    ),
+)
+
+scenes = json.loads(resp.text)["scenes"]
+for s in scenes:
+    print(s["start"], "|", s["description"], "| 사람:", s["has_person"])
+```
+
+**[주의]** 카테고리·키워드·사람 등장 여부 모두 *초안*이다. 표본을 정해 주기적으로 사람이 검수해 정확도를 점검한다.
+
+### [실습 2] 영상→텍스트 구조화: 하이라이트·숏폼 컷 후보 추출 (60분)
+
+같은 영상에서 이번엔 **숏폼으로 쓸 만한 구간**을 시간 구간과 함께 뽑는다. 5회차 숏폼 자동화의 입력이 된다.
+
+```python
+import os, json
+from google import genai
+from google.genai import types
+
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+video = client.files.upload(file="news_clip.mp4")   # 실제로는 실습 1의 핸들 재사용 권장
+
+highlight_schema = {
+    "type": "object",
+    "properties": {
+        "highlights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "start": {"type": "string", "description": "mm:ss"},
+                    "end": {"type": "string", "description": "mm:ss"},
+                    "reason": {"type": "string", "description": "왜 하이라이트인지 1문장"},
+                    "title_candidate": {"type": "string", "description": "숏폼 제목 후보"},
+                },
+                "required": ["start", "end", "reason", "title_candidate"],
+            },
+        }
+    },
+    "required": ["highlights"],
+}
+
+resp = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=[
+        video,
+        "이 영상에서 숏폼(15~60초)으로 재가공할 만한 하이라이트 구간을 최대 5개 골라라. "
+        "각 구간의 시작·끝 시각(mm:ss), 선정 이유, 숏폼 제목 후보를 제시해라.",
+    ],
+    config=types.GenerateContentConfig(
+        temperature=0.4,                       # 후보 다양성 약간 허용
+        response_mime_type="application/json",
+        response_schema=highlight_schema,
+    ),
+)
+
+for h in json.loads(resp.text)["highlights"]:
+    print(f'{h["start"]}~{h["end"]} | {h["title_candidate"]} | {h["reason"]}')
+```
+
+**[팁]** 제목 후보는 다양성이 필요하니 temperature를 장면 추출(0.1)보다 약간 높였다(1회차 디코딩 파라미터). 단, 선정 구간과 이유는 **사람이 화면을 보며 확정**한다.
+
+### [실습 3] 하이브리드: STT 자막 + 영상 태깅 타임라인 병합 (90분)
+
+2회차 WhisperX 자막(말)과 실습 1의 영상 장면(보임)을 **같은 타임라인으로 병합**한다. 외부 API 없이 순수 파이썬 병합 로직이다.
+
+```python
+import json
+
+# mm:ss → 초 변환(영상 태깅의 시각 형식 통일)
+def to_sec(mmss):
+    m, s = mmss.split(":")
+    return int(m) * 60 + int(s)
+
+# 2회차 WhisperX 결과(초 단위 start/end). 실제로는 파일에서 로드한다.
+# stt = json.load(open("stt_result.json", encoding="utf-8"))["segments"]
+stt = [
+    {"start": 0.0,  "end": 8.5,  "text": "안녕하십니까, 오늘의 주요 소식입니다."},
+    {"start": 12.0, "end": 28.0, "text": "현장을 다녀온 소상공인의 이야기를 들어봤습니다."},
+    {"start": 30.0, "end": 42.0, "text": "정부는 추가 지원책을 검토 중입니다."},
+]
+
+# 실습 1의 영상 장면(여기선 end를 다음 장면 start로 보정해 구간화)
+raw_scenes = [
+    {"start": "00:00", "description": "스튜디오 앵커 멘트",      "keywords": ["앵커", "스튜디오"], "has_person": True},
+    {"start": "00:12", "description": "소상공인 인터뷰 클로즈업", "keywords": ["인터뷰", "인물"],   "has_person": True},
+    {"start": "00:30", "description": "정부청사 자료 화면",       "keywords": ["자료화면", "청사"], "has_person": False},
+]
+# 장면 구간화: 각 장면 end = 다음 장면 start, 마지막은 영상 끝(예: 50초)
+VIDEO_END = 50
+scenes = []
+for i, sc in enumerate(raw_scenes):
+    start = to_sec(sc["start"])
+    end = to_sec(raw_scenes[i + 1]["start"]) if i + 1 < len(raw_scenes) else VIDEO_END
+    scenes.append({**sc, "start_sec": start, "end_sec": end})
+
+# 핵심: 두 구간이 시간상 겹치는가 (3.3)
+def overlaps(a_start, a_end, b_start, b_end):
+    return a_start < b_end and b_start < a_end
+
+# STT 발언마다, 그 시간대에 보인 장면을 붙인다
+timeline = []
+for seg in stt:
+    visible = [
+        {"description": sc["description"], "keywords": sc["keywords"], "has_person": sc["has_person"]}
+        for sc in scenes
+        if overlaps(seg["start"], seg["end"], sc["start_sec"], sc["end_sec"])
+    ]
+    timeline.append({
+        "start": seg["start"],
+        "end": seg["end"],
+        "spoken": seg["text"],     # 말한 내용(2회차)
+        "visible": visible,         # 보인 내용(3회차)
+    })
+
+# 통합 JSON 저장 — 4회차 검색·5회차 숏폼의 입력 자료
+with open("hybrid_timeline.json", "w", encoding="utf-8") as f:
+    json.dump(timeline, f, ensure_ascii=False, indent=2)
+
+for t in timeline:
+    vis = " / ".join(v["description"] for v in t["visible"]) or "(매칭 장면 없음)"
+    print(f'{t["start"]:>5.1f}~{t["end"]:<5.1f} | 말: {t["spoken"]}\n        | 화면: {vis}')
+```
+
+병합 결과는 "언제·무슨 말을 하며·무엇이 보였는가"를 한 줄로 담는다. 이 `hybrid_timeline.json`은 4회차 검색·6·7회차 프로젝트에서 재사용하니 **버리지 말 것.**
+
+---
+
+## 5. 체크리스트
+
+- [ ] 공통 표현 공간 개념으로 멀티모달이 "다른 형식을 같은 좌표로 본다"를 설명할 수 있다.
+- [ ] 영상이 프레임 샘플링 + 오디오로 토큰화되며, 샘플링 밀도가 비용과 직결됨을 안다.
+- [ ] 멀티모달의 가능(거친 태깅·요약)과 한계(신원 식별·정밀 타이밍)를 구분할 수 있다.
+- [ ] File API로 영상을 업로드하고 ACTIVE 대기 후 분석을 호출했다(실습 1).
+- [ ] 구조화 출력으로 장면·하이라이트 메타데이터를 JSON으로 받았다(실습 1·2).
+- [ ] STT 자막과 영상 태깅을 시간 겹침 판정으로 하나의 타임라인에 병합했다(실습 3).
+- [ ] 업로드 전 초상권·저작권·보안을 점검하고, 자동 태깅 결과를 검수 대상으로 다뤘다.
+
+## 6. 핵심 요약
+
+- 멀티모달 모델은 텍스트·이미지·오디오·영상을 **하나의 공통 표현 공간**으로 끌어들여 함께 이해한다.
+- 영상은 그대로 들어가지 않는다. **프레임 샘플링 + 오디오**로 토큰화되며, **토큰 수 = 비용**이다.
+- Gemini는 **File API 업로드 → 프롬프트 → 구조화 출력(JSON)**으로 장면별 메타데이터를 돌려준다 — 1회차 기법의 영상 확장이다.
+- **말(STT) + 보임(영상)**을 시간 겹침으로 병합하면, 검색·숏폼·편집에 바로 쓰는 풍부한 색인이 된다.
+- 영상 타임코드는 근사값이고 신원 식별은 불가하다. **자동 태깅은 초안, 검수·초상권·저작권 확인은 사람의 책임**이다.
+
+## 7. 다음 회차 예고
+
+**4회차 · 데이터 분석과 검색·추천 기술** — 이번 회차에서 만든 통합 타임라인과 메타데이터를 *찾을 수 있게* 만든다. 1회차에서 맛본 임베딩을 본격적으로 다뤄, 텍스트·메타데이터를 벡터로 바꾸고 벡터 DB에 넣어 의미 기반 검색을 구현한다. 또 비슷한 영상·기사의 중복을 탐지하고, LLM으로 콘텐츠 품질을 평가하는 법을 익힌다. 3회차의 "말 + 화면" 색인이 4회차에서 **검색 가능한 자산**으로 바뀐다.
+
+---
+
+## 핵심 용어
+
+| 용어 | 뜻 |
+|---|---|
+| 멀티모달 | 텍스트·이미지·오디오·영상 등 여러 형식을 한 모델이 함께 다루는 것 |
+| 공통 표현 공간 | 서로 다른 형식을 같은 임베딩 좌표계로 옮겨 의미가 가까우면 거리도 가깝게 둔 공간 |
+| 프레임 샘플링 | 영상을 초당 N장의 이미지로 뽑아 시각 정보를 토큰화하는 방식 |
+| 모달리티(modality) | 텍스트·이미지·오디오·영상 같은 정보의 형식 |
+| File API | 큰 파일을 먼저 업로드해 핸들을 받은 뒤 프롬프트에 첨부하는 Gemini 입력 방식 |
+| inline 전달 | 작은 파일의 바이트를 프롬프트에 직접 실어 보내는 방식 |
+| 타임코드 | 영상 속 특정 시점을 mm:ss 등으로 표기한 시각 정보(근사값) |
+| 장면 태깅 | 화면에 보이는 요소(사람·장소·자료화면 등)를 메타데이터로 표시하는 것 |
+| 하이라이트 | 숏폼·요약에 쓸 만한 인상적·중요한 영상 구간 |
+| 하이브리드 분석 | STT 자막(말)과 영상 태깅(보임)을 같은 타임라인에 결합하는 분석 |
+| 시간 겹침(overlap) | 두 구간이 시간상 교차하는지 판정하는 조건(a_start < b_end and b_start < a_end) |
+| 초상권 | 영상·사진 속 인물이 자신의 모습이 쓰이는 것에 대해 갖는 권리 |

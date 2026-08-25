@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# 출력 폴더가 어디든 ../images/... 가 프로젝트 images/ 를 가리키게 하는 기준 URL #}
+    {% if base_href %}<base href="{{ base_href }}">{% endif %}
+    <title>{{ title | replace('<br>', ' ') | replace('<br/>', ' ') }}</title>
+    <style>{{ style | safe }}</style>
+</head>
+<body class="cover-page">
+    {% if cover.mode == 'tech-navy' %}
+    <div class="cover-wrapper cover-tech-navy">
+        <div class="cover-grid"></div>
+        <div class="book-cover">
+            {% if cover.kicker %}<p class="cover-kicker">{{ cover.kicker }}</p>{% endif %}
+            <h1 class="book-title">{{ title | safe }}</h1>
+            <div class="cover-accent"></div>
+            {% if subtitle %}<p class="book-subtitle">{{ subtitle }}</p>{% endif %}
+            {% if cover.badge %}<div class="cover-badge">{{ cover.badge }}</div>{% endif %}
+            <p class="book-author">{{ author }}</p>
+            {% if cover.host %}<p class="cover-host">{{ cover.host }}</p>{% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="cover-wrapper">
+        <div class="book-cover">
+            {# overlay_text 가 명시적으로 False 면 표지 이미지에 글자가 박혀 있으므로 덧씌우지 않음 #}
+            {% if cover.overlay_text is not defined or cover.overlay_text %}
+            {% if cover.kicker %}<p class="cover-kicker">{{ cover.kicker }}</p>{% endif %}
+            <h1 class="book-title">{{ title | safe }}</h1>
+            {% if subtitle %}<p class="book-subtitle">{{ subtitle }}</p>{% endif %}
+            <p class="book-author">{{ author }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if cover.half_title %}
+    {# 속표지(반표제지): 표지 다음, 본문 앞. 부제를 정식으로 노출 #}
+    <div class="half-title-page">
+        {% if cover.half_title_label %}<p class="half-title-label">{{ cover.half_title_label }}</p>{% endif %}
+        <p class="half-title-title">{{ title | safe }}</p>
+        <div class="half-title-divider"></div>
+        {% if subtitle %}<p class="half-title-subtitle">{{ subtitle }}</p>{% endif %}
+        <p class="half-title-author">{{ author }}</p>
+    </div>
+    {% endif %}
+
+    <div class="book-content">
+        {{ content | safe }}
+    </div>
+</body>
+</html>

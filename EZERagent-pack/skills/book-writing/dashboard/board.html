@@ -1,0 +1,415 @@
+<title>책 제작 현황판</title>
+<style>
+  :root {
+    --paper: #FBFAF7;
+    --paper-2: #F4F2EC;
+    --ink: #20242C;
+    --ink-soft: #5C6170;
+    --line: #E3E0D6;
+    --indigo: #35507A;
+    --graphite: #6B6F7A;
+    --seal: #BE3A2B;
+    --spine-text: #F5F3EC;
+    --serif: "Noto Serif KR", "Apple Myungjo", "Nanum Myeongjo", Batang, serif;
+    --sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16191F;
+      --paper-2: #1E222A;
+      --ink: #E9E7E1;
+      --ink-soft: #9BA0AC;
+      --line: #303540;
+      --indigo: #8FA9D6;
+      --graphite: #A3A8B4;
+      --seal: #E06550;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #16191F;
+    --paper-2: #1E222A;
+    --ink: #E9E7E1;
+    --ink-soft: #9BA0AC;
+    --line: #303540;
+    --indigo: #8FA9D6;
+    --graphite: #A3A8B4;
+    --seal: #E06550;
+  }
+  :root[data-theme="light"] {
+    --paper: #FBFAF7;
+    --paper-2: #F4F2EC;
+    --ink: #20242C;
+    --ink-soft: #5C6170;
+    --line: #E3E0D6;
+    --indigo: #35507A;
+    --graphite: #6B6F7A;
+    --seal: #BE3A2B;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 20px 56px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+
+  /* ---------- header ---------- */
+  header { padding: 36px 0 8px; }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .asof {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stats {
+    display: flex;
+    gap: 0;
+    margin: 22px 0 8px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .stat {
+    flex: 1;
+    padding: 14px 4px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat + .stat { border-left: 1px solid var(--line); padding-left: 18px; }
+  .stat b {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat span { font-size: 12.5px; color: var(--ink-soft); }
+  .stat.done b { color: var(--seal); }
+  .stat.writing b { color: var(--graphite); }
+  .stat.editing b { color: var(--indigo); }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 40px; }
+  .sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .sec-head h2 {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .sec-head .sub { font-size: 12.5px; color: var(--ink-soft); }
+
+  /* 검인 도장 */
+  .stamp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px; height: 34px;
+    border: 1.6px solid var(--seal);
+    border-radius: 50%;
+    color: var(--seal);
+    font-family: var(--serif);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    transform: rotate(-8deg);
+    margin-left: auto;
+    opacity: 0.85;
+    flex: none;
+  }
+
+  /* ---------- 서가 (book spines) ---------- */
+  .shelf {
+    display: flex;
+    align-items: flex-end;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 10px 6px 0;
+    border-bottom: 7px solid var(--line);
+  }
+  .spine {
+    writing-mode: vertical-rl;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex: none;
+    width: 38px;
+    padding: 14px 0 20px;
+    border-radius: 2px 2px 0 0;
+    color: var(--spine-text);
+    font-family: var(--serif);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    position: relative;
+    box-shadow: inset -3px 0 5px rgba(0,0,0,0.18);
+  }
+  .spine::after {
+    content: "";
+    position: absolute;
+    bottom: 8px; left: 50%;
+    width: 7px; height: 7px;
+    margin-left: -3.5px;
+    border-radius: 50%;
+    background: var(--seal);
+    box-shadow: 0 0 0 1.5px rgba(245,243,236,0.55);
+  }
+  .spine span {
+    max-height: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shelf-note { font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; }
+
+  /* ---------- 작업대 (active work) ---------- */
+  .board { display: grid; grid-template-columns: 1fr; gap: 26px; }
+  @media (min-width: 720px) { .board { grid-template-columns: 1fr 1fr; gap: 32px; } }
+
+  .room h3 {
+    font-family: var(--serif);
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .room h3 .count { font-size: 12.5px; color: var(--ink-soft); font-family: var(--sans); font-weight: 400; }
+
+  .card {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 16px 16px 14px;
+  }
+  .card + .card { margin-top: 12px; }
+  .card h4 {
+    font-family: var(--serif);
+    font-size: 16.5px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip {
+    font-size: 11.5px;
+    padding: 2px 9px;
+    border-radius: 100px;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    background: var(--paper);
+  }
+  .chip.writing { color: var(--graphite); border-color: var(--graphite); }
+  .chip.track { color: var(--indigo); border-color: var(--indigo); }
+
+  .stages { display: flex; align-items: flex-start; gap: 0; margin: 4px 0 10px; }
+  .stage { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
+  .stage::before {
+    content: "";
+    position: absolute;
+    top: 5.5px; left: -50%;
+    width: 100%; height: 1.5px;
+    background: var(--line);
+  }
+  .stage:first-child::before { display: none; }
+  .stage i {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: var(--paper);
+    z-index: 1;
+  }
+  .stage.on i { background: var(--graphite); border-color: var(--graphite); }
+  .stage.on::before { background: var(--graphite); }
+  .stage em { font-style: normal; font-size: 11px; color: var(--ink-soft); }
+  .stage.on em { color: var(--ink); }
+
+  .card .note { font-size: 13px; color: var(--ink-soft); margin: 0; }
+
+  .empty {
+    border: 1.5px dashed var(--line);
+    border-radius: 3px;
+    padding: 26px 18px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+  }
+  .empty b { display: block; font-family: var(--serif); font-size: 15px; color: var(--ink); margin-bottom: 6px; }
+
+  /* ---------- 완성 상세 표 ---------- */
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 13.5px; }
+  th {
+    text-align: left;
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    font-weight: 600;
+    padding: 8px 14px 8px 0;
+    border-bottom: 2px solid var(--ink);
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 14px 9px 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    font-variant-numeric: tabular-nums;
+  }
+  td.title { font-family: var(--serif); font-weight: 600; }
+  td .small { display: block; font-size: 12px; color: var(--ink-soft); font-family: var(--sans); font-weight: 400; }
+  .sealmark { color: var(--seal); font-weight: 700; white-space: nowrap; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  footer code {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Book Studio · 집필부 — 편집부</p>
+    <h1>책 제작 현황판</h1>
+    <p class="asof">기준: 2026-07-03 · C:\dev\BOOK</p>
+
+    <div class="stats">
+      <div class="stat done"><b>8</b><span>서가 (완성)</span></div>
+      <div class="stat writing"><b>2</b><span>집필실</span></div>
+      <div class="stat editing"><b>0</b><span>편집실</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <h2>서가</h2>
+      <span class="sub">완성된 책 — 최근 출간순</span>
+      <span class="stamp">검인</span>
+    </div>
+    <div class="shelf">
+      <div class="spine" style="background:#3E5C4B; height:206px" title="축구가 선교가 되다 (2026-07-01)"><span>축구가 선교가 되다</span></div>
+      <div class="spine" style="background:#35507A; height:196px" title="소상공인 AI 활용 실무 워크북 (2026-06-23)"><span>소상공인 AI 워크북</span></div>
+      <div class="spine" style="background:#6B4560; height:196px" title="미용실 AI 활용 실무 워크북 (2026-06-13)"><span>미용실 AI 워크북</span></div>
+      <div class="spine" style="background:#4A5568; height:188px" title="생성형 AI 콘텐츠 제작 실무 매뉴얼 — CBS 전사교육 (2026-05-29)"><span>생성형 AI 제작 매뉴얼</span></div>
+      <div class="spine" style="background:#59496B; height:188px" title="AI 뉴스 콘텐츠 자동화 실무 매뉴얼 — CBS 핵심역량교육 (2026-05-29)"><span>AI 뉴스 자동화 매뉴얼</span></div>
+      <div class="spine" style="background:#71685A; height:172px" title="전사교육 커리큘럼 (2026-05-29)"><span>전사교육 커리큘럼</span></div>
+      <div class="spine" style="background:#5E6B7A; height:172px" title="핵심역량교육 커리큘럼 (2026-05-29)"><span>핵심역량 커리큘럼</span></div>
+      <div class="spine" style="background:#8A6B3F; height:182px" title="룻기강해서 — 별도 완료"><span>룻기강해서</span></div>
+    </div>
+    <p class="shelf-note">책등을 누르면 전체 제목이 표시됩니다 · 붉은 점 = 검인(출간 완료)</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>작업대</h2>
+      <span class="sub">지금 움직이는 원고</span>
+    </div>
+    <div class="board">
+
+      <div class="room">
+        <h3>집필실 <span class="count">2권</span></h3>
+
+        <div class="card">
+          <h4>축구선교 학위논문</h4>
+          <div class="chips">
+            <span class="chip track">논문</span>
+            <span class="chip writing">집필 완료 · 이관 대기</span>
+          </div>
+          <div class="stages">
+            <div class="stage on"><i></i><em>집필</em></div>
+            <div class="stage"><i></i><em>이관</em></div>
+            <div class="stage"><i></i><em>편집</em></div>
+            <div class="stage"><i></i><em>빌드</em></div>
+          </div>
+          <p class="note">가제본 142쪽 출력 완료 (5/5). 대중서 버전은 이미 출간 — 논문 자체의 편집부 이관 여부만 결정하면 됩니다.</p>
+        </div>
+
+        <div class="card">
+          <h4>testbook</h4>
+          <div class="chips">
+            <span class="chip">파이프라인 테스트</span>
+            <span class="chip writing">스캐폴드</span>
+          </div>
+          <div class="stages">
+            <div class="stage on"><i></i><em>집필</em></div>
+            <div class="stage"><i></i><em>이관</em></div>
+            <div class="stage"><i></i><em>편집</em></div>
+            <div class="stage"><i></i><em>빌드</em></div>
+          </div>
+          <p class="note">시스템 점검용 원고 — 실제 출간 대상이 아닙니다.</p>
+        </div>
+      </div>
+
+      <div class="room">
+        <h3>편집실 <span class="count">0권</span></h3>
+        <div class="empty">
+          <b>편집대가 비어 있습니다</b>
+          집필실에서 원고가 이관되면 여기에 표시됩니다.<br>
+          새 교재는 기존 워크북에서 파생해 시작할 수 있습니다.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>출간 기록</h2>
+      <span class="sub">완성 상세</span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>책</th><th>트랙</th><th>판형</th><th>최종 빌드</th><th>상태</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="title">축구가 선교가 되다<span class="small">스포츠 문화로서 축구 선교 활동이 교회에 미치는 영향</span></td><td>단행본</td><td>B5</td><td>2026-07-01</td><td class="sealmark">검인 완료</td></tr>
+          <tr><td class="title">소상공인 AI 활용 실무 워크북<span class="small">13강 · 강사 양성 트랙 포함</span></td><td>교재</td><td>B5</td><td>2026-06-23</td><td class="sealmark">검인 완료</td></tr>
+          <tr><td class="title">미용실 AI 활용 실무 워크북<span class="small">하베스 미용그룹 · 13강</span></td><td>교재</td><td>B5</td><td>2026-06-13</td><td class="sealmark">검인 완료</td></tr>
+          <tr><td class="title">생성형 AI 콘텐츠 제작 실무 매뉴얼<span class="small">CBS 전사교육 40H</span></td><td>교재</td><td>B5</td><td>2026-05-29</td><td class="sealmark">검인 완료</td></tr>
+          <tr><td class="title">AI 뉴스 콘텐츠 자동화 실무 매뉴얼<span class="small">CBS 핵심역량교육 80H</span></td><td>교재</td><td>B5</td><td>2026-05-29</td><td class="sealmark">검인 완료</td></tr>
+          <tr><td class="title">전사교육 커리큘럼<span class="small">생성형 AI 콘텐츠 제작 실무</span></td><td>교재</td><td>B5</td><td>2026-05-29</td><td class="sealmark">검인 완료</td></tr>
+          <tr><td class="title">핵심역량교육 커리큘럼<span class="small">AI 뉴스 콘텐츠 자동화 실무</span></td><td>교재</td><td>B5</td><td>2026-05-29</td><td class="sealmark">검인 완료</td></tr>
+          <tr><td class="title">룻기강해서<span class="small">삽화 7점 · 별도 작업으로 완료</span></td><td>단행본</td><td>—</td><td>—</td><td class="sealmark">검인 완료</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    이 현황판은 Claude가 작업이 진행될 때마다 다시 게시합니다 — 세션에서 <code>/book-status</code>를 실행하면 최신 상태로 갱신됩니다.
+  </footer>
+
+</div>

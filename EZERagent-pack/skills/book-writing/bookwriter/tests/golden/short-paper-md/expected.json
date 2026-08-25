@@ -1,0 +1,64 @@
+{
+  "description": "Smallest end-to-end smoke test. 4-body-chapter manuscript in directory format, hybrid pipeline (no --polish, no LLM cover).",
+  "input": "manuscript/",
+  "template": "typst-classic",
+  "stages": {
+    "ingest": {
+      "outputs": [
+        "manifest.json",
+        "meta.json",
+        "state.json",
+        "source/00-abstract.md",
+        "source/01-introduction.md",
+        "source/02-methods.md",
+        "source/03-results.md",
+        "source/04-conclusion.md",
+        "source/99-references.md"
+      ],
+      "meta": {
+        "title": "작은 논문 한 편",
+        "lang": "ko",
+        "chapterCount": 6,
+        "userCover": null
+      }
+    },
+    "structure": {
+      "outline": {
+        "chapterCount": 6,
+        "frontMatter": ["00-abstract"],
+        "backMatter": ["99-references"],
+        "body": ["01-introduction", "02-methods", "03-results", "04-conclusion"]
+      },
+      "needsApproval": false,
+      "decisionsFileMatches": "^# No structural decisions needed\\.\\s*$"
+    },
+    "normalize": {
+      "outputs": [
+        "edited/00-abstract.md",
+        "edited/01-introduction.md",
+        "edited/02-methods.md",
+        "edited/03-results.md",
+        "edited/04-conclusion.md",
+        "edited/99-references.md"
+      ],
+      "wordCountDelta": 0,
+      "paragraphCountDelta": 0
+    },
+    "illustrate": {
+      "coverSource": "generated",
+      "coverFileExists": true
+    },
+    "typeset": {
+      "engine": "typst",
+      "pagesMin": 2,
+      "pagesMax": 8
+    },
+    "export": {
+      "outputs": ["dist/<job>/book.pdf", "dist/<job>/manifest.json"]
+    }
+  },
+  "notes": [
+    "expected.pdf.sha256은 LLM mock 모드에서 캡처 후 추가 (cover-designer는 mock 사용 권장).",
+    "Without mock, byte-equality는 의미 없음 — 구조 검증만."
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "typst-classic",
+  "engine": "typst",
+  "paper": "a5",
+  "margin": { "x": "18mm", "y": "24mm" },
+  "fonts": {
+    "body": ["Source Serif 4", "Noto Serif KR"],
+    "heading": ["Source Serif 4", "Noto Serif KR"],
+    "mono": ["JetBrains Mono"]
+  },
+  "bodySize": "11pt",
+  "leading": "0.95em",
+  "firstLineIndent": "1.2em",
+  "suitableFor": ["essays", "short books", "articles compiled into a volume"]
+}

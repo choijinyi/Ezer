@@ -1,0 +1,72 @@
+{
+  "title": "생성형 AI 콘텐츠 제작 실무 매뉴얼",
+  "subtitle": "CBS M&C 전사교육 40시간(10회) 과정 교재",
+  "authors": [],
+  "lang": "ko",
+  "template": "typst-classic",
+  "outputs": [
+    "pdf"
+  ],
+  "chapters": [
+    {
+      "file": "00-preface.md",
+      "role": "frontmatter",
+      "title": "머리말"
+    },
+    {
+      "file": "01-chapter.md",
+      "role": "body",
+      "title": "1회차 · AI 기초와 미디어 산업의 변화"
+    },
+    {
+      "file": "02-chapter.md",
+      "role": "body",
+      "title": "2회차 · 생성형 AI 도구 활용 기초"
+    },
+    {
+      "file": "03-chapter.md",
+      "role": "body",
+      "title": "3회차 · LLM 기반 콘텐츠 작성 심화"
+    },
+    {
+      "file": "04-chapter.md",
+      "role": "body",
+      "title": "4회차 · AI 기반 이미지·음성 콘텐츠 제작"
+    },
+    {
+      "file": "05-chapter.md",
+      "role": "body",
+      "title": "5회차 · AI 영상 편집 보조 도구 활용"
+    },
+    {
+      "file": "06-chapter.md",
+      "role": "body",
+      "title": "6회차 · 업무 자동화 시나리오 설계"
+    },
+    {
+      "file": "07-chapter.md",
+      "role": "body",
+      "title": "7회차 · 데이터 분석·시각화 AI 활용"
+    },
+    {
+      "file": "08-chapter.md",
+      "role": "body",
+      "title": "8회차 · CBS M&C 업무 적용 워크숍 (1)"
+    },
+    {
+      "file": "09-chapter.md",
+      "role": "body",
+      "title": "9회차 · CBS M&C 업무 적용 워크숍 (2)"
+    },
+    {
+      "file": "10-chapter.md",
+      "role": "body",
+      "title": "10회차 · 종합 발표 및 핵심역량교육 연계"
+    },
+    {
+      "file": "99-references.md",
+      "role": "backmatter",
+      "title": "부록·참고자료"
+    }
+  ]
+}

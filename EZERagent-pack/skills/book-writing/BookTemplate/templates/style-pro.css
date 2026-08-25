@@ -1,0 +1,1389 @@
+/* =================================================================
+   책 스타일시트 [PRO 조판판] — 판형은 빌드 시 주입됨 ({{ page_width }}mm × {{ page_height }}mm)
+   지원 판형: 신국판 (152×225mm) / B5 (188×257mm)
+   렌더링: Playwright Chromium (미러 마진·margin box는 131+ 필요)
+   style.css 대비 변경: 내장 폰트(@font-face KoPubWorld)·미러 마진·
+   문단 들여쓰기 단일화·글자단위 줄바꿈(line-break: strict)·자간 보정·
+   h2 밑줄 제거·표 오픈 스타일. 근거: 전문 조판 감사(2026-07) 상위 8개 격차.
+   ================================================================= */
+
+{# ── 책별 테마 색상 (cover.mode 로 결정) ── #}
+{# theme 우선순위: cover.theme 명시값 > (tech-navy면 navy) > classic. cover.mode(표지)와 분리해 간지/표 색을 정한다. #}
+{% set theme = cover.theme if cover.theme is defined else ('navy' if cover.mode == 'tech-navy' else 'classic') %}
+{% set is_navy = (theme == 'navy') %}
+{% set is_plum = (theme == 'plum') %}
+{% set chap_label_color  = '#c9a85c' if is_navy else ('#e3b89a' if is_plum else 'rgba(20, 70, 10, 0.75)') %}
+{% set chap_number_color = '#ffffff' if is_navy else ('#ffffff' if is_plum else '#1a4a0a') %}
+{% set chap_title_color  = '#ffffff' if is_navy else ('#f5ebe2' if is_plum else '#1a3a08') %}
+{% set chap_verse_color  = '#aebfdc' if is_navy else ('#cdb3c4' if is_plum else 'rgba(20, 70, 10, 0.75)') %}
+{% set chap_ref_color    = '#8ea2c6' if is_navy else ('#b598ab' if is_plum else 'rgba(20, 70, 10, 0.6)') %}
+{% set chap_divider_bg   = 'linear-gradient(90deg, #a8842f, #ecd089, #a8842f)' if is_navy else ('linear-gradient(90deg, #b07a55, #e7c3a0, #b07a55)' if is_plum else 'rgba(30, 80, 10, 0.3)') %}
+{% set chap_deco_bg      = 'rgba(201, 168, 92, 0.4)' if is_navy else ('rgba(224, 184, 154, 0.42)' if is_plum else 'rgba(30, 80, 10, 0.25)') %}
+{% set tbl_th_bg         = '#13294f' if is_navy else ('#3a2342' if is_plum else '#e7ddcb') %}
+{% set tbl_th_fg         = '#ffffff' if is_navy else ('#ffffff' if is_plum else '#2c1810') %}
+{% set tbl_border        = '#c4cdde' if is_navy else ('#dcc9d6' if is_plum else '#d8cdbb') %}
+{% set tbl_zebra         = '#f4f6fb' if is_navy else ('#f8f3f7' if is_plum else '#faf7f3') %}
+{% set tbl_caption_color = '#5a6b8a' if is_navy else ('#7a5a72' if is_plum else '#6b5b4b') %}
+{# PRO 조판판 전용: 오픈 스타일 표의 괘선·헤더 글자용 진한 강조색 (테마 무관하게 인쇄 대비 확보) #}
+{% set tbl_accent        = '#13294f' if is_navy else ('#3a2342' if is_plum else '#4a3a28') %}
+{# 저자 소개 페이지 색상(테마 연동) #}
+{% set author_page_bg    = '#eef1f8' if is_navy else ('#f7f1f6' if is_plum else '#f6f1e6') %}
+{% set author_box_border = '#c4b083' if is_navy else ('#cdb3c4' if is_plum else '#b9a988') %}
+{% set author_kicker_c   = '#9a7d3c' if is_navy else ('#9a6f88' if is_plum else '#8a6a3a') %}
+{% set author_name_c     = '#13294f' if is_navy else ('#3a2342' if is_plum else '#1f3a2c') %}
+{% set author_divider_bg = 'linear-gradient(90deg, #a8842f, #ecd089, #a8842f)' if is_navy else ('linear-gradient(90deg, #b07a55, #e7c3a0, #b07a55)' if is_plum else '#b9a988') %}
+
+/* ─── 0. 내장 폰트 (@font-face) ───
+   경로는 <base href=output/> 기준 상대 URL. 파일은 templates/fonts/에 커밋됨.
+   KoPubWorld: 상업 인쇄 허용·수정 금지(서브셋 금지, 원본 임베드만). */
+@font-face {
+    font-family: "KoPubWorld Batang";
+    src: url("../templates/fonts/KoPubWorld/KoPubWorld Batang_Pro Light.otf") format("opentype");
+    font-weight: 300;
+    font-style: normal;
+}
+@font-face {
+    font-family: "KoPubWorld Batang";
+    src: url("../templates/fonts/KoPubWorld/KoPubWorld Batang_Pro Medium.otf") format("opentype");
+    font-weight: 500;
+    font-style: normal;
+}
+@font-face {
+    font-family: "KoPubWorld Batang";
+    src: url("../templates/fonts/KoPubWorld/KoPubWorld Batang_Pro Bold.otf") format("opentype");
+    font-weight: 700;
+    font-style: normal;
+}
+@font-face {
+    font-family: "KoPubWorld Dotum";
+    src: url("../templates/fonts/KoPubWorld/KoPubWorld Dotum_Pro Light.otf") format("opentype");
+    font-weight: 300;
+    font-style: normal;
+}
+@font-face {
+    font-family: "KoPubWorld Dotum";
+    src: url("../templates/fonts/KoPubWorld/KoPubWorld Dotum_Pro Medium.otf") format("opentype");
+    font-weight: 500;
+    font-style: normal;
+}
+@font-face {
+    font-family: "KoPubWorld Dotum";
+    src: url("../templates/fonts/KoPubWorld/KoPubWorld Dotum_Pro Bold.otf") format("opentype");
+    font-weight: 700;
+    font-style: normal;
+}
+
+/* ─── 1. @page 규칙 ─── */
+@page {
+    size: {{ page_width }}mm {{ page_height }}mm;
+    margin: 20mm 18mm 25mm 18mm;
+
+    @bottom-center {
+        content: counter(page);
+        font-size: 9pt;
+        /* margin box는 Chromium에서 @font-face 문서 폰트를 못 읽어 내용이 사라짐 — 시스템 폰트만 사용 */
+        font-family: "Noto Serif KR", "Batang", serif;
+        color: #666;
+    }
+}
+
+/* 미러 마진 — 제본(무선철) 쪽 안여백 22mm / 바깥 15mm.
+   verso(짝수·왼쪽 면)의 안쪽은 오른쪽, recto(홀수·오른쪽 면)의 안쪽은 왼쪽. */
+/* 짝수 페이지(verso) — 좌측에 전체 책 제목 */
+@page :left {
+    margin: 20mm 22mm 25mm 15mm;
+    @bottom-left {
+        content: "{{ book_title }}";
+        font-size: 8pt;
+        /* margin box는 Chromium에서 @font-face 문서 폰트를 못 읽어 내용이 사라짐 — 시스템 폰트만 사용 */
+        font-family: "Noto Serif KR", "Batang", serif;
+        color: #888;
+    }
+    @bottom-right { content: none; }
+}
+
+/* 홀수 페이지(recto) — 우측 장 제목은 build_book.py가 파일별 named page로 주입 */
+@page :right {
+    margin: 20mm 15mm 25mm 22mm;
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+}
+
+@page cover {
+    size: {{ page_width }}mm {{ page_height }}mm;
+    margin: 0;
+    @bottom-left   { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right  { content: none; }
+}
+
+@page toc-title {
+    size: {{ page_width }}mm {{ page_height }}mm;
+    margin: 0;
+    @bottom-left   { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right  { content: none; }
+}
+
+@page half-title {
+    size: {{ page_width }}mm {{ page_height }}mm;
+    margin: 0;
+    @bottom-left   { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right  { content: none; }
+}
+
+@page toc {
+    @bottom-left   { content: none; }
+    @bottom-right  { content: none; }
+    @bottom-center {
+        content: counter(page, lower-roman);
+    }
+}
+
+@page chapter-title {
+    size: {{ page_width }}mm {{ page_height }}mm;
+    margin: 0;
+    @bottom-left   { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right  { content: none; }
+}
+
+@page divider {
+    size: {{ page_width }}mm {{ page_height }}mm;
+    margin: 0;
+    @bottom-left   { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right  { content: none; }
+}
+
+@page chapter-image {
+    size: {{ page_width }}mm {{ page_height }}mm;
+    margin: 0;
+    @bottom-left   { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right  { content: none; }
+}
+
+@page chapter-start {
+    @bottom-center {
+        content: counter(page);
+    }
+}
+
+/* ─── 2. 기본 타이포그래피 ─── */
+html {
+    height: 100%;
+    background-color: #fff;
+}
+
+body {
+    font-family: "KoPubWorld Batang", "Noto Serif KR", "Batang", serif;
+    font-weight: 300;              /* KoPub 바탕 Light — 단행본 본문 관행 굵기 */
+    font-size: 10.3pt;
+    line-height: 1.72;
+    letter-spacing: -0.015em;      /* 본문 자간 보정 (인쇄 관행 음수 자간) */
+    color: #1a1a1a;
+    word-break: normal;            /* 글자 단위 줄바꿈 = 인쇄 관행 (어절 단위 keep-all은 웹 습관) */
+    line-break: strict;            /* 금칙 처리 강화 */
+    overflow-wrap: break-word;     /* URL 등 장토큰 넘침 방지 */
+    text-spacing-trim: trim-start; /* 전각 구두점 공백 정리 (Chromium 123+) */
+    text-align: justify;
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background-color: #fff;
+}
+
+body.cover-page {
+    background-color: #fff;
+    margin: 0;
+    padding: 0;
+}
+
+/* ─── 3. 표지 (책별 cover.mode 로 분기) ─── */
+{% if cover.mode == 'tech-navy' %}
+/* === Tech Navy — CSS 디자인 표지 (이미지 없음) === */
+.cover-wrapper {
+    page: cover;
+    page-break-after: always;
+    width: {{ page_width }}mm;
+    height: {{ page_height }}mm;
+    min-height: {{ page_height }}mm;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    display: block;
+    background-color: #0a1428 !important;
+    background-image:
+        radial-gradient(125% 80% at 50% -8%, #20437d 0%, rgba(32,67,125,0) 55%),
+        linear-gradient(168deg, #112a55 0%, #0d1f3f 52%, #091224 100%);
+}
+
+/* 가장자리 얇은 골드 프레임 (프리미엄 디테일) */
+.cover-wrapper::after {
+    content: "";
+    position: absolute;
+    top: 9mm; left: 9mm; right: 9mm; bottom: 9mm;
+    border: 0.6pt solid rgba(201, 168, 92, 0.22);
+    pointer-events: none;
+}
+
+/* 은은한 도트 그리드 (회로 모티프) — 위/아래로 페이드 */
+.cover-grid {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: radial-gradient(rgba(165, 195, 245, 0.11) 0.7pt, transparent 0.9pt);
+    background-size: 6.5mm 6.5mm;
+    background-position: center center;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 80%, transparent 100%);
+            mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 80%, transparent 100%);
+}
+
+.book-cover {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    background-color: transparent;
+    box-sizing: border-box;
+}
+
+.cover-kicker {
+    position: absolute;
+    top: 28mm; left: 15mm; right: 15mm;
+    font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 9pt;
+    font-weight: 500;
+    color: #c9a85c;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 0;
+}
+
+.book-title {
+    position: absolute;
+    top: 66mm; left: 17mm; right: 17mm;
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 31pt;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.34;
+    letter-spacing: 0.03em;
+    word-break: keep-all;
+    text-align: center;
+    margin: 0;
+}
+
+.cover-accent {
+    position: absolute;
+    top: 118mm; left: 50%;
+    transform: translateX(-50%);
+    width: 24mm; height: 1.4pt;
+    background: linear-gradient(90deg, #a8842f, #ecd089, #a8842f);
+}
+
+.book-subtitle {
+    position: absolute;
+    top: 126mm; left: 22mm; right: 22mm;
+    font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 11.5pt;
+    font-weight: 400;
+    color: #a9bbda;
+    line-height: 1.65;
+    letter-spacing: 0.02em;
+    text-align: center;
+    margin: 0;
+}
+
+.cover-badge {
+    position: absolute;
+    bottom: 44mm; left: 50%;
+    transform: translateX(-50%);
+    width: 17mm; height: 17mm;
+    border-radius: 50%;
+    border: 1pt solid rgba(201, 168, 92, 0.85);
+    color: #d9b975;
+    font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 11pt;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 17mm;
+    text-align: center;
+}
+
+.book-author {
+    position: absolute;
+    bottom: {% if cover.host %}29mm{% else %}23mm{% endif %}; left: 0; right: 0;
+    font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 12pt;
+    font-weight: 400;
+    color: #cdd6e6;
+    letter-spacing: 0.3em;
+    text-align: center;
+    margin: 0;
+}
+
+/* 주최 기관 — 겉표지 하단(저자 아래) */
+.cover-host {
+    position: absolute;
+    bottom: 16mm; left: 12mm; right: 12mm;
+    font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 9.5pt;
+    font-weight: 400;
+    color: #9fb0cf;
+    letter-spacing: 0.18em;
+    text-align: center;
+    margin: 0;
+}
+{% else %}
+/* === 이미지 배경 표지 (절대 위치 타이포그래피) === */
+.cover-wrapper {
+    page: cover;
+    page-break-after: always;
+    background-image: url("../images/{{ cover.image | default('cover.png') }}");
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-color: #f3ecdc !important;
+    width: {{ page_width }}mm;
+    height: {{ page_height }}mm;
+    min-height: {{ page_height }}mm;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    display: block;
+}
+
+.book-cover {
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    background-color: transparent;
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* 이미지 표지 오버레이 [PRO] — 흰 바탕 아트워크 위 플럼 타이포.
+   구성: 영어 아이브로우(자간 넓은 돋움) → 대형 명조 제목 → 부제 → 저자.
+   명조 대형 표제 + 돋움 보조의 서체 대비가 이 표지의 개성. */
+.cover-kicker {
+    position: absolute;
+    top: 34mm;
+    left: 15mm;
+    right: 15mm;
+    font-family: "KoPubWorld Dotum", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 9.5pt;
+    font-weight: 500;
+    color: #a4738a;            /* 로즈골드 점과 이어지는 로즈 플럼 */
+    letter-spacing: 0.45em;
+    text-indent: 0.225em;      /* 자간 보정 중앙 맞춤 */
+    text-transform: uppercase;
+    text-align: center;
+    margin: 0;
+}
+
+.book-title {
+    position: absolute;
+    top: 43mm;
+    left: 12mm;
+    right: 12mm;
+    font-family: "KoPubWorld Batang", "Noto Serif KR", "Batang", serif;
+    font-size: 39pt;
+    font-weight: 700;
+    color: #3a2342;
+    line-height: 1.36;
+    letter-spacing: -0.005em;
+    word-break: keep-all;
+    text-align: center;
+    margin: 0;
+}
+
+.book-subtitle {
+    position: absolute;
+    top: 90mm;
+    left: 20mm;
+    right: 20mm;
+    font-family: "KoPubWorld Dotum", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 11pt;
+    font-weight: 300;
+    color: #75617f;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+    text-align: center;
+    margin: 0;
+}
+
+.book-author {
+    position: absolute;
+    top: 105mm;
+    left: 0;
+    right: 0;
+    font-family: "KoPubWorld Dotum", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 11.5pt;
+    font-weight: 500;
+    color: #4a3b52;
+    letter-spacing: 0.3em;
+    text-indent: 0.15em;   /* 자간 보정: 마지막 글자 뒤 자간만큼 중앙 이동 */
+    text-align: center;
+    margin: 0;
+}
+{% endif %}
+
+/* ─── 3.5 속표지 (Half Title Page) — 표지 다음, 본문 앞 ─── */
+.half-title-page {
+    page: half-title;
+    /* 표지 다음에 한 장 삽입돼도 이후 쪽번호가 밀리지 않도록 카운터를 표지와 동일(1)로 유지 */
+    counter-reset: page 1;
+    page-break-after: always;
+    width: {{ page_width }}mm;
+    height: {{ page_height }}mm;
+    min-height: {{ page_height }}mm;
+    margin: 0;
+    padding: 92mm 22mm 0 22mm;
+    display: block;
+    text-align: center;
+    background-color: #f6f1e6;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.half-title-label {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 10pt;
+    font-weight: 400;
+    color: rgba(20, 70, 10, 0.7);
+    letter-spacing: 0.4em;
+    margin: 0 0 11mm 0;
+    text-align: center;
+}
+
+.half-title-title {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 26pt;
+    font-weight: 700;
+    color: #1a3a08;
+    letter-spacing: 0.12em;
+    line-height: 1.3;
+    margin: 0 0 7mm 0;
+    text-align: center;
+}
+
+.half-title-divider {
+    display: block;
+    width: 22mm;
+    height: 0.8pt;
+    background-color: rgba(30, 80, 10, 0.35);
+    margin: 0 auto 8mm auto;
+    border: none;
+}
+
+.half-title-subtitle {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 12pt;
+    font-weight: 400;
+    font-style: italic;
+    color: #4a5b3a;
+    line-height: 1.85;
+    max-width: 115mm;
+    margin: 0 auto 24mm auto;
+    text-align: center;
+}
+
+.half-title-author {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 13pt;
+    color: #3a2a1a;
+    letter-spacing: 0.25em;
+    margin: 0;
+    text-align: center;
+}
+
+/* ─── 4. 목차 속지 (TOC Title Page) ─── */
+.toc-title-page {
+    page: toc-title;
+    page-break-after: always;
+    width: {{ page_width }}mm;
+    height: {{ page_height }}mm;
+    min-height: {{ page_height }}mm;
+    margin: 0;
+    padding: 70mm 30mm 0 30mm;
+    display: block;
+    text-align: center;
+    background-color: #fff;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.toc-title-page::before {
+    content: "";
+    position: absolute;
+    top: 40mm;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 25mm;
+    height: 0.6pt;
+    background-color: #b0a090;
+}
+
+.toc-title-page::after {
+    content: "";
+    position: absolute;
+    bottom: 40mm;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 25mm;
+    height: 0.6pt;
+    background-color: #b0a090;
+}
+
+.toc-title-label {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 10pt;
+    font-weight: 400;
+    color: #9a8a7a;
+    letter-spacing: 0.35em;
+    margin-bottom: 6mm;
+    text-align: center;
+}
+
+.toc-title-heading {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 22pt;
+    font-weight: 700;
+    color: #2c1810;
+    letter-spacing: 0.15em;
+    margin-bottom: 8mm;
+    text-align: center;
+}
+
+.toc-title-divider {
+    display: block;
+    width: 18mm;
+    height: 0.8pt;
+    background-color: #c4b4a0;
+    margin: 0 auto 8mm auto;
+    border: none;
+}
+
+.toc-title-subtitle {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 9.5pt;
+    font-weight: 400;
+    font-style: italic;
+    color: #6b5b4b;
+    line-height: 1.8;
+    max-width: 90mm;
+    margin: 0 auto;
+    text-align: center;
+}
+
+/* ─── 5. 목차 본문 ─── */
+.toc {
+    page: toc;
+    page-break-after: always;
+    padding-top: 5mm;
+}
+
+.toc h2 {
+    font-size: 16pt;
+    text-align: center;
+    margin-bottom: 6mm;
+    color: #2c1810;
+}
+
+.toc-entry {
+    display: table;
+    width: 100%;
+    font-size: 10.5pt;
+    line-height: 1.7;
+    margin: 1.3mm 0;
+    padding: 0.3mm 0;
+}
+
+.toc-entry-title {
+    display: table-cell;
+    white-space: nowrap;
+    padding-right: 2mm;
+    vertical-align: baseline;
+}
+
+.toc-entry-dots {
+    display: table-cell;
+    width: 100%;
+    vertical-align: baseline;
+    padding: 0 1mm;
+    background-image: radial-gradient(circle, #999 0.5pt, transparent 0.5pt);
+    background-size: 5pt 5pt;
+    background-repeat: repeat-x;
+    background-position: left center;
+}
+
+.toc-entry-page {
+    display: table-cell;
+    font-size: 10pt;
+    color: #555;
+    white-space: nowrap;
+    text-align: right;
+    padding-left: 2mm;
+    vertical-align: baseline;
+}
+
+.toc-section {
+    margin-top: 3mm;
+    margin-bottom: 1mm;
+}
+
+.toc-entry.toc-chapter .toc-entry-title {
+    font-weight: 700;
+    font-size: 10.5pt;
+}
+
+.toc-entry.toc-front .toc-entry-title {
+    font-size: 10.5pt;
+    color: #444;
+}
+
+.toc-entry.toc-back .toc-entry-title {
+    font-size: 10.5pt;
+    color: #444;
+}
+
+/* ─── 6. 장 속지 (Chapter Title Page) ─── */
+.chapter-title-page {
+    page: chapter-title;
+    page-break-before: always;
+    page-break-after: always;
+    width: {{ page_width }}mm;
+    height: {{ page_height }}mm;
+    min-height: {{ page_height }}mm;
+    margin: 0;
+    padding: 60mm 0 0 0;
+    display: block;
+    text-align: center;
+    {% if is_navy %}
+    background-color: #0a1428;
+    background-image:
+        radial-gradient(120% 75% at 50% 0%, #20437d 0%, rgba(32, 67, 125, 0) 55%),
+        linear-gradient(168deg, #112a55 0%, #0d1f3f 55%, #091224 100%);
+    {% elif is_plum %}
+    background-color: #2a1830;
+    background-image:
+        radial-gradient(120% 78% at 50% 0%, #5e3a5e 0%, rgba(94, 58, 94, 0) 55%),
+        linear-gradient(168deg, #3c2440 0%, #281630 55%, #1c0f22 100%);
+    {% else %}
+    background-color: #d4e8a8;
+    {% endif %}
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* 상단 장식선 */
+.chapter-title-page::before {
+    content: "";
+    position: absolute;
+    top: 35mm;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30mm;
+    height: 0.6pt;
+    background: {{ chap_deco_bg }};
+}
+
+/* 하단 장식선 */
+.chapter-title-page::after {
+    content: "";
+    position: absolute;
+    bottom: 35mm;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30mm;
+    height: 0.6pt;
+    background: {{ chap_deco_bg }};
+}
+
+.chapter-title-inner {
+    display: block;
+    padding: 0 25mm;
+    margin: 0 auto;
+    text-align: center;
+}
+
+/* 장 번호 라벨 (CHAPTER, PROLOGUE 등) */
+.chapter-label {
+    display: block;
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 16pt;
+    font-weight: 400;
+    color: {{ chap_label_color }};
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    margin-bottom: 4mm;
+    text-align: center;
+}
+
+/* 장 번호 숫자 */
+.chapter-number {
+    display: block;
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 16pt;
+    font-weight: 400;
+    color: {{ chap_number_color }};
+    line-height: 1;
+    margin-bottom: 8mm;
+    margin-left: 0;
+    text-align: center;
+}
+
+/* 장 제목 구분선 */
+.chapter-title-divider {
+    display: block;
+    width: 18mm;
+    height: 0.8pt;
+    background: {{ chap_divider_bg }};
+    margin: 0 auto 8mm auto;
+    border: none;
+}
+
+/* 장 제목 */
+.chapter-title-text {
+    display: block;
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 16pt;
+    font-weight: 700;
+    color: {{ chap_title_color }};
+    line-height: 1.65;
+    margin: 0 auto 15mm auto;
+    word-break: keep-all;
+    max-width: 95mm;
+    text-align: center;
+}
+
+/* 핵심 성경 구절 영역 */
+.chapter-verse {
+    display: block;
+    margin: 5mm auto 0 auto;
+    max-width: 90mm;
+    text-align: center;
+}
+
+.chapter-verse-text {
+    display: block;
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 9.5pt;
+    font-weight: 400;
+    font-style: italic;
+    color: {{ chap_verse_color }};
+    line-height: 1.8;
+    word-break: keep-all;
+    text-indent: 0;
+    margin-bottom: 2mm;
+    text-align: center;
+}
+
+.chapter-verse-ref {
+    display: block;
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 8.5pt;
+    font-weight: 400;
+    color: {{ chap_ref_color }};
+    letter-spacing: 0.08em;
+    text-indent: 0;
+    text-align: center;
+}
+
+/* ─── 6-2. 간지 (Divider Page) ─── */
+.divider-page {
+    page: divider;
+    page-break-before: always;
+    page-break-after: always;
+    width: {{ page_width }}mm;
+    height: {{ page_height }}mm;
+    min-height: {{ page_height }}mm;
+    margin: 0;
+    padding: 0;
+    display: block;
+    background-color: #ffffff;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.divider-bottom-image {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    display: block;
+    max-height: 120mm;
+    object-fit: cover;
+    object-position: bottom center;
+}
+
+/* ─── 6-3. 챕터 이미지 페이지 ─── */
+.chapter-image-page {
+    page: chapter-image;
+    page-break-before: always;
+    page-break-after: always;
+    width: {{ page_width }}mm;
+    height: {{ page_height }}mm;
+    min-height: {{ page_height }}mm;
+    margin: 0;
+    padding: 0;
+    display: block;
+    background-color: #ffffff;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.chapter-image-page img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+
+/* ─── 7. 본문 콘텐츠 ─── */
+
+/* 제목 */
+.book-content h1 {
+    font-size: 22pt;
+    font-weight: 700;
+    color: #2c1810;
+    text-align: center;
+    margin-top: 30mm;
+    margin-bottom: 5mm;
+    page-break-before: always;
+    page: chapter-start;
+}
+
+.book-content h1:first-child {
+    page-break-before: avoid;
+    page: auto;
+    margin-top: 5mm;
+    margin-bottom: 3mm;
+}
+
+.book-content h1:first-child + h2 {
+    margin-top: 4mm;
+}
+
+/* 절 제목 — 전폭 밑줄(보고서 관행)을 없애고 서체 대비(돋움)·크기·여백으로 위계 표현 */
+.book-content h2 {
+    font-family: "KoPubWorld Dotum", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 13.5pt;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #2c2018;
+    margin-top: 11mm;
+    margin-bottom: 4.5mm;
+    line-height: 1.45;
+    text-align: left;
+}
+
+.book-content h3 {
+    font-family: "KoPubWorld Dotum", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 11.5pt;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #3a2f24;
+    margin-top: 7.5mm;
+    margin-bottom: 3mm;
+    line-height: 1.45;
+    text-align: left;
+}
+
+.book-content h4 {
+    font-family: "KoPubWorld Dotum", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 10.3pt;
+    font-weight: 700;
+    color: #3a2f24;
+    margin-top: 5.5mm;
+    margin-bottom: 2mm;
+    line-height: 1.45;
+    text-align: left;
+}
+
+/* 단락 — 1em 들여쓰기만, 단락 간 공백 없음 (한국 단행본 관행).
+   웹 문서식 '들여쓰기+간격 병용'이 AI 조판 티의 1순위 원인이었음.
+   주의: margin 축약형을 쓰면 좌우 auto 중앙 정렬(간지 제목 등)까지
+   덮어쓰므로 반드시 상하 longhand만 사용. */
+.book-content p {
+    margin-top: 0;
+    margin-bottom: 0;
+    text-indent: 1em;
+    orphans: 3;
+    widows: 3;
+}
+
+/* 위 문단 리셋이 특수 페이지 요소의 세로 간격까지 덮어쓰므로(선택자 우선순위),
+   간지·목차 표제지의 조판 간격을 명시적으로 복원한다. */
+.book-content .chapter-title-page p.chapter-label {
+    margin-bottom: 4mm;
+}
+.book-content .chapter-title-page p.chapter-number {
+    margin-bottom: 9mm;    /* 번호와 구분선(밑줄) 사이 — 붙지 않게 넉넉히 */
+}
+.book-content .chapter-title-page p.chapter-title-text {
+    margin: 0 auto 15mm auto;   /* 좌우 auto = 중앙 정렬 (max-width 95mm) */
+}
+.book-content .chapter-title-page p.chapter-verse-text {
+    margin-bottom: 2mm;
+}
+.book-content .toc-title-page p.toc-title-label {
+    margin-bottom: 6mm;
+}
+.book-content .toc-title-page p.toc-title-heading {
+    margin-bottom: 8mm;
+}
+.book-content p.figure-group-caption {
+    margin: 0 auto 3.5mm auto;
+}
+
+/* 장면 전환 등 의도적 단락 구분이 필요할 때만 명시적으로 사용 */
+.book-content p.break {
+    margin-top: 4mm;
+    text-indent: 0;
+}
+
+/* 중앙정렬 표제 요소는 첫 줄 들여쓰기 제거 —
+   위 .book-content p 의 text-indent:1em 이 상속되어 중앙정렬 텍스트가
+   오른쪽으로 밀리던 문제(간지·목차 표제지·지은이 소개 제목) 교정.
+   빈 <div> 장식선은 영향이 없어 그동안 선만 정중앙이었음. */
+.book-content .chapter-title-page p,
+.book-content .toc-title-page p,
+.book-content .author-box .author-kicker,
+.book-content .author-box .author-name {
+    text-indent: 0;
+}
+
+/* 자간(letter-spacing)이 있는 중앙정렬 라벨은 마지막 글자 뒤 자간만큼
+   시각적 중심이 왼쪽으로 밀린다. 자간의 절반만큼 들여써 중앙을 맞춘다. */
+.book-content .chapter-title-page p.chapter-label,
+.book-content .toc-title-page p.toc-title-label,
+.book-content .author-box p.author-kicker {
+    text-indent: 0.175em;   /* letter-spacing 0.35em ÷ 2 */
+}
+.book-content .toc-title-page p.toc-title-heading {
+    text-indent: 0.075em;   /* letter-spacing 0.15em ÷ 2 */
+}
+
+/* 수평선 — 본문에서 비표시 */
+.book-content hr {
+    display: none;
+}
+
+/* 코너 라벨 칩 — 이모지 대체. 표지 아이브로우와 같은 문법의 영어 소표제.
+   용례: <span class="sec-tag">WORKSHEET</span> 내 워크시트 ① */
+.book-content .sec-tag {
+    display: inline-block;
+    font-family: "KoPubWorld Dotum", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 7.5pt;
+    font-weight: 700;
+    font-style: normal;
+    letter-spacing: 0.16em;
+    color: {{ tbl_accent }};
+    border: 0.6pt solid {{ tbl_accent }};
+    padding: 0.4mm 1.6mm 0.2mm 1.8mm;
+    vertical-align: 0.14em;
+    margin-right: 1.6mm;
+    white-space: nowrap;
+}
+
+/* 강조 */
+.book-content strong {
+    font-weight: 700;
+    color: #1a0a00;
+}
+
+.book-content em {
+    font-style: italic;
+    color: #4a3a2a;
+}
+
+/* 인용문 */
+.book-content blockquote {
+    margin: 5mm 5mm 5mm 8mm;
+    padding: 3mm 5mm;
+    border-left: 2pt solid #b0a090;
+    background-color: #faf7f3;
+    font-size: 10.5pt;
+    color: #4a3a2a;
+    line-height: 1.75;
+}
+
+.book-content blockquote p {
+    text-indent: 0;
+    margin-bottom: 1.5mm;
+}
+
+/* 목록 */
+.book-content ol,
+.book-content ul {
+    margin: 3mm 0 3mm 8mm;
+    padding-left: 5mm;
+}
+
+.book-content li {
+    margin-bottom: 1.5mm;
+    line-height: 1.75;
+}
+
+.book-content ol {
+    list-style-type: decimal;
+}
+
+/* ─── 8. 페이지 나눔 제어 ─── */
+/* 소제목이 페이지 끝에 홀로 남지 않도록(과부/고아 방지) */
+.book-content h1,
+.book-content h2,
+.book-content h3,
+.book-content h4,
+.book-content h5,
+.book-content h6 {
+    page-break-after: avoid;
+    break-after: avoid-page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* 헤딩 바로 뒤 요소(단락·표·목록 등)는 헤딩과 같은 페이지에 — 제목 고아 방지 */
+.book-content h1 + *,
+.book-content h2 + *,
+.book-content h3 + *,
+.book-content h4 + *,
+.book-content h5 + *,
+.book-content h6 + * {
+    page-break-before: avoid;
+    break-before: avoid-page;
+}
+
+/* 표는 그 앞 설명 단락/목록과 붙여서 — 제목→설명→표를 한 덩어리로 유지 */
+.book-content p + table,
+.book-content ul + table,
+.book-content ol + table {
+    page-break-before: avoid;
+    break-before: avoid-page;
+}
+
+.page-break {
+    page-break-before: always;
+}
+
+/* 백면(빈 페이지) — 장 간지를 홀수(오른쪽) 면에 앉히기 위해
+   build_book.py --recto-chapters 2-pass가 자동 삽입. 면주·쪽번호 없음. */
+.blank-verso {
+    page: divider;
+    page-break-before: always;
+    page-break-after: always;
+    height: 1mm;
+}
+
+.book-content blockquote,
+.book-content ol,
+.book-content ul {
+    page-break-inside: avoid;
+}
+
+/* 인용 박스 바로 앞의 도입 문단(예: "⓸ 축구선교사 조형수 목사 (CJ국 선교사):")이
+   박스와 떨어져 페이지 끝에 홀로 남지 않도록, 문단과 박스를 한 페이지에 붙인다. */
+.book-content p:has(+ blockquote) {
+    page-break-after: avoid;
+    break-after: avoid;
+}
+
+/* ─── 9. 이미지 ─── */
+.book-content img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 5mm auto;
+    page-break-inside: avoid;
+}
+
+.book-content img + br + em,
+.book-content p:has(img) + p em:only-child {
+    display: block;
+    text-align: center;
+    font-size: 9.5pt;
+    color: #6b5b4b;
+    margin-top: -3mm;
+    margin-bottom: 5mm;
+}
+
+/* ─── 9.5 현장 화보 (프레임 그리드) ─── */
+/* 인물·행사별 사진 묶음. 프레임은 페이지 경계에서 잘리지 않고,
+   캡션은 사진과 분리되지 않게(다음 장으로 넘어가지 않게) 한다. */
+.figure-group {
+    margin: 6mm 0 9mm 0;
+}
+
+.figure-group-caption {
+    font-size: 9.5pt;
+    font-style: italic;
+    color: #5a4a3a;
+    line-height: 1.65;
+    text-align: center;
+    margin: 0 auto 3.5mm auto;
+    max-width: 140mm;
+    /* 캡션이 페이지 끝에 홀로 남지 않고 사진과 함께 가도록 */
+    page-break-after: avoid;
+    break-after: avoid;
+}
+
+.photo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;    /* 프레임이 같은 줄 최대 높이로 늘어나(stretch) 짧은 사진 아래 빈칸 생기던 문제 방지 */
+    gap: 4mm;
+}
+
+.photo-frame {
+    flex: 0 0 auto;
+    width: 74mm;                 /* 본문폭(~152mm)에 2장이 한 줄 */
+    border: 1px solid #d8cdbb;
+    background: #fff;
+    padding: 1.8mm;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    box-sizing: border-box;
+    /* 사진+프레임이 페이지에서 잘리지 않게 */
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.photo-frame img {
+    display: block;
+    width: 100%;
+    height: auto;                /* 원본 비율 유지(인물 잘림 방지) */
+    margin: 0;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.photo-frame.wide {
+    width: 100%;                 /* 파노라마/와이드 사진은 한 줄 전체 */
+}
+
+/* 캡션 + 첫 줄은 한 덩어리로 묶어, 캡션만 페이지 끝에 홀로 남는 일을 막는다 */
+.figure-lead {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.figure-lead .photo-grid {
+    margin-bottom: 0;
+}
+
+.figure-lead + .photo-grid {
+    margin-top: 4mm;
+}
+
+/* FC레벨업 화보: 그룹 B(리그·연합)+우승 트로피를 한 페이지에 모으고,
+   본문과 같은 페이지에 사진이 섞이지 않도록 앞뒤로 페이지를 분리한다. */
+.figure-group.photo-page {
+    page-break-before: always;
+    break-before: page;
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+.figure-group.photo-page .gallery-sub {
+    margin-top: 6mm;
+}
+/* 세로형(우승 트로피) 사진은 폭을 줄여 한 페이지에 함께 들어가게 한다 */
+.photo-frame.trophy {
+    width: 40mm;
+}
+
+/* ─── 지은이 소개 (속표지 다음, 본문 맨 앞 — 쪽번호 없음) ─── */
+@page author-page {
+    size: {{ page_width }}mm {{ page_height }}mm;
+    margin: 0;
+    @bottom-left { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right { content: none; }
+}
+.author-intro-page {
+    page: author-page;
+    page-break-after: always;
+    break-after: page;
+    width: {{ page_width }}mm;
+    height: {{ page_height }}mm;
+    box-sizing: border-box;
+    padding: 38mm 22mm;
+    background-color: {{ author_page_bg }};
+}
+.author-box {
+    border: 0.8pt solid {{ author_box_border }};
+    background: #ffffff;
+    padding: 14mm 13mm;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+    box-sizing: border-box;
+}
+.author-box .author-kicker {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 9.5pt;
+    letter-spacing: 0.35em;
+    color: {{ author_kicker_c }};
+    text-align: center;
+    margin: 0 0 3mm 0;
+}
+.author-box .author-name {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 18pt;
+    font-weight: 700;
+    color: {{ author_name_c }};
+    text-align: center;
+    letter-spacing: 0.05em;
+    margin: 0 0 6mm 0;
+}
+.author-box .author-divider {
+    width: 24mm;
+    height: 0.6pt;
+    background: {{ author_divider_bg }};
+    margin: 0 auto 7mm auto;
+}
+.author-box p.bio {
+    font-family: "Noto Serif KR", "Batang", serif;
+    font-size: 10.5pt;
+    line-height: 1.85;
+    color: #2a2a2a;
+    text-align: justify;
+    word-break: keep-all;
+    margin: 0 0 3.4mm 0;
+}
+.author-box p.bio:last-child {
+    margin-bottom: 0;
+}
+
+/* ─── 10. 참고문헌 (APA hanging indent) ─── */
+.book-content .references p {
+    padding-left: 2.5em;
+    text-indent: -2.5em;
+    margin: 0 0 0.8em 0;
+    text-align: left;
+    line-height: 1.6;
+    font-size: 10pt;
+    word-break: keep-all;
+    page-break-inside: avoid;
+}
+
+/* ─── 11. 표 (가독성) — 헤더색은 책 테마({{ 'navy' if is_navy else 'classic' }})에 맞춤 ─── */
+.book-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 5mm 0 6mm 0;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    text-align: left;
+    word-break: keep-all;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* 표가 페이지를 넘길 때 헤더 반복 */
+.book-content thead {
+    display: table-header-group;
+}
+
+/* 오픈 스타일 표 (단행본 관행): 상하 굵은 선 + 헤더 아래 가는 선,
+   세로선·전체 격자·줄무늬 없음. 격자+줄무늬는 워드/웹 관행. */
+.book-content table {
+    border-top: 1.1pt solid {{ tbl_accent }};
+    border-bottom: 1.1pt solid {{ tbl_accent }};
+}
+
+.book-content th {
+    background-color: transparent;
+    color: {{ tbl_accent }};
+    font-family: "KoPubWorld Dotum", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-weight: 700;
+    font-size: 9pt;
+    text-align: left;
+    vertical-align: bottom;
+    padding: 1.8mm 2.5mm;
+    border: none;
+    border-bottom: 0.55pt solid {{ tbl_accent }};
+    line-height: 1.4;
+    word-break: keep-all;
+}
+
+.book-content td {
+    padding: 1.6mm 2.5mm;
+    border: none;
+    border-bottom: 0.3pt solid {{ tbl_border }};
+    text-align: left;
+    vertical-align: top;
+    text-indent: 0;
+}
+
+.book-content tbody tr:last-child td {
+    border-bottom: none;    /* 마지막 행 밑선은 표의 굵은 하단선이 대신함 */
+}
+
+/* 셀 안 단락(드물게)도 들여쓰기 없이 */
+.book-content td p,
+.book-content th p {
+    text-indent: 0;
+    margin: 0;
+}
+
+/* 표 바로 다음 줄에 오는 이탤릭 = 표 설명(캡션) */
+.book-content table + p em:only-child {
+    display: block;
+    text-align: center;
+    font-size: 9pt;
+    color: {{ tbl_caption_color }};
+    margin-top: -3mm;
+    margin-bottom: 5mm;
+}
+
+/* ─── 12. 코드·도식 블록 ─── */
+.book-content pre {
+    background-color: #f4f5f7;
+    border: 0.5pt solid #d8dce2;
+    border-left: 2pt solid {{ tbl_th_bg }};
+    padding: 3mm 4mm;
+    margin: 4mm 0 5mm 0;
+    font-size: 9pt;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    text-align: left;
+    text-indent: 0;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    color: #2a2a2a;
+}
+
+.book-content pre code {
+    font-family: "Consolas", "D2Coding", "Malgun Gothic", monospace;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+}
+
+/* 인라인 코드 */
+.book-content code {
+    font-family: "Consolas", "Malgun Gothic", monospace;
+    font-size: 9pt;
+    background-color: #eef0f3;
+    border: 0.4pt solid #dde1e7;
+    padding: 0.2mm 1mm;
+}
