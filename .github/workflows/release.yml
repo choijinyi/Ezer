@@ -195,8 +195,30 @@ jobs:
           #   ★--deep 금지(entitlement 오염·실행 차단 — build-macos-signed.sh 와 동일 규칙). 외부 번들만 봉인.
           #   ★반드시 dedup **뒤**: dedup 이 Resources 를 바꿔 봉인을 깨므로 순서가 계약이다.
           #   공증(notarize)은 여전히 미적용 — Developer ID 경로는 scripts/build-macos-signed.sh(오너 자격).
+          # ★inside-out 필수(v0.13.9 실패에서 확정): 번들 서명은 **중첩 코드가 전부 서명돼 있어야** 성공한다.
+          #   arm64 는 링커가 모든 바이너리를 자동 ad-hoc 서명하지만 **x86_64 는 하지 않는다** — 그래서
+          #   v0.13.9 에서 aarch64 만 통과하고 x86_64 는 다음으로 실패했다(실측):
+          #     "EZERagent.app: code object is not signed at all / In subcomponent: Contents/MacOS/EZERagentd"
+          #   externalBin(binaries/EZERagent·EZERagentd)과 본체가 Contents/MacOS 에 실린다.
+          #   ★--deep 금지(entitlement 오염·실행 차단 — build-macos-signed.sh 와 동일 규칙). 개별 서명만.
+          #   ★dedup 이 만든 심볼릭링크는 -type f 가 제외한다(원본 1개만 서명 — 중복 서명·링크 파손 방지).
+          SIGN_N=0
+          # ① 동적 라이브러리·로드가능 번들 먼저
+          while IFS= read -r -d '' lib; do
+            codesign --force --sign - "$lib"; SIGN_N=$((SIGN_N+1))
+          done < <(find "$APP" \( -name '*.dylib' -o -name '*.so' -o -name '*.node' \) -type f -print0)
+          # ② Mach-O 실행 바이너리(라이브러리 제외) — 사이드카·본체·동봉 런타임
+          while IFS= read -r -d '' exe; do
+            if file "$exe" | grep -q 'Mach-O'; then
+              codesign --force --sign - "$exe"; SIGN_N=$((SIGN_N+1))
+            fi
+          done < <(find "$APP" -type f -perm +111 ! -name '*.dylib' ! -name '*.so' ! -name '*.node' -print0)
+          echo "  ✓ 중첩 Mach-O ${SIGN_N}개 ad-hoc 서명"
+          # ③ 마지막에 외부 번들 봉인
           codesign --force --sign - "$APP"
-          codesign --verify --strict --verbose=2 "$APP" || echo "⚠ ad-hoc 서명 검증 경고(비차단 — 산출물 확인 필요)"
+          # ④ 검증은 --deep 허용(서명은 개별·검증은 전수 — build-macos-signed.sh 와 동일 D-4 규칙).
+          #    실패 시 빌드를 세우지 않고 경고만 남긴다: 서명 자체(③)가 실패하면 set -e 가 이미 잡는다.
+          codesign --verify --deep --strict --verbose=2 "$APP" || echo "⚠ ad-hoc 서명 검증 경고(비차단 — 산출물 확인 필요)"
           echo "✓ ad-hoc 서명 완료: $APP"
           # ③ 업데이터 tar.gz 재생성(dedup 반영·심볼릭링크 보존) + 재서명 → tauri-action이 이 .sig로 latest.json 작성
           ( cd "$BUNDLE/macos" && tar czf EZERagent.app.tar.gz EZERagent.app )
