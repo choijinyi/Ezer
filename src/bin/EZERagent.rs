@@ -7489,6 +7489,9 @@ fn skillscan_warn(skill_dir: &std::path::Path) {
         .arg(&scanner)
         .arg("scan")
         .arg(skill_dir)
+        // ★PYTHONUTF8=1 (2026-08-25): 스킬 파일은 한글이 많아 cp949 기본 인코딩으로는
+        // 스캐너가 UnicodeDecodeError 로 죽는다(pane 밖 실행 시 state.rs 주입을 못 받는다).
+        .env("PYTHONUTF8", "1")
         .output()
     {
         Ok(o) => {

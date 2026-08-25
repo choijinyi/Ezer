@@ -164,7 +164,7 @@ jobs:
       #   아래 tauri-action은 mac 레그에서 tauriScript=true(빌드 no-op)로 이 slim 산출물을 그대로 수집·업로드·
       #   latest.json 병합만 하게 한다. tauri-action은 표준 번들 경로(bundle/dmg/<name>_<ver>_<arch>.dmg,
       #   bundle/macos/<name>.app.tar.gz[.sig])를 existsSync로 수집하므로 아래 파일명이 정확히 일치해야 한다.
-      #   CI는 인증서 미보유 → 미서명(현행과 동일 · Gatekeeper 경고 감수). 서명·공증은 로컬 build-macos-signed.sh 경로.
+      #   CI는 인증서 미보유 → **ad-hoc 서명**(②-b · Gatekeeper 경고는 남되 'damaged' 차단은 해소). 공증은 로컬 build-macos-signed.sh 경로.
       - name: git-core dedup + UDZO DMG + 업데이터 재생성 (macOS 전용)
         if: matrix.platform == 'macos-latest'
         shell: bash
@@ -187,6 +187,17 @@ jobs:
           bun x @tauri-apps/cli@2 build --bundles app --target "$TRIPLE"
           # ② git-core dedup (역참조 되돌리기 · build-macos-signed.sh와 동일 공유 스크립트) → runtime/git 608→~144MB
           bash scripts/dedup-git-core.sh "$APP"
+          # ★②-b ad-hoc 서명 (2026-08-25 실장애 수정): CI는 Developer ID 미보유라 .app 이 **완전 미서명**으로
+          #   나갔고, Apple Silicon 에서 미서명 앱은 격리 속성과 만나 "is damaged and can't be opened" 로
+          #   **차단**된다. 이건 "확인되지 않은 개발자" 경고와 다른 상태라 가이드의 '우클릭 → 열기' 우회가
+          #   통하지 않는다(사용자 실측 2026-08-25). ad-hoc 서명(--sign -)은 인증서 없이도 유효한 봉인을
+          #   만들어 차단을 일반 경고로 낮춘다 → 우클릭 열기가 실제로 동작한다.
+          #   ★--deep 금지(entitlement 오염·실행 차단 — build-macos-signed.sh 와 동일 규칙). 외부 번들만 봉인.
+          #   ★반드시 dedup **뒤**: dedup 이 Resources 를 바꿔 봉인을 깨므로 순서가 계약이다.
+          #   공증(notarize)은 여전히 미적용 — Developer ID 경로는 scripts/build-macos-signed.sh(오너 자격).
+          codesign --force --sign - "$APP"
+          codesign --verify --strict --verbose=2 "$APP" || echo "⚠ ad-hoc 서명 검증 경고(비차단 — 산출물 확인 필요)"
+          echo "✓ ad-hoc 서명 완료: $APP"
           # ③ 업데이터 tar.gz 재생성(dedup 반영·심볼릭링크 보존) + 재서명 → tauri-action이 이 .sig로 latest.json 작성
           ( cd "$BUNDLE/macos" && tar czf EZERagent.app.tar.gz EZERagent.app )
           bun x @tauri-apps/cli@2 signer sign --private-key "$TAURI_SIGNING_PRIVATE_KEY" --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" "$BUNDLE/macos/EZERagent.app.tar.gz"

@@ -470,6 +470,11 @@ fn spawn_office_bridge(state_dir: std::path::PathBuf) {
             cmd.arg(&script)
                 // 브리지의 EZERagent 호출이 라이벌 데몬을 autostart하는 재귀 차단(auto-restore와 동일 계약).
                 .env("EZERAGENT_NO_AUTOSTART", "1")
+                // ★PYTHONUTF8=1 (2026-08-25): 한국어 Windows 기본 인코딩 cp949 로는 UTF-8 파일·자식
+                // 출력을 못 읽어 subprocess _readerthread 가 UnicodeDecodeError 로 죽는다(실장애:
+                // office-bridge.log 74MB 트레이스백 누적). pane 스폰(state.rs)에는 이미 있는데
+                // 데몬 직접 스폰에만 빠져 있던 배선 비대칭이다.
+                .env("PYTHONUTF8", "1")
                 // 런타임 상태는 팩 트리 밖으로(팩 본체 오염 0 — 팩 편입 계약 HUD_STATE_DIR).
                 .env("HUD_STATE_DIR", state_dir.join("office-bridge"))
                 .stdin(std::process::Stdio::null())
@@ -737,6 +742,7 @@ fn phoenix_self_test(python: &str, script: &std::path::Path) -> bool {
         .arg(script)
         .arg("--selftest")
         .env("EZERAGENT_NO_AUTOSTART", "1")
+        .env("PYTHONUTF8", "1")   // ★위 office-bridge 와 동일 계약(cp949 크래시 차단)
         .stdin(std::process::Stdio::null())
         .hide_console()
         .output();
@@ -993,6 +999,10 @@ fn run_auto_restore_once(
 ) -> Option<i32> {
     let mut cmd = std::process::Command::new(program);
     cmd.args(args).env("EZERAGENT_NO_AUTOSTART", "1");
+    // ★PYTHONUTF8=1 (2026-08-25): 이 경로가 phoenix auto-restore 다. cp949 로 desired_roster.json
+    // (UTF-8)을 읽다 UnicodeDecodeError → 코드가 이를 "저널 손상"으로 오진해 멀쩡한 명부를 격리 →
+    // 복원할 노드 0개 → "설치했는데 노드가 안 열린다". 아래 caller env 루프가 뒤에 오므로 재정의 가능.
+    cmd.env("PYTHONUTF8", "1");
     for (k, v) in env {
         cmd.env(k, v);
     }
