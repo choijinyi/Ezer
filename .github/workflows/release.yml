@@ -217,9 +217,16 @@ jobs:
           # ③ 마지막에 외부 번들 봉인
           codesign --force --sign - "$APP"
           # ④ 검증은 --deep 허용(서명은 개별·검증은 전수 — build-macos-signed.sh 와 동일 D-4 규칙).
-          #    실패 시 빌드를 세우지 않고 경고만 남긴다: 서명 자체(③)가 실패하면 set -e 가 이미 잡는다.
-          codesign --verify --deep --strict --verbose=2 "$APP" || echo "⚠ ad-hoc 서명 검증 경고(비차단 — 산출물 확인 필요)"
-          echo "✓ ad-hoc 서명 완료: $APP"
+          #    ★하드 게이트다(2026-08-26 codex 검수 지적 수용). 종전엔 `|| echo` 로 경고만 남겼는데,
+          #    그건 구멍이었다: ③의 외부 봉인이 성공해도 **중첩 서명 불량은 이 검증만이 잡는다**
+          #    (①②가 도달 못한 Mach-O·봉인 후 틀어진 리소스·dedup 심볼릭링크 경계). 그걸 흘려보내면
+          #    서명 깨진 .app 이 tar.gz·DMG·릴리스까지 그대로 나간다 — 고치려던 "damaged" 를 다른
+          #    원인으로 재현하는 셈이다. 실패하면 **여기서 세운다.**
+          if ! codesign --verify --deep --strict --verbose=2 "$APP"; then
+            echo "::error::ad-hoc 서명 전수 검증 실패 — 중첩 서명 불량. 릴리스를 중단한다."
+            exit 1
+          fi
+          echo "✓ ad-hoc 서명 완료·전수 검증 통과: $APP"
           # ③ 업데이터 tar.gz 재생성(dedup 반영·심볼릭링크 보존) + 재서명 → tauri-action이 이 .sig로 latest.json 작성
           ( cd "$BUNDLE/macos" && tar czf EZERagent.app.tar.gz EZERagent.app )
           bun x @tauri-apps/cli@2 signer sign --private-key "$TAURI_SIGNING_PRIVATE_KEY" --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" "$BUNDLE/macos/EZERagent.app.tar.gz"
