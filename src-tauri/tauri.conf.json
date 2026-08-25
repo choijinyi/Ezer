@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "EZERagent",
-  "version": "0.13.11",
+  "version": "0.13.12",
   "identifier": "com.EZERagent.terminal",
   "build": {
     "frontendDist": "../ui/dist",
@@ -34,7 +34,8 @@
     "resources": {
       "resources/pack.tar.gz": "./",
       "resources/pack-manifest.json": "./",
-      "runtime/": "runtime/"
+      "runtime/": "runtime/",
+      "resources/book-assets/": "book-assets/"
     },
     "icon": [
       "icons/icon.icns",

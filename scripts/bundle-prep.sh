@@ -109,4 +109,20 @@ with open("src-tauri/resources/pack-manifest.json", "w") as mf:
 print(f"bundle-prep: pack.tar.gz {len(files)}개 파일 결정론 동봉 + digest 주입 → src-tauri/resources/")
 PY
 
-echo "bundle-prep ready (ui/dist + binaries + resources/pack.tar.gz for $triple)"
+# ★book-writing 스킬의 바이너리 자산(폰트·이미지·도판) 동봉 (v0.13.12).
+# 왜 pack 이 아니라 여기인가: build.rs 가 EZERagent-pack 의 git-추적 트리를 **컴파일 타임에
+# UTF-8 문자열로 임베드**한다. jpeg/png/otf 를 팩에 두면 rustc 가
+# "wasn't a utf-8 file" 로 174개 에러를 내며 컴파일이 깨진다(v0.13.11 실측 실패).
+# 그래서 팩에는 텍스트(SKILL.md·명령·스크립트·CSS)만 두고, 바이너리는 runtime/ 과 동일하게
+# Tauri resources 로 실어 보낸다. 설치 후 위치: <INSTDIR>/book-assets/
+if [ -d book-assets ]; then
+  rm -rf src-tauri/resources/book-assets
+  mkdir -p src-tauri/resources/book-assets
+  cp -R book-assets/. src-tauri/resources/book-assets/
+  n=$(find src-tauri/resources/book-assets -type f | wc -l | tr -d ' ')
+  echo "bundle-prep: book-assets ${n}개 파일 동봉 → src-tauri/resources/book-assets/"
+else
+  echo "bundle-prep: book-assets/ 없음 — 건너뜀(스킬은 텍스트만으로도 동작·자산 안내는 SKILL.md)"
+fi
+
+echo "bundle-prep ready (ui/dist + binaries + resources/pack.tar.gz + book-assets for $triple)"

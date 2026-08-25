@@ -2,15 +2,23 @@
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
     "createUpdaterArtifacts": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "resources": {
       "resources/pack.tar.gz": "./",
       "resources/pack-manifest.json": "./",
-      "runtime/": "runtime/"
+      "runtime/": "runtime/",
+      "resources/book-assets/": "book-assets/"
     },
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper" },
-      "nsis": { "installMode": "currentUser", "installerHooks": "nsis-hooks.nsh" }
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerHooks": "nsis-hooks.nsh"
+      }
     }
   }
 }

@@ -32,7 +32,26 @@ BookTemplate/output/<책>_판형_시각.pdf ④ 완성
    cd ~/books/my-book-project
    ```
    (Windows PowerShell: `Copy-Item "$env:USERPROFILE\.EZERagent\pack\skills\book-writing" ~\books\my-book-project -Recurse`)
-3. 이후 모든 명령은 **그 복사본 안에서** 실행한다.
+3. **★조판 자산(폰트·이미지·도판)을 그 위에 덮어 복사한다.** 팩에는 텍스트만 들어 있다 —
+   폰트 13개·이미지 172개는 **설치기가 따로 실어 보낸다**(아래 '자산이 팩에 없는 이유').
+   ```bash
+   # macOS
+   cp -R "/Applications/EZERagent.app/Contents/Resources/book-assets/." ~/books/my-book-project/
+   ```
+   ```powershell
+   # Windows
+   Copy-Item "$env:LOCALAPPDATA\EZERagent\book-assets\*" ~\books\my-book-project\ -Recurse -Force
+   ```
+   복사 후 `BookTemplate/templates/fonts/` 와 `BookTemplate/images/` 가 채워졌는지 확인한다.
+   비어 있으면 `--style style-pro.css` 전문 조판이 폰트를 못 찾아 실패한다.
+4. 이후 모든 명령은 **그 복사본 안에서** 실행한다.
+
+### 자산이 팩에 없는 이유 (건드리지 마라)
+
+`build.rs` 가 `EZERagent-pack` 의 git-추적 트리를 **컴파일 타임에 UTF-8 문자열로 임베드**한다.
+jpeg·png·otf 를 팩에 두면 rustc 가 `wasn't a utf-8 file` 로 컴파일을 거부한다
+(v0.13.11 실측: 174개 에러로 빌드 전면 실패). 그래서 바이너리는 `runtime/` 과 동일하게
+**Tauri resources** 로 분리 배포한다. ★**팩에 이미지를 다시 넣지 마라 — 빌드가 깨진다.**
 
 ## 전제 도구 (없으면 먼저 안내하고 멈춘다)
 
@@ -87,9 +106,15 @@ content 를 직접 고치면 다음 이관에서 덮여 사라진다.
 - 워크플로우·빌드 스크립트·스타일시트 — 오너 저작물(Ezer 와 동일 MIT).
 - `BookTemplate/templates/fonts/SourceHanSerifKR/` — Adobe, **SIL OFL 1.1**
   (`LICENSE.txt` 동봉 · 재배포 허용).
-- `BookTemplate/templates/fonts/KoPubWorld/` — 지적재산권 **문화체육관광부·한국출판인회의**.
-  상업적 사용은 허용되나 **프로그램 내 임베딩은 권리자 별도 승인 사항**이다
-  (https://www.kopus.org/biz-electronic-font2/). 사용 전 조건을 확인하라.
+- `BookTemplate/templates/fonts/KoPubWorld/` — **공공누리 제1유형(공공저작물 자유이용허락 · 출처표시)**.
+  지적재산권 **문화체육관광부·한국출판인회의**. 공유마당(한국저작권위원회) 등재 공개 자료이며
+  **상업적 이용이 허용**된다. 조건은 **출처표시** 하나다.
+  · 출처표시 문안: `KoPubWorld 서체 — 문화체육관광부·한국출판인회의` (책 판권면·크레딧에 넣어라)
+  · 금지: 사전승인 없는 **수정·변형·임대·재판매**. 원본 그대로 쓰는 한 해당 없다.
+  · 참고: 배포처(https://www.kopus.org/biz-electronic-font2/)는 "서버 탑재 후 웹서비스·프로그램 내
+    서비스 등 임베딩"에 별도 승인을 요구한다고 안내한다. 이 스킬은 폰트를 **원본 그대로 동봉해
+    로컬에서 인쇄물을 조판**하는 용도이고 인쇄물 제작은 명시 허용 용도지만, 웹폰트로 서빙하는 등
+    용도를 바꿀 때는 그 문안을 다시 확인하라.
 - `BookTemplate/content/`·`images/` — 예시 원고·도판. 실제 출판물의 표본이며 그대로 재사용하지 마라.
 
 ## 원본
