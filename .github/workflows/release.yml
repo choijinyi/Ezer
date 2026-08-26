@@ -6,14 +6,19 @@ name: release
 #   (P0 이력: --draft 는 수동 Publish 누락 시 채널 영구 정지 → 자동 발행 유지.
 #    구 배포 repo EZERagent-releases는 Archive — 마지막 미러가 구 설치본 이주 경로로 영구 생존.)
 # 사용: 버전 6곳 범프(scripts/version-check.sh) 후  git tag vX.Y.Z && git push origin vX.Y.Z
-#       (수동 실행도 가능 — Actions 탭 Run workflow)
+# ★수동 실행(workflow_dispatch) 제거 — 2026-08-26 검수 적발. 이 워크플로는 tagName 과
+#   릴리스명·업로드 대상에 github.ref_name 을 그대로 쓰고 releaseDraft:false + `--latest` 강제까지
+#   한다. 브랜치에서 수동 실행하면 ref_name='main' 이 되어 **'main' 이라는 릴리스가 즉시 발행되고
+#   latest 로 마킹**된다 → 업데이터 엔드포인트(releases/latest)가 그 가짜를 가리켜 **전 사용자
+#   자동 업데이트가 깨진다.** 버튼 하나로 배포 채널이 오염되는 구조였다.
+#   빌드만 시험하려면 windows-build.yml(workflow_dispatch 보유)을 쓴다. 실패한 릴리스 재시도는
+#   Actions 의 Re-run(원래 태그 ref 보존)으로 한다.
 # 활성 조건(시크릿):  TAURI_SIGNING_PRIVATE_KEY
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write          # 비공개 repo에 릴리스 생성·자산 업로드(+ relocate 단계 다운로드)에 필요
@@ -39,6 +44,19 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
+      # ★릴리스 레인 가드 (심층방어 · 2026-08-26). 위에서 workflow_dispatch 를 제거했지만,
+      #   누군가 다시 넣거나 다른 비-태그 경로가 생기면 즉시 여기서 세운다. 이 워크플로는
+      #   ref_name 을 릴리스 태그·이름·업로드 대상으로 그대로 쓰고 --latest 까지 강제하므로
+      #   비-태그 실행은 배포 채널 오염과 동의어다. checkout 보다 먼저 — fail-fast.
+      - name: 릴리스 레인 가드 (태그에서만 발행)
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            echo "::error::release.yml 은 v* 태그 push 로만 실행한다 (현재 ref_type=${GITHUB_REF_TYPE} ref=${GITHUB_REF_NAME}). 비-태그 실행은 '${GITHUB_REF_NAME}' 이름의 릴리스를 발행하고 latest 로 마킹해 자동 업데이트를 깨뜨린다. 빌드 시험은 windows-build.yml 을 쓰라."
+            exit 1
+          fi
+          echo "✓ 릴리스 레인 확인: tag ${GITHUB_REF_NAME}"
+
       - uses: actions/checkout@v4
 
       # ★시크릿/개인정보 발행 hard-gate (빌드·임베드 전 최우선 — 셋업보다도 먼저 fail-fast).
