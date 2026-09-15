@@ -4280,7 +4280,9 @@ async function start() {
 
   // 시작 시 + 6시간마다 백그라운드 업데이트 확인 (조용히 — 있으면 badge·toast)
   checkForUpdate(true);
-  setInterval(() => checkForUpdate(true), 6 * 3600 * 1000);
+  // 15분 주기(오너 요구 2026-09-15: 저장소 수정 → 자동 릴리스 → 앱 배지). 종전 6시간은 릴리스가
+  // 서고도 반나절 뒤에야 배지가 켜졌다. 요청은 latest.json·pack-manifest.json 두 JSON 페치뿐이라 가볍다.
+  setInterval(() => checkForUpdate(true), 15 * 60_000);
 
   // 테스트 전용(패치 채널 E2E — 오너 2026-07-15): EZERAGENT_AUTOTEST_PATCH_INSTALL=1 env 기동이면 기동
   // 직후 패치 설치를 무클릭 자동 발화(Finder 런칭엔 env 부재 → 프로덕션 무영향). install_update가
