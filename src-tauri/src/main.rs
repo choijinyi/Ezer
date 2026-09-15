@@ -2202,6 +2202,38 @@ async fn rotate_daemon(app: AppHandle, force: bool) -> Result<(), String> {
     Ok(())
 }
 
+/// 에제르 전체 종료 — 상단바 "종료" 버튼의 백엔드. 창을 닫기만 하면 EZERagentd(메인)와 부서 데몬이
+/// 백그라운드에 남아 계속 돌기 때문에(on_window_event 핸들러 없음), 판 전체를 의도적으로 내리는
+/// 단일 경로를 제공한다. rotate_daemon의 '종료-only 형제' — 같은 순서를 쓰되 재기동을 하지 않는다:
+/// drain(저장 신호) → 부서 데몬 teardown → 메인 데몬 종료 → 앱 종료.
+/// ★복귀 마커(pending_restore_path)를 쓰지 않는다 — 사용자가 명시적으로 내린 판을 다음 기동 때
+/// 되살리면 "종료"가 아니게 된다(rotate_daemon이 마커를 쓰는 이유의 정반대).
+/// 부서 teardown 실패는 메인 종료를 막지 않는다 — 실패 시 고아 데몬이 남는 쪽이 더 나쁘다.
+#[tauri::command]
+async fn shutdown_all(app: AppHandle) -> Result<(), String> {
+    // drain(best-effort): 살아있는 노드에 저장 신호 + 유예 (rotate_daemon 동형).
+    let _ = tokio::task::spawn_blocking(|| {
+        let mut cmd = std::process::Command::new(resolve_sidecar(if cfg!(windows) { "EZERagent.exe" } else { "EZERagent" }));
+        cmd.arg("drain");
+        no_console(&mut cmd);
+        cmd.status()
+    })
+    .await;
+    // 부서 데몬 teardown — 레지스트리(depts.json=SOT) 순회. 죽은 등재는 down-sock이 무해 처리.
+    if let Ok(reg) = list_depts() {
+        if let Some(depts) = reg.get("depts").and_then(|d| d.as_object()) {
+            for meta in depts.values() {
+                if let Some(sock) = meta.get("socket").and_then(|v| v.as_str()) {
+                    let _ = stop_dept_daemon_by_socket(sock.to_string()).await;
+                }
+            }
+        }
+    }
+    stop_running_daemon().await;
+    app.exit(0);
+    Ok(())
+}
+
 /// P5: 무중단 팩 업데이트 UI 브리지(DESIGN-noshutdown-pack-update §2-②·§7-③/④).
 /// UI "업데이트 버튼"이 호출 → `EZERagent pack-update`(P4) 사이드카를 실행해 서명검증→디스크 반영→
 /// 살아있는 노드 reinject를 시킨다. ★`app.restart()`를 **절대 호출하지 않는다** — EZERagentd·EZERagent-app·
@@ -2426,6 +2458,7 @@ fn main() {
             install_update,
             autotest_patch_install,
             rotate_daemon,
+            shutdown_all,
             install_pack_update,
             launch_dept_daemon,
             allocate_dept_daemon,

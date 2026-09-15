@@ -3529,6 +3529,34 @@ async function manualRestartAllDaemons() {
   }
 }
 
+// 에제르 종료 — 창을 닫기만 하면 데몬(메인+부서)이 백그라운드에 남아 계속 돈다. 이 버튼이 판 전체를
+// 내리는 단일 경로다: drain(저장 신호) → 부서 데몬 teardown → 메인 데몬 종료 → 앱 종료(shutdown_all).
+// 성공하면 앱이 사라지므로 후처리가 없다 — 실패했을 때만 sticky를 걷고 사유를 알린다.
+let shuttingDown = false;
+async function shutdownEzer() {
+  if (shuttingDown) return;
+  if (rotatingDaemon) {
+    toast("feed", "재시작 진행 중", "데몬 교대가 끝난 뒤에 종료하세요 — 교대 중 종료는 복원 상태를 깨뜨릴 수 있습니다.");
+    return;
+  }
+  const ok = await confirmModal(
+    "에제르 종료",
+    "에제르를 완전히 종료합니다. 진행 중인 노드에 저장(drain) 신호를 보낸 뒤 부서·메인 데몬을 모두 내리고 창을 닫습니다. " +
+      "마지막 미저장분은 손실될 수 있습니다.\n\n지금 종료하시겠습니까?",
+    "종료",
+  );
+  if (!ok) return;
+  shuttingDown = true;
+  stickyToast("shutdown-ezer", "feed", "⏻ 에제르 종료", "저장 후 부서·메인 데몬을 내리는 중…");
+  try {
+    await invoke("shutdown_all");
+  } catch (e) {
+    dismissToast("shutdown-ezer");
+    shuttingDown = false;
+    toast("health", "종료 실패", `${String(e)} — 데몬이 남아 있을 수 있습니다.`);
+  }
+}
+
 // 시작 시 1회 + 5분 주기(B) — 스큐 재검·배지 멱등 갱신·무손실 자동 교대·1회 능동 안내(C).
 async function checkVersionSkew() {
   if (rotatingDaemon) return; // 교대 진행 중 중복 발동 방지(주기 타이머·수동 클릭)
@@ -4544,6 +4572,7 @@ document.getElementById("cc-sessions-redact")!.addEventListener("click", (e) => 
 });
 document.getElementById("btn-update")!.addEventListener("click", () => onUpdateButton());
 document.getElementById("btn-restart-daemon")!.addEventListener("click", () => void manualRestartAllDaemons());
+document.getElementById("btn-shutdown")!.addEventListener("click", () => void shutdownEzer());
 document.getElementById("btn-theme")!.addEventListener("click", (e) =>
   openThemePopover(e.currentTarget as HTMLElement),
 );

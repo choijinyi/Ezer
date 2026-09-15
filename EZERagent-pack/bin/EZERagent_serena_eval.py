@@ -13,7 +13,7 @@ producer ≠ evaluator (file-level):
 
 정직 경계(honesty):
   - 토큰 proxy = chars//4 (Serena CharCountEstimator avg_chars_per_token=4, analytics.py:77-82) — tiktoken 아님.
-  - code-nav fraction 의 분모는 비코드(한국어 산문/SOT/설교/markdown) task 를 **제외**한다
+  - code-nav fraction 의 분모는 비코드(한국어 산문/SOT/원고/markdown) task 를 **제외**한다
     (symbol_tools.py:100-103: 비코드는 ValueError, 폴백 없음 → Serena 절감 0).
   - 틀린 편집 arm 은 FAIL(절감 주장 불가) — ground_truth_diff_sha 로 git-diff-verify.
   - 측정불가(worker 미마운트/attest mismatch/arm un-verifiable) = hard-fail(measurement_complete=false).

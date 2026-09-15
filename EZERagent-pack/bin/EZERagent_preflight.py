@@ -154,7 +154,7 @@ KLAW_PIN = "korean-law-mcp@4.4.1"
 
 # ── Serena 코드-의미 인덱스 MCP(uvx 온디맨드 채택 — 미설치) · 2026-06-25 오너 채택 ──
 # 심볼 단위 nav(get_symbols_overview/find_symbol/find_referencing_symbols)로 통째-Read·
-# 전체-Grep을 대체해 code-nav 슬라이스의 토큰을 줄인다(산문/SOT/설교/markdown=비코드 0).
+# 전체-Grep을 대체해 code-nav 슬라이스의 토큰을 줄인다(산문/SOT/원고/markdown=비코드 0).
 # 등록은 기계(--fix), 노드 활성화·신뢰(enable/trust)는 사람 전용 단계(denylist).
 SERENA_PKG     = "serena-agent"
 SERENA_PIN     = "serena-agent==1.5.3"   # server.json 공개판(uvx 해석). 1.5.4.dev0(로컬 dev·PyPI 미배포) 금지

@@ -24,6 +24,7 @@
       <button id="btn-restart-daemon" title="데몬 재시작 — 진행 중인 노드에 저장(drain) 신호를 보낸 뒤 데몬을 새로 켜고, 부서·노드를 대화 기억까지 자동 복원합니다(피닉스). 마지막 미저장분은 손실될 수 있습니다.">↻ 재시작</button>
       <button id="btn-browser" title="브라우저 — 작업 결과물 미리보기(로컬 서버·문서 URL)">브라우저</button>
       <button id="btn-theme" title="배경 테마 — 배경색 커스텀 지정">테마</button>
+      <button id="btn-shutdown" class="danger" title="에제르 종료 — 진행 중인 노드에 저장(drain) 신호를 보낸 뒤 부서·메인 데몬을 모두 내리고 창을 닫습니다. 창만 닫으면 데몬이 백그라운드에 남습니다.">⏻ 종료</button>
     </div>
   </header>
   <div id="body-row">
@@ -174,7 +175,7 @@
           <div class="cc-board-note">에이전트 라디오 — 노드들이 작업을 멈추지 않고 주고받는 비동기 메시지. 여기서 오너로서 직접 발신할 수 있습니다(@역할 멘션 = 그 노드 다음 턴에 자동 주입 · 전원 = 모든 노드).</div>
           <div id="cc-radio-compose">
             <input id="cc-radio-thread" type="text" value="general" spellcheck="false" title="스레드 이름" />
-            <input id="cc-radio-text" type="text" placeholder="메시지 — 예: @master 오늘 우선순위는 설교준비" spellcheck="false" />
+            <input id="cc-radio-text" type="text" placeholder="메시지 — 예: @master 오늘 우선순위는 보고서 초안" spellcheck="false" />
             <button id="cc-radio-send" title="발신">발신</button>
             <button id="cc-radio-send-all" title="전원 브로드캐스트 — 모든 노드에 수동적 인지 플래그">전원</button>
           </div>
