@@ -46,6 +46,9 @@ html, body {
   padding: 6px 12px; cursor: pointer; font-size: 12px;
 }
 #topbar button:hover { background: rgba(52,211,153,.10); border-color: rgba(52,211,153,.35); color: #6ee7b7; }
+/* 파괴적 동작(종료) — 되돌릴 수 없으므로 상단바 기본 초록 hover 대신 경고색으로 구분한다.
+   평소엔 다른 버튼과 같은 무게로 두고(오조작 유인 없음) hover에서만 붉게 선다. */
+#topbar button.danger:hover { background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.45); color: #fca5a5; }
 /* 버튼 그룹(레이아웃 조작 / 패널·도구) — 시각적 묶음으로 상단바 스캔성 개선 */
 #topbar .tb-group {
   display: inline-flex; align-items: center; gap: 2px;

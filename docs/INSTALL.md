@@ -106,7 +106,7 @@ git --version                 # 설치 확인 (사람·에이전트 공통)
 2. 더블클릭 → 열림(공증 빌드면 경고 없음). "손상됨"이 뜨면 보낸 사람에게 **"공증 빌드"**를 요청하세요(미공증은 다른 맥에서 차단됩니다 — RELEASE.md §1 ★Apple 서명·공증).
 3. 우상단 **Control Center → "스킬 보드"** 탭 → "통찰보고서 만들기" 클릭 → 본문 붙여넣기 → 미리보기 확인 → PDF를 받습니다.
 4. ⚠ 산출물은 **"AI 보조 생성 · 오너 검수 전"**입니다. 외부 공유 전 반드시 검수를 받으세요(과대약속 금지).
-5. **청중 맞춤**: `~/.EZERagent/profile.json`의 `audience`를 바꾸면(예: `pastor`·`student`) 그 청중에 맞춰 산출됩니다(기본 `custom`=전체보기).
+5. **청중 맞춤**: `~/.EZERagent/profile.json`의 `audience`를 바꾸면(예: `student`·`developer`) 그 청중에 맞춰 산출됩니다(기본 `custom`=전체보기).
 
 ### 🧑 B. CLI도 외부 터미널에서 쓰려면 (선택)
 앱 번들 안의 EZERagent·EZERagentd를 PATH(`/usr/local/bin`)에 노출합니다. **권장: 앱 안에서 1클릭.**

@@ -1,0 +1,93 @@
+name: auto-release
+
+# main push → 릴리스 자동 발행 (오너 요구 2026-09-15: "저장소를 고치면 설치된 앱에 업데이트 표시가
+# 들어오고 Update 버튼으로 적용돼야 한다"). 앱은 releases/latest 의 latest.json(본체)·
+# pack-manifest.json(팩)만 보므로 릴리스가 서야만 표시가 켜진다.
+#
+# 이 워크플로는 릴리스를 직접 만들지 않는다 — 레인을 판정해 **태그만 민다**. 실제 빌드·서명·발행은
+# 기존 release.yml(v*)·pack-release.yml(pack-v*)이 그대로 맡는다(두 워크플로 무변경 — 배포 채널을
+# 만드는 코드는 손대지 않는다).
+#   binary 레인 : SOT 6곳+Cargo.lock 범프 커밋 → main push → vX.Y.Z 태그 push  (재시작 업데이트)
+#   pack 레인   : HEAD 에 pack-vX.Y.Z 태그 push, 범프 불요                       (무중단 업데이트)
+#   none        : 변경 0건, 또는 앱에 실리지 않는 경로(.github/·docs/·루트 *.md)만
+# 판정·범프 로직은 scripts/auto-release.sh — 로컬에서 같은 명령으로 재현된다.
+#
+# ★RELEASE_PAT 필수 — GITHUB_TOKEN 이 민 태그·커밋은 GitHub 정책상 다른 워크플로를 깨우지 않는다
+#   (재귀 방지). 그러면 release.yml 이 돌지 않는다. Fine-grained PAT(이 저장소 · Contents: Read and
+#   write)를 secrets.RELEASE_PAT 로 등록해야 하며, 없으면 첫 step 에서 명확히 실패한다.
+# ★루프 차단 — binary 레인의 범프 커밋(chore(release):)이 다시 main push 를 일으키므로 잡 조건에서
+#   건너뛴다. 동시 push 는 concurrency 로 직렬화한다.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  cut:
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require RELEASE_PAT
+        env:
+          PAT: ${{ secrets.RELEASE_PAT }}
+        run: |
+          if [ -z "$PAT" ]; then
+            echo "::error::secrets.RELEASE_PAT 가 없다. GITHUB_TOKEN 이 민 태그는 release.yml 을 깨우지 못해 자동 릴리스가 불가하다. Settings → Secrets and variables → Actions 에 RELEASE_PAT(Fine-grained · 이 저장소 · Contents: Read and write)를 등록하라."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Decide lane and next version
+        id: decide
+        run: |
+          set -euo pipefail
+          git fetch --tags --quiet
+          OUT=$(bash scripts/auto-release.sh decide)
+          echo "$OUT"
+          for kv in $OUT; do echo "$kv" >> "$GITHUB_OUTPUT"; done
+
+      - name: Nothing to ship
+        if: steps.decide.outputs.lane == 'none'
+        run: echo "릴리스 불요 — base=${{ steps.decide.outputs.base }}"
+
+      - name: Configure git identity
+        if: steps.decide.outputs.lane != 'none'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Binary lane — bump SOT, commit, tag
+        if: steps.decide.outputs.lane == 'binary'
+        env:
+          NEXT: ${{ steps.decide.outputs.next }}
+        run: |
+          set -euo pipefail
+          bash scripts/auto-release.sh bump "$NEXT"
+          git add Cargo.toml Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json \
+                  ui/package.json dist-win/EZERagent.wxs dist-win/EZERagent-x64.wxs
+          git commit -m "chore(release): v$NEXT — main push 자동 릴리스 (SOT 6곳+Cargo.lock 범프)"
+          git tag "v$NEXT"
+          git push origin HEAD:main
+          git push origin "v$NEXT"
+          echo "본체 릴리스 태그 v$NEXT 발사 → release.yml 이 빌드·서명·발행"
+
+      - name: Pack lane — tag only
+        if: steps.decide.outputs.lane == 'pack'
+        env:
+          NEXT: ${{ steps.decide.outputs.next }}
+        run: |
+          set -euo pipefail
+          git tag "pack-v$NEXT"
+          git push origin "pack-v$NEXT"
+          echo "팩 릴리스 태그 pack-v$NEXT 발사 → pack-release.yml 이 서명 팩 발행(무중단)"

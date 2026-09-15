@@ -1,5 +1,13 @@
 # 릴리스 절차 (EZERagent 터미널)
 
+> **★자동 릴리스(2026-09-15 오너 요구)**: `main` 에 push 하면 `.github/workflows/auto-release.yml` 이
+> 레인을 판정해 태그를 민다 — 팩 외 경로 변경이 있으면 SOT 6곳+Cargo.lock 을 범프 커밋한 뒤 `vX.Y.Z`,
+> 팩만 변경이면 `pack-vX.Y.Z`(무중단). 그 태그가 아래 release.yml / pack-release.yml 을 그대로 깨운다.
+> 다음 버전 = 양 레인 태그 최댓값 + patch 1. `.github/`·`docs/`·루트 `*.md` 만 바뀌면 릴리스하지 않는다.
+> 전제: `secrets.RELEASE_PAT`(Fine-grained · Contents: Read and write) — GITHUB_TOKEN 이 민 태그는
+> 다른 워크플로를 깨우지 못한다. 로컬 재현: `bash scripts/auto-release.sh decide`.
+> 아래 수동 절차는 자동화가 막혔을 때의 대체 경로로 유지한다.
+
 > **현행 표준 절차(2026-07 정정)**: 릴리스는 **release.yml 자동화**가 정본이다 —
 > ①버전 범프(아래 §0 4곳)+`cargo build`(Cargo.lock)+로컬 `bash scripts/secret-scan.sh --all` clean 확인
 > ②main push ③`git tag vX.Y.Z && git push origin vX.Y.Z`(태그=오너 직접·가드)

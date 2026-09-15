@@ -1,76 +1,240 @@
 {
- "_comment": "스킬 버튼 보드 큐레이션(D5/SB-1) — 899개 전량노출 금지·도메인 대표만. acl: 1=일반노출 2=master만 3=차단. 민감(churchadmin-persecution-protection)·위험(k-skill-cleaner) 스킬은 카탈로그 미포함=암묵 차단. gate:hitl=실행 전 미리보기 모달 강제. 런타임 보드는 이 파일만 읽는다(SKILL.md 직접 파싱 안 함·환각0).",
- "version": 1,
+ "_comment": "스킬 버튼 보드 큐레이션(D5/SB-1) — 899개 전량노출 금지·도메인 대표만. acl: 1=일반노출 2=master만 3=차단. 민감(churchadmin-persecution-protection)·위험(k-skill-cleaner) 스킬은 카탈로그 미포함=암묵 차단. gate:hitl=실행 전 입력·미리보기 모달 강제. 런타임 보드는 이 파일만 읽는다(SKILL.md 직접 파싱 안 함·환각0). 큐레이션 기준(2026-09-15): 특정 직군 전용이 아닌 누구나 쓰는 범용 스킬만 노출한다 — 직군 전용 스킬은 팩에 남아 있어 대화로 직접 호출할 수 있다.",
+ "version": 2,
  "domains": [
   {
-   "id": "report",
-   "label": "보고서·문서",
+   "id": "write",
+   "label": "글쓰기·문서",
    "skills": [
     {
-     "name": "pastoral-visit-report",
-     "label": "심방보고서",
-     "scope": "심방 기록 입력 → 당회 제출용 심방보고서(docx/md)",
-     "success": "6단 구조(개요·말씀나눔·형편관찰·기도제목·후속조치) · 개인정보 익명화 원칙 · 미리보기 1회 확인(HITL) · 신뢰선 부착",
+     "name": "korean-humanizer",
+     "label": "AI 티 빼기",
+     "scope": "AI가 쓴 티가 나는 한국어 글 입력 → 번역체·상투어·과도한 명사화를 걷어낸 자연스러운 글",
+     "success": "의미 보존 · AI 흔적을 심각도(S1/S2/S3)로 분류해 제시 · 목표 글자수 지정 시 분량 정합",
      "acl": 1,
      "gate": "hitl"
     },
     {
-     "name": "ministry-report",
-     "label": "사역보고서",
-     "scope": "사역 활동·지표 입력 → 기간별 사역보고서(주간/월간/분기/연간)",
-     "success": "6단 구조(요약·활동·지표·재정개요·계획) · 입력값만 사용(환각0) · 미리보기 1회 확인(HITL) · 신뢰선 부착",
+     "name": "korean-spell-check",
+     "label": "맞춤법 검사",
+     "scope": "한국어 원고 입력 → 맞춤법·띄어쓰기 교정 제안(긴 글은 자동 분할)",
+     "success": "변경점 중심 제시 · 보수적 교정(의심 시 원문 유지) · 원문 의미 불변",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "korean-character-count",
+     "label": "글자수 세기",
+     "scope": "텍스트 입력 → 자소·줄·바이트 단위 정확한 분량 계산(자기소개서·서식 제한 대응)",
+     "success": "결정론적 집계 · 공백 포함/제외 구분 · 제한 초과 여부 명시",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "hwp",
+     "label": "한글문서 읽기·변환",
+     "scope": "HWP/HWPX 파일 경로 입력 → 본문·표·서식 필드 추출, Markdown→HWPX 역변환",
+     "success": "원문 구조 보존 · 추출 내용만 사용(환각0) · 바이너리 편집은 rhwp-edit로 안내",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "book-writing",
+     "label": "책 만들기",
+     "scope": "자료 폴더·주제 입력 → 원고 집필부터 신국판/B5 인쇄용 PDF 조판까지",
+     "success": "집필(bookwriter)→조판(BookTemplate) 2단 이관 정합 · 판형 규격 준수 · 출력 PDF 생성 확인",
      "acl": 1,
      "gate": "hitl"
     }
    ]
   },
   {
-   "id": "sermon-prep",
-   "label": "설교준비",
+   "id": "research",
+   "label": "조사·검색",
    "skills": [
     {
-     "name": "sermon-exegesis-preparation",
-     "label": "본문 연구·주해",
-     "scope": "본문 입력 → 원어·본문비평·구조 분석 주해 노트",
-     "success": "원어 분석·신학적 검증(GroundedClaim·SRCS)·환각 방지 규칙·단계별 HITL 검토",
+     "name": "naver-news-search",
+     "label": "뉴스 검색",
+     "scope": "검색어 입력 → 네이버 뉴스 기사 제목·발행시각·링크·요약 정리",
+     "success": "별도 API 키 불필요 · 링크 실재 확인 · 요약은 원문 범위 내(환각0)",
      "acl": 1,
-     "gate": "none"
+     "gate": "hitl"
     },
     {
-     "name": "sermon-expository-three-point",
-     "label": "3대지 설교문 작성",
-     "scope": "본문 입력 → 도입·성경이해·3대지 주해·적용 4단계 설교문",
-     "success": "그리스도 중심 해석·개혁주의 관점·구어체 · 4단계 구조 정합",
+     "name": "keris-academic-search",
+     "label": "학술논문 검색",
+     "scope": "주제·저자 입력 → KERIS RISS 학위논문·학술지·연구보고서 서지 검색",
+     "success": "서지정보(제목·저자·발행처·연도) 정확 · 미확인 문헌 인용 금지 · 원문 링크 병기",
      "acl": 1,
-     "gate": "none"
+     "gate": "hitl"
+    },
+    {
+     "name": "korean-law-search",
+     "label": "법령·판례 검색",
+     "scope": "법령명·쟁점 입력 → 법령·조문·판례·법령해석·자치법규 조회",
+     "success": "조문 원문 인용 · 시행일 명시 · 법률 자문이 아닌 조회 결과임을 고지",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "naver-blog-research",
+     "label": "블로그 리서치",
+     "scope": "검색어 입력 → 네이버 블로그 검색·본문 읽기·이미지 수집",
+     "success": "API 키 없이 동작 · 출처 URL 병기 · 수집 범위 내 정리",
+     "acl": 1,
+     "gate": "hitl"
+    }
+   ]
+  },
+  {
+   "id": "data",
+   "label": "통계·기업·시장",
+   "skills": [
+    {
+     "name": "kosis-stats",
+     "label": "국가통계 조회",
+     "scope": "통계 항목(인구·물가·고용 등) 입력 → KOSIS 국가통계포털 통계표·수치 조회",
+     "success": "공식 통계표 출처·기준시점 명시 · 조회값 그대로 사용(추정·가공 금지)",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "k-dart",
+     "label": "기업 공시·재무",
+     "scope": "기업명 입력 → 금감원 DART 공시검색·기업개황·재무제표·주요사항보고서 조회",
+     "success": "공시 원문 기준 · 보고서 접수일·사업연도 명시 · 투자 판단 아님을 고지",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "korean-stock-search",
+     "label": "주식 시세 조회",
+     "scope": "종목명 입력 → 국내 상장 종목 검색·KRX 기본정보·일별 시세 스냅샷",
+     "success": "KRX 기준값 그대로 · 조회 기준일 명시 · 투자 권유 아님을 고지",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "real-estate-search",
+     "label": "부동산 실거래가",
+     "scope": "지역·단지명 입력 → 아파트·오피스텔·빌라·단독 실거래가와 전월세 조회",
+     "success": "국토부 공개데이터 기준 · 거래월·전용면적 명시 · 시세 추정 아님",
+     "acl": 1,
+     "gate": "hitl"
     }
    ]
   },
   {
    "id": "media",
-   "label": "미디어제작",
+   "label": "영상·이미지",
    "skills": [
     {
+     "name": "media-gen-image",
+     "label": "이미지 생성",
+     "scope": "원하는 그림 설명 입력 → 모델 최적 프롬프트로 재작성 후 이미지 생성",
+     "success": "생성 전 비용 확인(HITL) · 요청 의도 반영 · 결과물은 AI 생성물로 표기",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "script-writer",
+     "label": "영상 대본",
+     "scope": "영상 주제 한 문장 → 사실 기반 2~4분 나레이션 대본(리서치·구조·사실검증·음성 분절)",
+     "success": "4단계 오케스트레이션 완주 · 사실검증 통과 · 낭독 호흡에 맞는 청크 분절",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
      "name": "shorts-creator",
-     "label": "쇼츠제작",
-     "scope": "주제·대본 입력 → 세로형(9:16) 60초 이내 쇼츠 영상",
-     "success": "훅·본론·CTA 구조 · 자막 필수 · 생성 전 대본·비용 확인(HITL) · video-verify 최종 게이트",
+     "label": "쇼츠 제작",
+     "scope": "주제·대본 한 문단 → 세로형(9:16) 60초 이내 쇼츠 영상",
+     "success": "훅(3초)·본론·CTA 구조 · 자막 필수 · 생성 전 대본·비용 확인(HITL) · video-verify 최종 게이트",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "youtube-video-pipeline",
+     "label": "유튜브 영상 제작",
+     "scope": "주제 한 문장 → 대본·음성·아바타·B-roll·음악·썸네일까지 end-to-end 제작",
+     "success": "단계별 비용 확인(HITL) · 최종 게이트(video-verify) 통과 · 산출물 회수 경로 안내",
      "acl": 1,
      "gate": "hitl"
     }
    ]
   },
   {
-   "id": "sermon",
-   "label": "설교·목회",
+   "id": "build",
+   "label": "개발·자동화",
    "skills": [
     {
-     "name": "sermon-planner-52week",
-     "label": "52주 설교 계획",
-     "scope": "교회 컨텍스트 입력 → 52주 설교 연간 계획",
-     "success": "교리 균형·절기 정합·본문 분배 일관",
+     "name": "appbuild",
+     "label": "웹·앱 만들기",
+     "scope": "만들고 싶은 서비스 설명 → 기획·화면명세·작업목록·감독관 검증루프까지 자율 빌드",
+     "success": "게이트 통과까지 자율 진행 · 단계별 산출물 검증 · 성공기준 대비 결과 보고",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "brainstorming",
+     "label": "아이디어 정리",
+     "scope": "막연한 구상 입력 → 의도·요구사항·설계 대안을 구현 전에 정리",
+     "success": "가정 명시 · 대안 비교 후 선택 근거 제시 · 실행 가능한 다음 단계 도출",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "systematic-debugging",
+     "label": "버그 원인 추적",
+     "scope": "버그·테스트 실패·이상 동작 → 수정안 제시 전에 근본 원인을 체계적으로 좁힌다",
+     "success": "재현 확인 후 가설 검증 · 추측 수정 금지 · 원인과 수정의 인과 명시",
      "acl": 1,
      "gate": "none"
+    },
+    {
+     "name": "skill-writing",
+     "label": "내 업무를 스킬로",
+     "scope": "반복하는 업무 절차 입력 → 재사용 가능한 스킬(SKILL.md)로 영속",
+     "success": "트리거 문구 명확 · 4칸 본문 구성 정합 · 다음 세션에서 재호출 가능",
+     "acl": 1,
+     "gate": "hitl"
+    }
+   ]
+  },
+  {
+   "id": "life",
+   "label": "생활·행정",
+   "skills": [
+    {
+     "name": "korea-weather",
+     "label": "날씨 조회",
+     "scope": "지역 입력 → 기상청 단기예보 기반 날씨 요약",
+     "success": "기상청 발표값 그대로 · 예보 기준시각 명시 · 자체 예측 금지",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "korean-transit-route",
+     "label": "대중교통 길찾기",
+     "scope": "출발지·도착지 입력 → 지하철·버스·도보 환승 경로와 소요시간",
+     "success": "주소→좌표 변환 정확 · 환승 횟수·소요시간 병기 · 실시간 지연은 별도 고지",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "delivery-tracking",
+     "label": "택배 조회",
+     "scope": "운송장 번호 입력 → CJ대한통운·우체국 배송 상태 조회",
+     "success": "택배사 공식 엔드포인트 기준 · 조회 시각 명시 · 미지원 택배사는 명확히 안내",
+     "acl": 1,
+     "gate": "hitl"
+    },
+    {
+     "name": "korean-holiday-calendar",
+     "label": "공휴일 조회",
+     "scope": "연·월 입력 → 공휴일·국경일·기념일·24절기 조회",
+     "success": "한국천문연구원 특일정보 기준 · 조회 전용(일정 변경 없음) · 대체공휴일 반영",
+     "acl": 1,
+     "gate": "hitl"
     }
    ]
   }
