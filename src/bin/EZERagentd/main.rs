@@ -207,6 +207,38 @@ async fn main() {
 /// 소켓 파일을 제거한다. unix·windows 양쪽 종료 핸들러가 공유한다 (크로스플랫폼 대칭).
 /// (windows named pipe엔 제거할 파일이 없어 remove_file은 무해한 no-op이 된다.)
 fn shutdown_cleanup(daemon: &Arc<Daemon>, reason: &str) {
+    // ★오너 2026-10-12: surface PTY 자식 트리 회수 — 데몬이 죽어도 노드 CLI(claude·codex 등)와
+    // 그 손자(node·python 등)가 살아남아 "에제르를 껐는데 프로세스가 계속 돈다"가 됐다.
+    // 원장 scoped(아래)는 `EZERagent run --scoped` 로 띄운 서버만 담아 PTY 자식은 대상이 아니었다.
+    // unix 는 부모 사망이 자식을 죽이지 않고(고아는 init 입양), PTY master 닫힘의 SIGHUP 도
+    // 무시·불전파되는 CLI 가 있어 '동반사망 성립'이라는 종전 전제가 실제로는 깨져 있었다.
+    // close_surface 의 검증된 수순(descendants→kill_pid)을 종료 경로에서도 그대로 적용한다.
+    // surfaces 락은 pid 복사까지만 — 느린 sysinfo refresh 를 락 아래서 돌리지 않는다.
+    let surface_pids: Vec<u32> = daemon
+        .surfaces
+        .lock()
+        .unwrap()
+        .values()
+        .map(|s| s.pid)
+        .collect();
+    if !surface_pids.is_empty() {
+        let mut sys = sysinfo::System::new();
+        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+        let mut killed = 0usize;
+        for root in &surface_pids {
+            // 자손 먼저(부모가 죽어 재부모화되기 전에 트리를 확보) → 루트.
+            for (pid, _) in governance::collect_descendants(&sys, *root) {
+                governance::kill_pid(pid);
+                killed += 1;
+            }
+            governance::kill_pid(*root);
+            killed += 1;
+        }
+        eprintln!(
+            "[EZERagentd] shutdown_cleanup({reason}): surface {} 개의 프로세스 트리 {killed} 개 회수",
+            surface_pids.len()
+        );
+    }
     let scoped = governance::collect_scoped_for_shutdown(&daemon.ledger.lock().unwrap());
     for (pid, pgid) in scoped {
         governance::kill_group_or_pid(pid, pgid);

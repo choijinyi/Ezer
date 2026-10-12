@@ -2219,6 +2219,25 @@ async fn shutdown_all(app: AppHandle) -> Result<(), String> {
         cmd.status()
     })
     .await;
+    // ★오너 2026-10-12: 데몬을 죽이기 **전에** 전 surface를 닫아 노드 CLI(claude·codex 등)와 그
+    // 손자 프로세스까지 회수한다. 데몬이 살아 있을 때 해야 하는 이유 —
+    //   ① Windows: stop_running_daemon 이 taskkill /F(TerminateProcess)라 데몬의 종료 핸들러
+    //      (shutdown_cleanup)가 **실행되지 않는다**. 죽은 뒤에는 아무도 자식을 회수하지 못한다.
+    //   ② 경로 단일화: close_surface 의 검증된 수순(descendants→kill_pid→child.kill→reap)을 그대로 탄다.
+    // 메인 데몬 + 등록된 전 부서 소켓에 대해 수행한다(부서 teardown 이 자식까지 책임지는지에 기대지 않음).
+    let mut socks: Vec<std::path::PathBuf> = vec![resolve_socket(&None)];
+    if let Ok(reg) = list_depts() {
+        if let Some(depts) = reg.get("depts").and_then(|d| d.as_object()) {
+            socks.extend(depts.values().filter_map(|m| {
+                m.get("socket")
+                    .and_then(|v| v.as_str())
+                    .map(std::path::PathBuf::from)
+            }));
+        }
+    }
+    for sock in &socks {
+        close_all_surfaces_on(sock).await;
+    }
     // 부서 데몬 teardown — 레지스트리(depts.json=SOT) 순회. 죽은 등재는 down-sock이 무해 처리.
     if let Ok(reg) = list_depts() {
         if let Some(depts) = reg.get("depts").and_then(|d| d.as_object()) {
@@ -2229,9 +2248,33 @@ async fn shutdown_all(app: AppHandle) -> Result<(), String> {
             }
         }
     }
-    stop_running_daemon().await;
+    // ★억제 포함 종료 — OS(launchd KeepAlive·작업 스케줄러 RestartOnFailure)가 데몬을
+    // 되살리지 않도록 먼저 내린 뒤 죽인다(suppress_daemon_autostart 주석 참조).
+    stop_running_daemon_with(true).await;
     app.exit(0);
     Ok(())
+}
+
+/// 한 데몬(소켓)의 모든 surface를 닫는다 — 각 close가 그 PTY 자식 트리(노드 CLI·손자)를 회수한다.
+/// best-effort: 데몬 부재·개별 close 실패는 종료를 막지 않는다(고아가 남는 쪽보다 진행이 낫다).
+/// 반환값은 닫기를 시도한 surface 수(로그·테스트용).
+async fn close_all_surfaces_on(sock: &std::path::Path) -> usize {
+    let Ok(list) = rpc_on(sock, "surface.list", json!({})).await else {
+        return 0; // 데몬이 이미 없음 — 닫을 것도 없다
+    };
+    let ids: Vec<u64> = list
+        .get("surfaces")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|s| s.get("surface_id").and_then(|v| v.as_u64()))
+                .collect()
+        })
+        .unwrap_or_default();
+    for id in &ids {
+        let _ = rpc_on(sock, "surface.close", json!({ "surface_id": id })).await;
+    }
+    ids.len()
 }
 
 /// P5: 무중단 팩 업데이트 UI 브리지(DESIGN-noshutdown-pack-update §2-②·§7-③/④).
@@ -2355,16 +2398,68 @@ fn scoped_pids_from_ledger_list(resp: &Value) -> Vec<u64> {
         .unwrap_or_default()
 }
 
+/// ★오너 2026-10-12: OS 자동 재기동 억제 — "⏻ 종료"가 데몬을 내렸는데도 OS가 되살려
+/// "에제르를 껐는데 프로세스가 계속 살아 있다"가 되는 경로를 끊는다.
+/// 되살리는 주체는 앱이 아니라 OS다 —
+///   · macOS: `~/Library/LaunchAgents/com.EZERagent.EZERagentd.plist`의 `KeepAlive=true`
+///     (종료코드 무관·ThrottleInterval 10초 뒤 재기동)
+///   · Windows: 작업 스케줄러 `EZERagentd` 태스크의 `RestartOnFailure`(PT1M×10) —
+///     taskkill /F는 exit≠0이라 '실패'로 집계돼 1분 뒤 재기동 대상이 된다.
+/// 둘 다 **삭제·영구 비활성이 아니라 이번 세션만 내린다** — 재등록 경로를 깨지 않는다:
+///   · macOS: 다음 앱 기동의 maybe_autoregister_launchd가 `loaded=false`를 보고 load로 복원
+///   · Windows: 태스크는 그대로 남아 다음 로그온 LogonTrigger가 그대로 발효
+/// best-effort — 실패해도 종료를 막지 않는다(고아가 남는 쪽보다 종료 진행이 낫다).
+fn suppress_daemon_autostart() {
+    #[cfg(target_os = "macos")]
+    {
+        let ok = EZERagent::launchd::bootout();
+        eprintln!("[EZERagent-app] shutdown: launchd bootout {}", if ok { "ok" } else { "skip(미적재·실패)" });
+    }
+    #[cfg(windows)]
+    {
+        // 태스크명은 `EZERagent daemon install`(EZERagent.rs)의 TASK와 동일해야 한다.
+        // /End = 사용자 의도 정지(실패 집계 아님) → RestartOnFailure가 서지 않는다.
+        // /Delete·/Change /DISABLE을 쓰지 않는 이유: 다음 로그온 자동기동을 영구히 잃는다.
+        let mut cmd = std::process::Command::new("schtasks");
+        cmd.args(["/End", "/TN", "EZERagentd"]);
+        no_console(&mut cmd);
+        let ok = cmd.output().map(|o| o.status.success()).unwrap_or(false);
+        eprintln!("[EZERagent-app] shutdown: schtasks /End {}", if ok { "ok" } else { "skip(미가동·미등록)" });
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    {
+        // Linux 등: OS 자동 재기동 등록 경로가 없다(launchd·작업 스케줄러 전용) — 무동작.
+    }
+}
+
 /// 구 데몬 정상 종료: system.identify로 pid를 받아 SIGTERM(unix)/taskkill(win).
 async fn stop_running_daemon() {
+    stop_running_daemon_with(false).await;
+}
+
+/// ★오너 2026-10-12: `suppress_autostart=true`면 데몬을 죽이기 **전에** OS 자동 재기동(macOS launchd
+/// `KeepAlive=true` / Windows 작업 스케줄러 `RestartOnFailure`)을 먼저 내린다. "⏻ 종료"(shutdown_all)
+/// 전용이다 — install_update·rotate_daemon은 곧바로 새 데몬을 띄워야 하므로 false로 호출한다
+/// (여기서 억제를 걸면 재기동 경로가 깨진다).
+/// 억제를 **ledger 회수 뒤·kill 앞**에 끼우는 이유: 회수는 데몬 RPC가 필요해 살아있을 때만 되고,
+/// 억제는 kill로 '실패 종료'가 기록되기 전이어야 재기동 트리거 자체가 서지 않는다.
+async fn stop_running_daemon_with(suppress_autostart: bool) {
     let pid = rpc("system.identify", json!({}))
         .await
         .ok()
         .and_then(|r| r["daemon_pid"].as_u64());
     if let Some(pid) = pid {
+        // ★억제는 '데몬 살아있음'을 전제로 한 ledger 회수(아래 windows 블록)와 순서를 다퉈선 안 된다.
+        //   macOS bootout은 서비스를 내리면서 SIGTERM까지 보내므로, 회수가 필요한 Windows는
+        //   블록 **안에서** 회수를 먼저 끝낸 뒤 억제를 부른다(각 OS 블록에서 호출 — 아래).
         #[cfg(unix)]
-        unsafe {
-            libc::kill(pid as i32, libc::SIGTERM);
+        {
+            if suppress_autostart {
+                suppress_daemon_autostart();
+            }
+            unsafe {
+                libc::kill(pid as i32, libc::SIGTERM);
+            }
         }
         #[cfg(windows)]
         {
@@ -2376,6 +2471,11 @@ async fn stop_running_daemon() {
                 for spid in scoped_pids_from_ledger_list(&r) {
                     let _ = rpc("ledger.kill", json!({ "pid": spid })).await;
                 }
+            }
+            // 회수가 끝난 뒤 억제 — 아래 taskkill /F는 exit≠0(=실패)로 기록돼
+            // RestartOnFailure(PT1M×10)를 깨우므로, 그 전에 태스크를 정상 정지시킨다.
+            if suppress_autostart {
+                suppress_daemon_autostart();
             }
             let mut kill = std::process::Command::new("taskkill");
             kill.args(["/PID", &pid.to_string(), "/F"]);
@@ -2389,6 +2489,10 @@ async fn stop_running_daemon() {
                 break;
             }
         }
+    } else if suppress_autostart {
+        // 데몬이 응답하지 않는 상태(이미 죽음·기동 중)에서도 억제는 걸어둔다 — launchd KeepAlive는
+        // '방금 죽은' 서비스를 되살리므로, 여기서 내려두지 않으면 종료 직후 되살아난다.
+        suppress_daemon_autostart();
     }
 }
 

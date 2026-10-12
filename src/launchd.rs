@@ -88,6 +88,30 @@ pub fn kickstart() -> bool {
         .unwrap_or(false)
 }
 
+/// ★오너 2026-10-12: `launchctl bootout` 인자(순수 함수 — 테스트 가능). kickstart의 짝으로
+/// service target = gui/<uid>/<label>. 앱 "⏻ 종료"가 데몬을 죽이기 **전에** 이걸 돌려야 한다 —
+/// plist의 `KeepAlive=true`는 종료코드와 무관하게 데몬을 되살리므로, bootout으로 서비스를
+/// 도메인에서 내리지 않으면 "에제르를 껐는데 프로세스가 계속 돈다"가 재현된다.
+/// ★`-w`(disable override)를 쓰지 않는다 — 다음 앱 기동의 register_if_absent가
+/// `loaded=false`를 보고 `launchctl load -w`로 보호를 복원하는 경로를 깨지 않기 위함.
+pub fn bootout_args(uid: u32) -> [String; 2] {
+    ["bootout".to_string(), format!("gui/{uid}/{LAUNCHD_LABEL}")]
+}
+
+/// launchd에 적재된 EZERagentd 서비스를 내린다(= 적재 해제 + 실행 중이면 SIGTERM 종료).
+/// 데몬은 SIGTERM 핸들러(shutdown_cleanup)로 surface 자식 트리·scoped를 회수하고 나가므로,
+/// 이 호출 하나가 '정상 종료 + 되살아나지 않음'을 동시에 달성한다. 성공 여부 반환.
+/// 미적재(이미 내려감)·launchctl 부재는 false — 호출측은 best-effort로 취급한다.
+pub fn bootout() -> bool {
+    let uid = unsafe { libc::getuid() };
+    let args = bootout_args(uid);
+    std::process::Command::new("launchctl")
+        .args(args.iter().map(String::as_str))
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
 /// plist 본문에서 ProgramArguments의 첫 `<string>`(=EZERagentd 경로, XML 이스케이프된 형태)을 추출.
 /// stale drift(plist가 옛 EZERagentd 경로를 가리킴) 감지에 쓴다. 순수 함수(테스트 가능).
 fn extract_program_path(content: &str) -> Option<String> {
@@ -225,6 +249,17 @@ mod tests {
         assert!(plist.contains("<string>/tmp/EZERagentd.log</string>"), "로그 경로 누락");
         // 유효한 plist 골격.
         assert!(plist.starts_with("<?xml"), "plist 헤더 누락");
+    }
+
+    #[test]
+    fn bootout_args_target_gui_domain_without_disable_flag() {
+        let a = bootout_args(501);
+        assert_eq!(a[0], "bootout");
+        assert_eq!(a[1], format!("gui/501/{LAUNCHD_LABEL}"));
+        // kickstart와 동일한 service target 문법이어야 bootout→load 왕복이 성립한다.
+        assert_eq!(a[1], kickstart_args(501)[1]);
+        // `-w`(영구 disable)가 끼면 다음 기동의 load 복원 경로가 막힌다.
+        assert!(!a.iter().any(|x| x == "-w"), "bootout에 -w가 끼면 재등록이 막힌다");
     }
 
     #[test]
