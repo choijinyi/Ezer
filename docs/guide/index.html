@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>에제르(Ezer) 사용 안내 — 내 일을 함께 하는 AI 팀</title>
+<meta name="description" content="에제르(EZERagent) 설치부터 실제 사용까지. 글쓰기·조사·통계·영상·개발·생활 행정을 함께 하는 AI 에이전트 사용 안내서.">
+<meta property="og:title" content="에제르(Ezer) 사용 안내">
+<meta property="og:description" content="내 일을 함께 하는 AI 팀 — 설치부터 실제 사용, 문제 해결까지">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🤝%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#ffffff;
+    --bg-soft:#f6f9f8;
+    --bg-card:#ffffff;
+    --ink:#12211d;
+    --ink-2:#3d5450;
+    --ink-3:#6b8480;
+    --line:#dde8e5;
+    --line-2:#eef4f2;
+    --em:#0d7a5f;
+    --em-2:#0a6a52;
+    --em-soft:#e7f5f0;
+    --em-ink:#064e3b;
+    --warn:#9a6700;
+    --warn-soft:#fff8e5;
+    --warn-line:#f0dfae;
+    --danger:#a4341f;
+    --danger-soft:#fdf0ed;
+    --danger-line:#f2cfc6;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(12,40,34,.05), 0 8px 24px rgba(12,40,34,.06);
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth; scroll-padding-top:76px}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  img{max-width:100%}
+  a{color:var(--em-2)}
+  code,kbd,pre{font-family:"JetBrains Mono","D2Coding","Cascadia Mono",Consolas,Menlo,monospace}
+
+  /* ---------- 상단 내비 ---------- */
+  .nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(255,255,255,.92); backdrop-filter:saturate(1.6) blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-in{max-width:var(--maxw); margin:0 auto; padding:0 20px; display:flex; align-items:center; gap:18px; height:60px}
+  .brand{display:flex; align-items:center; gap:9px; font-weight:800; letter-spacing:-.02em; text-decoration:none; color:var(--ink); white-space:nowrap}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--em); box-shadow:0 0 0 4px var(--em-soft)}
+  .nav-links{display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; flex:1}
+  .nav-links::-webkit-scrollbar{display:none}
+  .nav-links a{
+    color:var(--ink-2); text-decoration:none; font-size:14.5px; font-weight:600;
+    padding:7px 11px; border-radius:9px; white-space:nowrap;
+  }
+  .nav-links a:hover{background:var(--em-soft); color:var(--em-ink)}
+  .nav-cta{
+    background:var(--em); color:#fff; text-decoration:none; font-weight:700; font-size:14.5px;
+    padding:9px 16px; border-radius:10px; white-space:nowrap;
+  }
+  .nav-cta:hover{background:var(--em-2)}
+
+  /* ---------- 레이아웃 ---------- */
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px}
+  section{padding:64px 0; border-top:1px solid var(--line-2)}
+  section:first-of-type{border-top:0}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:13px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--em); background:var(--em-soft); padding:5px 11px; border-radius:999px; margin-bottom:14px;
+  }
+  h1{font-size:clamp(32px,5.2vw,50px); line-height:1.22; letter-spacing:-.035em; margin:0 0 18px; font-weight:850}
+  h2{font-size:clamp(25px,3.4vw,33px); line-height:1.3; letter-spacing:-.03em; margin:0 0 10px; font-weight:820}
+  h3{font-size:20px; letter-spacing:-.02em; margin:34px 0 10px; font-weight:750}
+  h4{font-size:17px; letter-spacing:-.015em; margin:22px 0 6px; font-weight:750}
+  .lede{font-size:19px; color:var(--ink-2); margin:0 0 6px; max-width:62ch}
+  p{margin:0 0 14px}
+  .muted{color:var(--ink-3)}
+  .small{font-size:15px}
+
+  /* ---------- 히어로 ---------- */
+  .hero{
+    background:
+      radial-gradient(1100px 460px at 12% -8%, #dcf3ea 0%, rgba(220,243,234,0) 62%),
+      radial-gradient(900px 420px at 92% 0%, #e8f4ff 0%, rgba(232,244,255,0) 60%),
+      var(--bg-soft);
+    border-bottom:1px solid var(--line);
+    padding:70px 0 62px;
+  }
+  .hero h1{max-width:20ch}
+  .hero .lede{font-size:20px}
+  .hero-meaning{
+    margin:26px 0 0; padding:18px 22px; background:#fff; border:1px solid var(--line);
+    border-left:4px solid var(--em); border-radius:0 var(--radius) var(--radius) 0;
+    max-width:66ch; box-shadow:var(--shadow);
+  }
+  .hero-meaning b{color:var(--em-ink)}
+
+  /* ---------- 다운로드 ---------- */
+  .dl-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(268px,1fr)); gap:16px; margin-top:8px}
+  .dl-card{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:24px 22px 22px; box-shadow:var(--shadow); display:flex; flex-direction:column;
+  }
+  .dl-card.primary{border-color:#b6e2d3; box-shadow:0 0 0 3px var(--em-soft), var(--shadow)}
+  .dl-os{display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; letter-spacing:-.02em}
+  .dl-os .ic{font-size:22px; line-height:1}
+  .dl-for{color:var(--ink-3); font-size:14.5px; margin:7px 0 16px; min-height:44px}
+  .dl-btn{
+    display:block; text-align:center; background:var(--em); color:#fff; text-decoration:none;
+    font-weight:750; padding:13px 16px; border-radius:11px; margin-top:auto;
+  }
+  .dl-btn:hover{background:var(--em-2)}
+  .dl-btn.ghost{background:#fff; color:var(--em-2); border:1.5px solid #bfe3d7}
+  .dl-btn.ghost:hover{background:var(--em-soft)}
+  .dl-size{font-size:13px; color:var(--ink-3); text-align:center; margin-top:9px}
+  .dl-note{margin-top:20px; font-size:15px; color:var(--ink-2)}
+
+  /* ---------- 카드/박스 ---------- */
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(258px,1fr)); gap:16px; margin:22px 0}
+  .card{background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius); padding:22px; box-shadow:var(--shadow)}
+  .card h4{margin:0 0 8px; font-size:17.5px}
+  .card p{margin:0; color:var(--ink-2); font-size:15.5px}
+  .card .ic{font-size:24px; display:block; margin-bottom:10px}
+
+  .note{background:var(--em-soft); border:1px solid #c7e8dc; border-radius:12px; padding:16px 20px; margin:20px 0; font-size:16px}
+  .note b{color:var(--em-ink)}
+  .warn{background:var(--warn-soft); border:1px solid var(--warn-line); border-radius:12px; padding:16px 20px; margin:20px 0; font-size:16px}
+  .warn b{color:var(--warn)}
+  .stop{background:var(--danger-soft); border:1px solid var(--danger-line); border-radius:12px; padding:16px 20px; margin:20px 0; font-size:16px}
+  .stop b{color:var(--danger)}
+
+  /* ---------- 단계 ---------- */
+  .steps{counter-reset:s; margin:24px 0 0; padding:0; list-style:none}
+  .steps > li{
+    counter-increment:s; position:relative; padding:0 0 26px 58px; margin:0;
+    border-left:2px solid var(--line); margin-left:17px;
+  }
+  .steps > li:last-child{border-left-color:transparent; padding-bottom:4px}
+  .steps > li::before{
+    content:counter(s); position:absolute; left:-18px; top:-3px;
+    width:35px; height:35px; border-radius:50%; background:var(--em); color:#fff;
+    display:grid; place-items:center; font-weight:800; font-size:15px; font-feature-settings:"tnum";
+    box-shadow:0 0 0 5px #fff;
+  }
+  .steps h4{margin:0 0 6px; font-size:18px}
+  .steps p{margin:0 0 8px; color:var(--ink-2)}
+
+  /* ---------- 대화 예시 ---------- */
+  .chat{border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin:18px 0; box-shadow:var(--shadow)}
+  .chat-hd{background:#0f1f1b; color:#c9e7dd; padding:9px 16px; font-size:13px; font-weight:600; display:flex; gap:8px; align-items:center}
+  .chat-hd .lights{display:flex; gap:6px}
+  .chat-hd .lights i{width:10px;height:10px;border-radius:50%;display:block}
+  .chat-body{background:#fff; padding:6px 0}
+  .msg{padding:13px 20px; display:flex; gap:12px; align-items:flex-start; border-bottom:1px solid var(--line-2)}
+  .msg:last-child{border-bottom:0}
+  .msg .who{
+    flex:0 0 auto; font-size:12.5px; font-weight:800; padding:3px 9px; border-radius:7px; margin-top:2px; white-space:nowrap;
+  }
+  .msg.me .who{background:#e8eef7; color:#274a7a}
+  .msg.ai .who{background:var(--em-soft); color:var(--em-ink)}
+  .msg .txt{font-size:15.5px; color:var(--ink); white-space:pre-line}
+
+  /* ---------- 표 ---------- */
+  .tablewrap{overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; min-width:520px; background:#fff; font-size:15.5px}
+  th,td{text-align:left; padding:13px 16px; border-bottom:1px solid var(--line-2); vertical-align:top}
+  th{background:var(--bg-soft); font-weight:750; color:var(--ink); white-space:nowrap; font-size:14.5px}
+  tbody tr:last-child td{border-bottom:0}
+  td b{color:var(--em-ink)}
+
+  /* ---------- 스킬 ---------- */
+  .skill-hero{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin:22px 0}
+  .skill{background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:20px 22px; box-shadow:var(--shadow)}
+  .skill .tag{font-size:12px; font-weight:800; color:var(--em); background:var(--em-soft); padding:3px 9px; border-radius:999px; letter-spacing:.02em}
+  .skill h4{margin:11px 0 7px; font-size:17.5px}
+  .skill p{margin:0 0 12px; font-size:15px; color:var(--ink-2)}
+  .skill .say{
+    font-size:14.5px; background:var(--bg-soft); border:1px dashed #c6dbd5; border-radius:9px;
+    padding:9px 13px; color:var(--em-ink);
+  }
+  .skill .say::before{content:"이렇게 말하세요 → "; font-weight:750; color:var(--ink-3)}
+
+  .catgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(212px,1fr)); gap:12px; margin:20px 0}
+  .cat{background:#fff; border:1px solid var(--line); border-radius:12px; padding:15px 17px}
+  .cat b{display:block; font-size:15.5px; margin-bottom:5px}
+  .cat span{font-size:14px; color:var(--ink-3); line-height:1.6}
+
+  /* ---------- 접이식 ---------- */
+  details{background:#fff; border:1px solid var(--line); border-radius:12px; margin:11px 0; overflow:hidden}
+  details[open]{box-shadow:var(--shadow)}
+  summary{
+    cursor:pointer; padding:16px 20px; font-weight:700; font-size:16.5px; list-style:none;
+    display:flex; align-items:center; gap:11px; letter-spacing:-.015em;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸"; color:var(--em); font-size:14px; transition:transform .15s}
+  details[open] summary::before{transform:rotate(90deg)}
+  summary:hover{background:var(--bg-soft)}
+  .details-body{padding:2px 20px 20px 44px; font-size:16px; color:var(--ink-2)}
+  .details-body p:last-child{margin-bottom:0}
+  .details-body b{color:var(--ink)}
+
+  pre{
+    background:#0f1f1b; color:#d6efe6; padding:15px 18px; border-radius:11px;
+    overflow-x:auto; font-size:14px; line-height:1.7; margin:12px 0;
+  }
+  pre .c{color:#7fae9f}
+  code.inl{background:var(--em-soft); color:var(--em-ink); padding:2px 7px; border-radius:6px; font-size:.88em; font-weight:600}
+  kbd{
+    background:#fff; border:1px solid var(--line); border-bottom-width:2px; border-radius:6px;
+    padding:2px 7px; font-size:.85em; font-weight:600; color:var(--ink-2); white-space:nowrap;
+  }
+
+  /* ---------- 체크리스트 ---------- */
+  .check{list-style:none; padding:0; margin:18px 0}
+  .check li{
+    padding:12px 16px 12px 46px; position:relative; background:#fff;
+    border:1px solid var(--line); border-radius:11px; margin-bottom:9px; font-size:16px;
+  }
+  .check li::before{
+    content:"☐"; position:absolute; left:16px; top:10px; font-size:20px; color:var(--em); line-height:1.5;
+  }
+
+  /* ---------- 푸터 ---------- */
+  footer{background:var(--bg-soft); border-top:1px solid var(--line); padding:44px 0 56px; margin-top:20px}
+  footer .wrap{display:flex; flex-wrap:wrap; gap:26px; justify-content:space-between; align-items:flex-start}
+  footer p{font-size:14.5px; color:var(--ink-3); margin:0 0 6px}
+  footer a{color:var(--em-2)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    section{padding:48px 0}
+    .nav-links{display:none}
+    .steps > li{padding-left:48px}
+    .details-body{padding-left:20px}
+  }
+  @media print{
+    .nav,.dl-btn{display:none}
+    body{font-size:12pt}
+    section{padding:18px 0; break-inside:avoid}
+    details{break-inside:avoid}
+    details > .details-body{display:block !important}
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#top"><span class="dot"></span>에제르</a>
+    <div class="nav-links">
+      <a href="#download">다운로드</a>
+      <a href="#what">에제르란</a>
+      <a href="#install">설치하기</a>
+      <a href="#first">첫 사용</a>
+      <a href="#skillboard">할 수 있는 일</a>
+      <a href="#skills">화면 보기</a>
+      <a href="#team">팀으로 일하기</a>
+      <a href="#trouble">문제 해결</a>
+      <a href="#practice">실습 과제</a>
+    </div>
+    <a class="nav-cta" href="#download">받기</a>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<div class="hero" id="top">
+  <div class="wrap">
+    <span class="eyebrow">🤝 내 일을 함께 하는 AI 팀</span>
+    <h1>에제르는 옆에서 같이 일하는 AI입니다.</h1>
+    <p class="lede">
+      글을 다듬고, 자료를 찾고, 통계를 뒤지고, 영상을 만들고, 여러 일을 동시에 맡아 처리합니다.
+      명령어를 외울 필요 없이 <b>사람에게 말하듯 부탁하면</b> 됩니다.
+    </p>
+    <div class="hero-meaning">
+      <b>에제르(Ezer)</b> — 히브리어로 “도움, 돕는 자, 조력자”.<br>
+      이 AI는 <b>사람을 대신하는 존재가 아니라</b>, 사람이 하는 일을 곁에서 돕는 조력자라는 뜻으로 이름 붙였습니다.
+      직업이나 분야를 가리지 않습니다.
+    </div>
+  </div>
+</div>
+
+<!-- ============ 다운로드 ============ -->
+<section id="download">
+  <div class="wrap">
+    <span class="eyebrow">1단계</span>
+    <h2>먼저 내 컴퓨터에 맞는 것을 받으세요</h2>
+    <p class="lede">현재 최신 버전은 <b id="ver-label">v0.13.17</b>입니다. 셋 중 <b>하나만</b> 받으시면 됩니다.</p>
+
+    <div class="note">
+      <p><b>파일이 좀 큽니다 — 이유가 있습니다.</b> <b>책 만들기 기능</b>이 들어 있습니다.
+      원고를 쓰고 → 편집하고 → <b>인쇄용 PDF</b>까지 나오는 과정을 에제르가 도와줍니다.
+      신국판(에세이·단행본)과 B5(교재·실무서) 두 판형을 고를 수 있습니다.</p>
+      <p>여기에 <b>출판용 한글 글꼴</b>(KoPubWorld·본명조)이 함께 들어가서 파일이 커졌습니다.
+      글꼴이 있어야 인쇄소에 넘길 수 있는 품질로 조판됩니다. <b>한 번만 받으시면 됩니다.</b></p>
+    </div>
+
+    <div class="dl-grid">
+      <div class="dl-card primary">
+        <div class="dl-os"><span class="ic">🪟</span> 윈도우</div>
+        <div class="dl-for">일반적인 노트북·데스크톱 대부분이 여기에 해당합니다. 삼성·LG·HP·레노버 등.</div>
+        <a class="dl-btn" id="dl-win" href="https://github.com/choijinyi/Ezer/releases/download/v0.13.17/EZERagent_0.13.17_x64-setup.exe">윈도우용 내려받기</a>
+        <div class="dl-size" id="sz-win">EZERagent_0.13.17_x64-setup.exe · 약 237MB</div>
+      </div>
+
+      <div class="dl-card">
+        <div class="dl-os"><span class="ic">🍎</span> 맥 (M1 이후)</div>
+        <div class="dl-for">2020년 말 이후 나온 맥북·아이맥·맥미니. 대부분의 최신 맥이 여기입니다.</div>
+        <a class="dl-btn" id="dl-arm" href="https://github.com/choijinyi/Ezer/releases/download/v0.13.17/EZERagent_0.13.17_aarch64.dmg">맥(M1~)용 내려받기</a>
+        <div class="dl-size" id="sz-arm">EZERagent_0.13.17_aarch64.dmg · 약 362MB</div>
+      </div>
+
+      <div class="dl-card">
+        <div class="dl-os"><span class="ic">🍎</span> 맥 (인텔)</div>
+        <div class="dl-for">2020년 이전에 구입한 맥. 아래 방법으로 확인할 수 있습니다.</div>
+        <a class="dl-btn ghost" id="dl-x64" href="https://github.com/choijinyi/Ezer/releases/download/v0.13.17/EZERagent_0.13.17_x64.dmg">맥(인텔)용 내려받기</a>
+        <div class="dl-size" id="sz-x64">EZERagent_0.13.17_x64.dmg · 약 368MB</div>
+      </div>
+    </div>
+
+    <details>
+      <summary>내 맥이 M1인지 인텔인지 모르겠어요</summary>
+      <div class="details-body">
+        <p>화면 왼쪽 위 <b>사과 모양(🍎)</b>을 누르고 → <b>이 Mac에 관하여</b>를 선택하세요.</p>
+        <p>거기에 <b>“칩(Chip): Apple M1 / M2 / M3 …”</b>이라고 적혀 있으면 <b>M1 이후</b>용을 받으시면 됩니다.<br>
+        <b>“프로세서(Processor): Intel …”</b>이라고 적혀 있으면 <b>인텔</b>용입니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>내 윈도우가 64비트인지 확인하려면</summary>
+      <div class="details-body">
+        <p>2015년 이후 판매된 컴퓨터는 거의 전부 64비트입니다. 그냥 받으셔도 됩니다.</p>
+        <p>정확히 확인하시려면: <kbd>Windows</kbd> + <kbd>I</kbd> → <b>시스템</b> → <b>정보</b> →
+        “시스템 종류”에 <b>64비트</b>라고 적혀 있으면 맞습니다.</p>
+      </div>
+    </details>
+
+    <div class="note">
+      <b>내려받기가 잘 안 되면</b> — GitHub 릴리스 페이지에서 직접 고르실 수 있습니다:
+      <a href="https://github.com/choijinyi/Ezer/releases/latest">github.com/choijinyi/Ezer/releases/latest</a>
+    </div>
+
+    <div class="dl-note muted small">
+      파일이 큰 이유는 <b>필요한 모든 프로그램이 함께 들어 있기 때문</b>입니다.
+      따로 준비하실 것이 하나도 없습니다.
+    </div>
+  </div>
+</section>
+
+<!-- ============ 에제르란 ============ -->
+<section id="what">
+  <div class="wrap">
+    <span class="eyebrow">개념</span>
+    <h2>에제르는 무엇이 다른가요</h2>
+    <p class="lede">
+      챗GPT 같은 AI는 <b>한 사람</b>과 대화하는 창구입니다.
+      에제르는 <b>여러 명의 AI를 한 팀으로 묶어</b> 여러분의 지시를 나눠 처리합니다.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <span class="ic">🗣️</span>
+        <h4>말하듯 부탁하면 됩니다</h4>
+        <p>“이 보고서 초안 3장 분량으로 정리해줘”처럼 평소 말투 그대로 적으시면 됩니다.
+        외울 명령어가 없습니다.</p>
+      </div>
+      <div class="card">
+        <span class="ic">👥</span>
+        <h4>여러 AI가 나눠서 일합니다</h4>
+        <p>지휘하는 AI, 실제로 글을 쓰는 AI, 그 결과를 검토하는 AI가 따로 있습니다.
+        혼자 쓴 글보다 검토를 거친 글이 낫습니다.</p>
+      </div>
+      <div class="card">
+        <span class="ic">📚</span>
+        <h4>기능이 처음부터 들어 있습니다</h4>
+        <p>글쓰기·조사·통계·영상·개발·생활 행정까지
+        <b>219가지</b> 기능이 설치와 함께 갖춰집니다. 따로 등록할 것이 없습니다.</p>
+      </div>
+      <div class="card">
+        <span class="ic">🔒</span>
+        <h4>자료가 밖으로 나가지 않습니다</h4>
+        <p>기록과 통계는 여러분 컴퓨터 안에만 저장됩니다.
+        업무 자료나 개인 기록처럼 민감한 내용에 중요한 부분입니다.</p>
+      </div>
+      <div class="card">
+        <span class="ic">✋</span>
+        <h4>중요한 일은 반드시 물어봅니다</h4>
+        <p>위험하거나 되돌릴 수 없는 작업은 AI가 스스로 하지 않고
+        <b>허락을 구하는 창</b>을 띄웁니다.</p>
+      </div>
+      <div class="card">
+        <span class="ic">🧠</span>
+        <h4>쓸수록 나를 알아갑니다</h4>
+        <p>문체, 자주 쓰는 표현, 일하는 방식을 기억해 두고
+        다음 작업에 반영합니다.</p>
+      </div>
+    </div>
+
+    <div class="warn">
+      <b>꼭 기억하실 것</b> — 에제르는 <b>조력자</b>입니다.
+      결과물의 최종 책임은 언제나 그것을 쓰는 사람에게 있습니다.
+      AI가 만든 글은 반드시 사실과 대조해 확인하신 뒤 사용하세요.
+      에제르는 이 점을 스스로도 지키도록 만들어져 있어서, 근거 없는 단정을 피하고
+      출처를 밝히도록 설계돼 있습니다.
+    </div>
+  </div>
+</section>
+
+<!-- ============ 설치 ============ -->
+<section id="install">
+  <div class="wrap">
+    <span class="eyebrow">2단계</span>
+    <h2>설치하기</h2>
+    <p class="lede">준비물은 <b>인터넷 연결</b> 하나뿐입니다. 전체 <b>10분</b>이면 끝납니다.</p>
+
+    <h3>윈도우에서</h3>
+    <ol class="steps">
+      <li>내려받은 <b>setup.exe</b> 파일을 두 번 누릅니다.</li>
+      <li><b>파란 경고창이 뜹니다.</b> “Windows의 PC 보호” — 놀라지 마세요.
+        <b>추가 정보</b>를 누르고 <b>실행</b>을 누르시면 됩니다.
+        (아래 <a href="#trouble">문제 해결</a>에 이 창이 왜 뜨는지 적어 두었습니다.)</li>
+      <li><b>다음</b>을 눌러 설치를 마칩니다.</li>
+      <li>바탕화면에 생긴 아이콘을 두 번 누릅니다. <b>첫 실행은 30초쯤</b> 걸립니다.</li>
+    </ol>
+
+    <h3>맥에서</h3>
+    <ol class="steps">
+      <li>내려받은 <b>dmg</b> 파일을 두 번 누릅니다.</li>
+      <li>에제르 아이콘을 <b>Applications 폴더로 끌어다 놓습니다.</b></li>
+      <li><b>처음 열 때만</b> — 아이콘을 <b>오른쪽 클릭</b>해서 <b>열기</b>를 선택하세요.
+        그냥 두 번 누르면 “개발자를 확인할 수 없다”며 막힙니다.</li>
+      <li>30초쯤 기다리시면 화면이 뜹니다.</li>
+    </ol>
+
+    <h3 id="clean">예전 버전 깨끗이 지우고 새로 설치하기</h3>
+    <p class="muted">예전 버전이 남아 이상하게 동작할 때만 하시면 됩니다. 처음 설치하시는 분은 건너뛰세요.</p>
+
+    <details>
+      <summary>윈도우에서 완전히 지우기</summary>
+      <div class="details-body">
+        <ol class="steps">
+          <li>에제르를 완전히 종료합니다. (상단바 <b>⏻ 종료</b> 버튼을 쓰시면 뒤에 도는 것까지 함께 내려갑니다.)</li>
+          <li><b>설정 → 앱 → 설치된 앱</b>에서 EZERagent를 제거합니다.</li>
+          <li>PowerShell에 아래를 붙여 넣고 실행합니다.
+            <pre><code>schtasks /delete /tn EZERagentd /f
+Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\EZER-start.cmd" -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:LOCALAPPDATA\EZERagent" -Recurse -Force -ErrorAction SilentlyContinue</code></pre></li>
+          <li><b>여기까지는 프로그램만 지웁니다.</b> 설정과 기억은 <code>%USERPROFILE%\.EZERagent</code> 에
+            그대로 남아 다시 설치해도 이어집니다 — 보통은 이게 맞습니다(그동안 쌓은 기억을 잃지 않습니다).
+            <b>설정이 꼬여서 지우고 다시 까는 것이라면 그것까지 지워야</b> 증상이 사라집니다.
+            <pre><code>Remove-Item "$env:USERPROFILE\.EZERagent" -Recurse -Force -ErrorAction SilentlyContinue</code></pre>
+            <span class="muted">되돌릴 수 없습니다 — 아래 '무엇이 지워지나' 참고.</span></li>
+          <li>컴퓨터를 다시 켠 뒤 새로 설치합니다.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details>
+      <summary>맥에서 완전히 지우기</summary>
+      <div class="details-body">
+        <ol class="steps">
+          <li>에제르를 종료합니다. (상단바 <b>⏻ 종료</b> 버튼 권장)</li>
+          <li>응용 프로그램에서 EZERagent를 휴지통으로 옮깁니다.</li>
+          <li>터미널에 아래를 붙여 넣고 실행합니다.
+            <pre><code>launchctl unload ~/Library/LaunchAgents/com.EZERagent.EZERagentd.plist
+rm -f ~/Library/LaunchAgents/com.EZERagent.EZERagentd.plist
+rm -rf ~/.local/state/EZERagent</code></pre></li>
+          <li><b>여기까지는 프로그램만 지웁니다.</b> 설정과 기억은 <code>~/.EZERagent</code> 에
+            그대로 남아 다시 설치해도 이어집니다 — 보통은 이게 맞습니다(그동안 쌓은 기억을 잃지 않습니다).
+            <b>설정이 꼬여서 지우고 다시 까는 것이라면 그것까지 지워야</b> 증상이 사라집니다.
+            <pre><code>rm -rf ~/.EZERagent</code></pre>
+            <span class="muted">되돌릴 수 없습니다 — 아래 '무엇이 지워지나' 참고.</span></li>
+          <li>새로 설치합니다.</li>
+        </ol>
+      </div>
+    </details>
+
+    <div class="stop">
+      <b>'완전 초기화'가 지우는 것 — 되돌릴 수 없습니다.</b>
+      <code>.EZERagent</code> 폴더에는 프로그램이 아니라 <b>여러분의 것</b>이 들어 있습니다:
+      에제르가 쌓아 온 <b>장기기억</b>, 하던 작업의 <b>진행 상태와 할 일 목록</b>,
+      직접 만들거나 고친 <b>스킬·설정</b>입니다. 프로그램을 다시 깔아도 이것들은 돌아오지 않습니다.
+      <b>증상이 설정 때문이라고 확인된 경우에만</b> 지우세요. 그냥 새 버전을 쓰고 싶은 것이라면
+      이 폴더를 남겨 두는 편이 낫습니다 — 업데이트는 기억을 지우지 않습니다.
+    </div>
+
+    <h3>설치하면 이런 것들이 자동으로 갖춰집니다</h3>
+    <div class="tablewrap">
+      <table>
+        <tr><td><b>기반 프로그램</b></td>
+            <td>Node.js · 파이썬 · git — 설치 파일에 들어 있습니다. 따로 받으실 것 없습니다.</td></tr>
+        <tr><td><b>AI 프로그램</b></td>
+            <td>Claude Code 등 — 첫 실행 때 자동으로 설치됩니다.</td></tr>
+        <tr><td><b>기능 219가지</b></td>
+            <td>자동으로 인식됩니다. 등록 절차가 없습니다.</td></tr>
+      </table>
+    </div>
+
+    <div class="warn">
+      <b>여기서 한 가지는 반드시 직접 하셔야 합니다 — AI 계정 로그인.</b><br>
+      화면이 뜨면 Claude(앤트로픽) 계정으로 로그인하라는 안내가 나옵니다.
+      <b>유료 구독이 있어야</b> 에제르가 실제로 일합니다. 이 로그인이 안 되면 아무 대답도 하지 않습니다.
+    </div>
+
+    <h3 id="bookdeps">책 만들기를 쓰시려면 — 두 가지만 더 설치하세요</h3>
+    <p>원고를 <b>인쇄용 PDF</b>로 조판하는 데 <b>Pandoc</b>과 <b>Typst</b>가 필요합니다.
+    책을 만들 때만 쓰이니, 당장 필요 없으면 건너뛰셔도 됩니다.</p>
+
+    <details>
+      <summary>윈도우 — 두 줄이면 됩니다</summary>
+      <div class="details-body">
+        <pre><code>winget install --id JohnMacFarlane.Pandoc
+winget install --id Typst.Typst</code></pre>
+      </div>
+    </details>
+
+    <details>
+      <summary>맥 — 한 줄이면 됩니다</summary>
+      <div class="details-body">
+        <pre><code>brew install pandoc typst</code></pre>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ============ 첫 사용 ============ -->
+<section id="first">
+  <div class="wrap">
+    <span class="eyebrow">3단계</span>
+    <h2>처음 열었을 때 이렇게 하세요</h2>
+
+    <ol class="steps">
+      <li><b>안내 창을 따라 넘기고</b>, 작업할 폴더를 고릅니다.
+        여기에 에제르가 만든 원고와 파일이 쌓입니다.</li>
+      <li><b>“에제르시작”이라고 적고 보냅니다.</b>
+        지휘 담당·작업 담당·검토 담당 AI가 함께 준비되고, 219가지 기능이 연결됩니다.</li>
+      <li><b>평소 말투로 부탁합니다.</b> 아래 예시처럼 적으시면 됩니다.</li>
+      <li><b>결과가 마음에 안 들면 그냥 말하세요.</b> 다시 시켜도 됩니다.</li>
+    </ol>
+
+    <div class="chat">
+      <div class="chat-hd">이렇게 부탁하시면 됩니다</div>
+      <div class="chat-body">
+        <div class="msg me"><span class="who">나</span><span class="txt">에제르시작</span></div>
+        <div class="msg me"><span class="who">나</span><span class="txt">이 자료로 내일 회의용 보고서 초안 잡아줘. 세 장 넘지 않게.</span></div>
+        <div class="msg me"><span class="who">나</span><span class="txt">작년 청년 고용률 통계 찾아서 표로 정리해줘. 출처도 같이.</span></div>
+        <div class="msg me"><span class="who">나</span><span class="txt">이 글 AI 티 나는 부분 걷어내고 자연스럽게 다듬어줘.</span></div>
+        <div class="msg me"><span class="who">나</span><span class="txt">이 주제로 유튜브 2분짜리 대본 써줘.</span></div>
+      </div>
+    </div>
+
+    <p>“너무 길어, 절반으로 줄여줘” · “결론을 더 구체적으로” · “이 표현은 우리 쪽에 안 맞아, 바꿔줘”
+    — 이렇게 계속 고쳐 나가시면 됩니다.</p>
+
+    <div class="note">
+      <b>화면에서 보게 될 말들</b><br>
+      <b>노드(node)</b> = 일하는 AI 한 명 · <b>승인 요청</b> = AI가 허락을 구하는 것 ·
+      <b>Control Center</b> = 전체 상황을 보는 관제 화면
+    </div>
+  </div>
+</section>
+
+<!-- ============ 할 수 있는 일 ============ -->
+<section id="skillboard">
+  <div class="wrap">
+    <span class="eyebrow">기능</span>
+    <h2>무엇을 시킬 수 있나요</h2>
+    <p class="lede">
+      홈 화면의 <b>카드를 누르면 바로 시작</b>됩니다. 자주 쓰는 것들을 여섯 묶음으로 정리해 두었습니다.
+      전체 <b>219가지</b> 중에서 고른 것이고, 나머지도 말로 부르면 됩니다.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <span class="ic">✍️</span>
+        <h4>글쓰기 · 문서</h4>
+        <p><b>AI 티 빼기</b> — 번역체·상투어를 걷어내고 사람 글로.<br>
+        <b>맞춤법 검사</b> · <b>글자수 세기</b>(자기소개서 분량 맞추기) ·
+        <b>한글문서 읽기·변환</b>(HWP) · <b>책 만들기</b>(원고→인쇄용 PDF)</p>
+      </div>
+      <div class="card">
+        <span class="ic">🔎</span>
+        <h4>조사 · 검색</h4>
+        <p><b>뉴스 검색</b> · <b>학술논문 검색</b>(RISS 학위논문·학술지) ·
+        <b>법령·판례 검색</b> · <b>블로그 리서치</b><br>
+        출처 링크를 함께 붙여 줍니다.</p>
+      </div>
+      <div class="card">
+        <span class="ic">📊</span>
+        <h4>통계 · 기업 · 시장</h4>
+        <p><b>국가통계 조회</b>(KOSIS 인구·물가·고용) · <b>기업 공시·재무</b>(DART) ·
+        <b>주식 시세</b> · <b>부동산 실거래가</b><br>
+        공식 수치를 그대로 가져옵니다.</p>
+      </div>
+      <div class="card">
+        <span class="ic">🎬</span>
+        <h4>영상 · 이미지</h4>
+        <p><b>이미지 생성</b> · <b>영상 대본</b>(사실검증 포함) ·
+        <b>쇼츠 제작</b>(9:16 자막 포함) · <b>유튜브 영상 제작</b>(대본→음성→영상→썸네일)</p>
+      </div>
+      <div class="card">
+        <span class="ic">🛠️</span>
+        <h4>개발 · 자동화</h4>
+        <p><b>웹·앱 만들기</b>(기획→검증→자율 빌드) · <b>아이디어 정리</b> ·
+        <b>버그 원인 추적</b> · <b>내 업무를 스킬로</b>(반복 절차를 기능으로 저장)</p>
+      </div>
+      <div class="card">
+        <span class="ic">🚉</span>
+        <h4>생활 · 행정</h4>
+        <p><b>날씨</b>(기상청) · <b>대중교통 길찾기</b> · <b>택배 조회</b> · <b>공휴일 조회</b><br>
+        이 밖에 KTX·고속버스 예매, 병원 응급실, 지도 기능도 들어 있습니다.</p>
+      </div>
+    </div>
+
+    <h3>이런 것들도 함께 쓰시면 좋습니다</h3>
+    <div class="catgrid">
+      <div class="cat"><b>📖 역사·문화 자료</b><span>조선왕조실록, 한국 문화유산, 중세 한국어 등 자료 조사</span></div>
+      <div class="cat"><b>📄 한글 문서</b><span>HWP 파일 읽기·변환·편집</span></div>
+      <div class="cat"><b>🎙️ 음성·자막</b><span>영상 자막 만들기, 음성 합성, 목소리 복제</span></div>
+      <div class="cat"><b>🏛️ 행정·법률</b><span>법령 검색, 등기·부동산, 세금계산서, 기부처 조회</span></div>
+      <div class="cat"><b>💼 취업·사업</b><span>채용공고 적합도, 사업자등록 조회, 기업 건전성 점검</span></div>
+      <div class="cat"><b>🚄 생활 편의</b><span>KTX·고속버스 예매, 날씨, 병원 응급실, 지도</span></div>
+    </div>
+
+    <div class="note">
+      일부 기능(법령·부동산·교통)은 <b>별도 사용 키</b>가 필요합니다.
+      키가 없어도 <b>그 기능 하나만 못 쓸 뿐</b>, 나머지는 전혀 영향받지 않습니다.
+    </div>
+  </div>
+</section>
+
+<!-- ============ 화면 보기 ============ -->
+<section id="skills">
+  <div class="wrap">
+    <span class="eyebrow">둘러보기</span>
+    <h2>화면에서 무엇을 볼 수 있나요</h2>
+    <p class="lede">상단 <b>컨트롤 센터</b>를 누르면 관제 화면이 열립니다.
+    열한 개의 탭이 있지만, 실제로 유용한 것은 아래 다섯 가지입니다.</p>
+
+    <h3>Control Center — 관제실</h3>
+    <div class="tablewrap">
+      <table>
+        <tr><td><b>Live</b></td><td>지금 무슨 일이 진행 중인지, 오늘 얼마나 썼는지 한눈에</td></tr>
+        <tr><td><b>승인 Feed</b></td><td>AI가 허락을 구한 항목들. 허용·거부를 여기서 고릅니다</td></tr>
+        <tr><td><b>스킬 보드</b></td><td>자주 쓰는 기능을 버튼으로. 누르면 바로 실행됩니다</td></tr>
+        <tr><td><b>세션</b></td><td>지난 대화 기록 검색. 즐겨찾기(⭐)와 개인정보 가림(🔒)</td></tr>
+        <tr><td><b>비용·효율</b></td><td>이번 달 얼마나 썼는지. 한도 관리에 좋습니다</td></tr>
+      </table>
+    </div>
+
+    <h3>상단바 버튼</h3>
+    <div class="tablewrap">
+      <table>
+        <tr><td><b>홈 / 작업</b></td><td>시작 화면(기능 카드)과 실제 작업 화면을 오갑니다</td></tr>
+        <tr><td><b>판 정돈</b></td><td>흐트러진 AI 화면들을 자리에 맞춰 정렬합니다</td></tr>
+        <tr><td><b>파일</b></td><td>작업 폴더의 파일 목록. 누르면 한글·워드로 열립니다</td></tr>
+        <tr><td><b>업데이트</b></td><td><b>!</b> = 프로그램 갱신(재시작) · <b>↻</b> = 기능 갱신(재시작 없음)</td></tr>
+        <tr><td><b>↻ 재시작</b></td><td>저장 신호를 보낸 뒤 다시 켭니다. 하던 작업은 자동 복원됩니다</td></tr>
+        <tr><td><b>⏻ 종료</b></td><td><b>완전히 끄기.</b> 창만 닫으면 뒤에서 계속 돕니다 — 이 버튼은 뒤에 도는 본체와 <b>AI들이 쓰던 프로그램까지</b> 모두 내립니다</td></tr>
+      </table>
+    </div>
+
+    <h3>알아두면 편한 단축키</h3>
+    <div class="tablewrap">
+      <table>
+        <tr><td><b>⌘/Ctrl + T</b></td><td>새 작업 화면 열기</td></tr>
+        <tr><td><b>⌘/Ctrl + K</b></td><td>검색해서 바로 실행</td></tr>
+        <tr><td><b>⌘/Ctrl + G</b></td><td>큰 글씨 요약 화면 ↔ 상세 화면</td></tr>
+        <tr><td><b>⌘/Ctrl + +/-</b></td><td>글씨 크기 조절</td></tr>
+        <tr><td><b>Shift + Enter</b></td><td>줄바꿈 (아직 보내지 않음)</td></tr>
+      </table>
+    </div>
+
+    <h3>파일은 어디에 저장되나요</h3>
+    <p>에제르가 만든 원고·보고서는 <b>지금 작업 중인 폴더</b>에 그대로 저장됩니다.
+    상단 <b>파일</b> 버튼을 누르면 그 폴더의 파일 목록이 보이고, 눌러서 한글이나 워드로 여시면 됩니다.</p>
+  </div>
+</section>
+
+<!-- ============ 팀으로 일하기 ============ -->
+<section id="team">
+  <div class="wrap">
+    <span class="eyebrow">한 단계 더</span>
+    <h2>여러 일을 한꺼번에 맡기기</h2>
+    <p class="lede">에제르는 <b>다섯 명의 AI가 한 팀</b>으로 움직입니다. 각자 맡은 일이 다릅니다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <tr><th>역할</th><th>맡은 일</th><th>비유하자면</th></tr>
+        <tr><td><b>마스터</b></td><td>지시를 받아 일을 나누고 결과를 책임집니다</td><td>팀장</td></tr>
+        <tr><td><b>워커</b></td><td>실제로 글을 쓰고 자료를 찾습니다</td><td>실무 담당자</td></tr>
+        <tr><td><b>CSO</b></td><td>컴퓨터 자원을 관리합니다</td><td>살림 담당</td></tr>
+        <tr><td><b>검토자 2명</b></td><td>나온 결과를 비판적으로 따져 반박합니다</td><td>감수 위원</td></tr>
+      </table>
+    </div>
+    <p class="muted">검토자를 둘이나 두는 이유는 <b>쓴 사람과 채점하는 사람을 나누기</b> 위해서입니다.</p>
+
+    <h3>이럴 때 팀으로 쓰시면 좋습니다</h3>
+    <ul>
+      <li>보고서·기획안을 <b>여러 편 한꺼번에</b> 준비할 때</li>
+      <li>자료 조사 · 원고 작성 · 검토를 <b>동시에</b> 진행하고 싶을 때</li>
+      <li>완성한 원고를 <b>다른 관점에서</b> 따져 보고 싶을 때</li>
+      <li>시간이 오래 걸리는 조사를 맡겨 두고 다른 일을 하고 싶을 때</li>
+    </ul>
+    <p>진행 상황이 궁금하시면 <b>“지금 진행 상황 알려줘”</b> · <b>“다 됐어?”</b>라고 물으시면 됩니다.</p>
+
+    <h3>AI가 허락을 구할 때</h3>
+    <p>중요한 작업 앞에서 에제르는 스스로 실행하지 않고 <b>승인 요청</b>을 띄웁니다.
+    화면 위쪽에 표시가 뜨면 <b>허용</b>이나 <b>거부</b>를 고르시면 됩니다.</p>
+    <div class="warn">
+      요청을 오래 그냥 두면 <b>AI가 그 자리에서 멈춰 기다립니다.</b>
+      대답이 없다 싶으면 <b>컨트롤 센터 → 승인 Feed</b>를 확인해 보세요.
+    </div>
+
+    <details>
+      <summary>기술을 다루실 분을 위한 명령어</summary>
+      <div class="details-body">
+        <p>곁에 기술을 도와주실 분이 있다면 이 부분을 보여주세요. 터미널에서 직접 다룰 수 있습니다.</p>
+        <pre><code>EZERagent status              # 전체 상황 한눈에
+EZERagent doctor --fix        # 자기진단 후 수리
+EZERagent boot                # 표준 팀 일괄 기동
+EZERagent send --to worker "상태 보고해줘"
+EZERagent send-key --to worker Return
+EZERagent feed list --status pending
+EZERagent pause / resume      # 전체 정지·재개</code></pre>
+        <p>전체 명령은 <code>EZERagent actions</code>,
+        자세한 설명은 <a href="https://github.com/choijinyi/Ezer/blob/main/USER-MANUAL.md">사용 설명서</a>에 있습니다.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ============ 문제 해결 ============ -->
+<section id="trouble">
+  <div class="wrap">
+    <span class="eyebrow">문제 해결</span>
+    <h2>이럴 때는 이렇게 하세요</h2>
+
+    <details>
+      <summary>설치할 때 파란 경고창이 떠요 (윈도우)</summary>
+      <div class="details-body">
+        <p><b>정상입니다.</b> “Windows의 PC 보호”라는 창인데,
+        <b>추가 정보</b> → <b>실행</b>을 누르시면 됩니다.</p>
+        <p class="muted">유료 코드 서명 인증서를 아직 붙이지 않아서 뜨는 창입니다. 프로그램 문제가 아닙니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>“손상되었기 때문에 열 수 없습니다” (맥)</summary>
+      <div class="details-body">
+        <p><b>파일이 망가진 게 아닙니다.</b> 0.13.14 버전부터 고쳐졌으니 최신 버전을 다시 받으시면 됩니다.</p>
+        <p>그래도 뜨면 터미널에 아래를 넣어 보세요.</p>
+        <pre><code>xattr -cr /Applications/EZERagent.app</code></pre>
+      </div>
+    </details>
+
+    <details>
+      <summary>“개발자를 확인할 수 없어” (맥)</summary>
+      <div class="details-body">
+        <p>아이콘을 <b>오른쪽 클릭</b> → <b>열기</b> → 다시 <b>열기</b>. 처음 한 번만 하시면 됩니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>화면이 안 뜨거나 멈춘 것 같아요</summary>
+      <div class="details-body">
+        <p>처음 실행은 <b>30초쯤</b> 걸립니다. 수백 개 파일을 자리에 놓는 중입니다.</p>
+        <p>1분이 넘도록 그대로면 앱을 완전히 끄고 다시 켜 보세요.
+        그래도 안 되면 <code>EZERagent doctor --fix</code>를 아는 분께 부탁하세요.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>아무 대답이 없어요</summary>
+      <div class="details-body">
+        <ol class="steps">
+          <li><b>로그인부터 확인하세요.</b> 가장 흔한 원인입니다.
+          Claude 계정 로그인은 <b>직접 한 번</b> 하셔야 합니다.</li>
+          <li><b>승인 요청이 밀려 있는지</b> — 컨트롤 센터 → 승인 Feed.</li>
+          <li><b>입력 중이면 기다립니다.</b> 사람이 타이핑 중이면 AI가 3초간 기다립니다.</li>
+          <li><b>정지 상태일 수 있습니다.</b> “다시 시작해줘”라고 하시거나 <code>EZERagent resume</code>.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details>
+      <summary>AI가 사실이 아닌 내용을 말해요</summary>
+      <div class="details-body">
+        <p><b>반드시 확인하셔야 합니다.</b> 특히 <b>인용문, 숫자, 역사적 사실, 통계</b>는 그대로 믿지 마세요.</p>
+        <p>이렇게 요청하시면 됩니다.</p>
+        <ul>
+          <li>“출처 밝혀줘” → 근거를 함께 제시합니다</li>
+          <li>“팩트체크 해줘” → 검증 기능이 작동합니다</li>
+          <li>“이거 확실해? 다시 확인해줘” → 교차 검증합니다</li>
+        </ul>
+        <p class="muted">그럼에도 <b>내보내기 전 사람의 최종 확인</b>을 대신할 수 있는 것은 없습니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>글이 너무 길어요 / 문체가 안 맞아요</summary>
+      <div class="details-body">
+        <p>그냥 말씀하시면 됩니다. “절반으로 줄여줘” ·
+        “처음 읽는 사람도 알아들을 말로” · “결론을 더 구체적으로”.</p>
+        <p><b>매번 같은 말을 반복하기 번거로우시면</b> — “앞으로 보고서는 항상 이런 문체로 써줘”라고
+        일러두시면 기억해 두고 다음부터 반영합니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>대화가 길어지니 AI가 헤매요</summary>
+      <div class="details-body">
+        <p>AI의 기억 용량에 한계가 있습니다. 에제르는 <b>60%에 이르면 스스로 저장·정리</b>한 뒤 이어 갑니다.</p>
+        <p>새 주제로 넘어가실 때는 <b>⌘/Ctrl+T</b>로 새 작업 화면을 여시는 편이 낫습니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>컴퓨터가 갑자기 느려졌어요</summary>
+      <div class="details-body">
+        <p>에제르가 실행한 프로그램이 쌓였을 수 있습니다. 5초마다 점검하는 자동 정리 장치가 있지만,
+        <b>컨트롤 센터 → Live</b> 탭에서 CPU·메모리를 직접 확인하실 수 있습니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>앱을 끄면 하던 작업이 사라지나요?</summary>
+      <div class="details-body">
+        <p><b>사라지지 않습니다.</b> 창을 닫아도 뒤에서 도는 본체가 작업을 이어 갑니다.
+        컴퓨터를 완전히 껐다 켠 뒤에는 <b>“이어서 하자”</b>라고 하시면 재개합니다.</p>
+        <p><b>정말 완전히 끄고 싶으시면</b> 상단바의 <b>⏻ 종료</b> 버튼을 쓰세요.
+        저장 신호를 보낸 뒤 뒤에서 도는 것까지 모두 내리고 창을 닫습니다.</p>
+        <p class="muted">0.13.17 버전부터는 AI 화면들이 쓰던 프로그램(클로드코드 등)까지 함께 내려갑니다.
+        그 전 버전에서 종료 뒤에도 프로세스가 남으셨다면 아래 항목을 보세요.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>⏻ 종료를 눌렀는데 프로세스가 계속 돌아요</summary>
+      <div class="details-body">
+        <p><b>0.13.17 버전에서 고쳤습니다.</b> 그 전까지는 종료를 눌러도 두 가지가 남았습니다.</p>
+        <ol class="steps">
+          <li><b>AI 화면들이 쓰던 프로그램이 살아남았습니다.</b> 본체가 내려가면 그 안에서 돌던
+          클로드코드·코덱스 같은 프로그램도 같이 꺼질 것이라고 보았는데, 실제로는 부모가 꺼져도
+          자식이 따라 꺼지지 않는 경우가 있었습니다.</li>
+          <li><b>이쪽이 주된 원인입니다 — 컴퓨터가 본체를 되살렸습니다.</b> 설치할 때 에제르는
+          "꺼져 있으면 다시 켜라"는 항목으로 등록됩니다(맥은 launchd, 윈도우는 작업 스케줄러).
+          재부팅 뒤에도 알아서 켜지게 하려는 장치인데, 바로 이것이 <b>종료 버튼으로 내린 본체까지</b>
+          맥은 10초, 윈도우는 1분쯤 뒤에 되살려 놓았습니다.</li>
+        </ol>
+        <p>지금은 종료 버튼이 <b>AI 화면들과 그 프로그램을 먼저 닫고</b>,
+        <b>되살리는 항목을 이번 한 번만 내린 뒤</b> 본체를 끕니다.
+        다음에 에제르를 켜면 자동 기동은 그대로 살아납니다 — 지우는 것이 아닙니다.</p>
+        <div class="note">
+          <b>이미 돌고 있는 것은 이렇게 처리하세요.</b><br>
+          새 버전을 설치하고 <b>⏻ 종료를 한 번 누르면</b> 그때부터 적용됩니다.
+          지금 떠 있는 본체는 아직 예전 코드로 돌고 있어서, 설치만으로는 멈추지 않습니다.
+        </div>
+        <p class="muted">그래도 남는 것 같으면 아래로 확인해 보세요. 아무것도 나오지 않으면 제대로 내려간 것입니다.</p>
+        <pre><code># 맥
+launchctl list | grep EZERagent
+
+# 윈도우 (PowerShell)
+schtasks /query /tn EZERagentd</code></pre>
+      </div>
+    </details>
+
+    <details>
+      <summary>묻지도 않았는데 상태 보고가 자꾸 올라와요</summary>
+      <div class="details-body">
+        <p>예전 버전은 마스터가 <b>주기적으로</b> 노드들에게 생존을 묻고 그 결과를 화면에 올렸습니다.
+        지금은 <b>처음 켤 때 한 번</b>만 보고하고, 그 뒤로는 <b>물어보실 때만</b> 답합니다
+        — "상태 알려줘" · "다 살아 있어?" · "진행 상황"처럼 말씀하시면 그때 전체를 점검해 보고합니다.
+        (문제가 생겼을 때 오는 경고는 그대로 받습니다 — 멈춘 노드나 자원 부족은 여전히 바로 알려 드립니다.)</p>
+        <p>업데이트를 받으셨는데도 보고가 계속 올라온다면, 예전에 깔린 <b>주기 알림 설정</b>이 남아 있어서입니다.
+        이 설정만은 업데이트가 덮어쓰지 않습니다(직접 추가하신 알림을 지우지 않으려는 안전장치입니다).
+        마스터에게 <b>"하트비트 두 개 꺼줘"</b>라고 말씀하시거나, 아래를 직접 실행하시면 됩니다.</p>
+        <pre><code>EZERagent schedule remove owner-progress-report-5min
+EZERagent schedule remove owner-progress-report-15min</code></pre>
+        <p class="muted">재시작은 필요 없습니다 — 30초 안에 반영됩니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>업데이트는 어떻게 하나요?</summary>
+      <div class="details-body">
+        <p>화면 위쪽 <b>업데이트</b> 자리에 표시가 나타납니다.</p>
+        <ul>
+          <li><b>!</b> — 프로그램 자체가 새로워졌습니다. 누르면 설치하고 <b>다시 시작</b>합니다.
+          하던 작업은 자동으로 복원됩니다.</li>
+          <li><b>↻</b> — 기능만 갱신됩니다. <b>재시작이 없습니다.</b> 하던 일이 끊기지 않습니다.</li>
+        </ul>
+        <p>고쳐 쓰신 설정은 업데이트가 <b>지우지 않습니다.</b> 보존해 두고 새 버전을 옆에 놓아둡니다.</p>
+        <p class="muted">에제르는 15분마다 새 버전이 있는지 확인합니다. 표시가 뜨면 그때 누르시면 됩니다.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>민감한 내용을 넣어도 되나요?</summary>
+      <div class="details-body">
+        <p><b>기록과 통계는 여러분 컴퓨터 밖으로 나가지 않습니다.</b>
+        다만 <b>대화 자체는 AI 회사(Claude) 서버를 거칩니다.</b> 이 점은 분명히 아셔야 합니다.</p>
+        <p>안전하게 쓰시려면:</p>
+        <ul>
+          <li>실명은 최소화하세요 (김OO 님처럼)</li>
+          <li>건강·재정 같은 민감정보는 되도록 적지 마세요</li>
+          <li>컨트롤 센터 <b>세션</b> 탭의 <b>🔒 가림</b> 기능을 쓰시면 기록에서 개인정보가 가려집니다</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>비용이 드나요?</summary>
+      <div class="details-body">
+        <p><b>에제르 자체는 무료입니다.</b> MIT 라이선스 오픈소스입니다.</p>
+        <p>비용은 <b>Claude 유료 구독료</b>에서만 발생합니다.
+        얼마나 쓰고 있는지는 <b>컨트롤 센터 → 비용·효율</b> 탭에서 하루·주간 단위로 보실 수 있습니다.</p>
+      </div>
+    </details>
+
+    <div class="note">
+      <b>알려진 한계</b><br>
+      ▸ 윈도우 설치 때 경고창이 뜹니다 (유료 코드 서명 인증서 미적용)<br>
+      ▸ 그래픽카드·NPU 실시간 표시는 맥(M1 이후)에서만 됩니다<br>
+      ▸ 안전장치는 탐지·정지 층이지 암호학적 방어가 아닙니다<br>
+      ▸ 비밀정보 검사기는 알려진 형태만 걸러냅니다
+    </div>
+    <p class="muted">이상하다 싶으면 <b>“에제르가 이상해, 진단해줘”</b>라고 하시면 스스로 점검합니다.
+    그래도 안 되면 <a href="mailto:ezer.agent@gmail.com">ezer.agent@gmail.com</a>로 알려 주세요.</p>
+  </div>
+</section>
+
+<!-- ============ 실습 ============ -->
+<section id="practice">
+  <div class="wrap">
+    <span class="eyebrow">강의 실습</span>
+    <h2>오늘 직접 해보실 순서</h2>
+
+    <ol class="steps">
+      <li>파일을 설치하고 아이콘을 실행합니다.</li>
+      <li>안내 창을 넘기고 Claude 계정으로 로그인합니다.</li>
+      <li><b>“안녕”</b>이라고 적어 보고 대답이 오는지 확인합니다.</li>
+      <li>손에 있는 자료를 놓고 <b>“이 내용 요약해줘”</b>라고 부탁합니다.</li>
+      <li>결과를 고쳐 봅니다. <b>“더 짧게”</b> · <b>“근거를 구체적으로”</b></li>
+      <li>이어서 <b>“이걸로 보고서 초안 만들어줘”</b>라고 계속 부탁해 봅니다.</li>
+      <li><b>“출처 밝혀줘”</b>로 근거를 확인합니다.</li>
+      <li>컨트롤 센터를 열어 <b>Live</b>와 <b>비용</b> 탭을 봅니다.</li>
+      <li><b>⌘/Ctrl+G</b>로 큰 글씨 화면으로 바꿔 봅니다.</li>
+      <li><b>“에제르시작”</b>이라고 선언해 팀이 구동되는 것을 확인합니다.</li>
+    </ol>
+
+    <h3>집에 가셔서 해보실 것</h3>
+    <div class="cards">
+      <div class="card">
+        <h4>일주일치 일 통째로 맡기기</h4>
+        <p>이번 주에 해야 할 일을 쭉 적어 주고
+        “순서를 정해서 하나씩 해보자”라고 시켜 보세요.</p>
+      </div>
+      <div class="card">
+        <h4>나만의 문체 가르치기</h4>
+        <p>예전에 쓰신 글을 몇 편 보여주고
+        “내 문체를 익혀서 앞으로 이렇게 써줘”라고 해보세요.</p>
+      </div>
+      <div class="card">
+        <h4>반복하는 일을 기능으로 만들기</h4>
+        <p>매번 똑같이 하는 작업이 있다면
+        “이 절차를 스킬로 만들어줘”라고 해보세요. 다음부터 한 마디로 부릅니다.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>강의 자료로 나눠 쓰셔도 됩니다.</b> 이 페이지 주소를 그대로 공유하시거나,
+      브라우저에서 <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>P</kbd> 를 눌러 <b>PDF로 저장</b>해 배포하셔도 됩니다.
+      인쇄에 맞춰 정리되도록 만들어 두었습니다.
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p><b style="color:var(--ink); font-size:16px">에제르 (EZERagent) <span id="ver-foot">v0.13.17</span></b></p>
+      <p>사람이 하는 일을 곁에서 돕는 조력자</p>
+      <p>MIT 라이선스 · 오픈소스 · 문의 <a href="mailto:ezer.agent@gmail.com">ezer.agent@gmail.com</a></p>
+    </div>
+    <div>
+      <p><a href="https://github.com/choijinyi/Ezer">소스 저장소</a></p>
+      <p><a href="https://github.com/choijinyi/Ezer/releases/latest">최신 릴리스</a></p>
+      <p><a href="https://github.com/choijinyi/Ezer/blob/main/USER-MANUAL.md">전체 사용 설명서</a></p>
+      <p><a href="https://github.com/choijinyi/Ezer/blob/main/ARCHITECTURE-AND-PHILOSOPHY.md">설계 철학</a></p>
+    </div>
+    <div>
+      <p class="muted">한국AI융합연구원 미래학자<br>최윤식 박사의 ‘자비스’에서<br>아이디어를 받아 제작되었습니다.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+// 최신 릴리스를 GitHub API에서 읽어 버전 표기와 내려받기 링크를 자동으로 채운다.
+// 새 버전을 낼 때마다 이 페이지를 고치지 않아도 되도록 하기 위함 — 실패하면 아래 폴백이 그대로 남는다.
+(function () {
+  var FALLBACK = { tag: 'v0.13.17', label: 'v0.13.17' };
+  var SLOTS = [
+    { id: 'win', btn: 'dl-win', size: 'sz-win', match: /x64-setup\.exe$/ },
+    { id: 'arm', btn: 'dl-arm', size: 'sz-arm', match: /aarch64\.dmg$/ },
+    { id: 'x64', btn: 'dl-x64', size: 'sz-x64', match: /_x64\.dmg$/ }
+  ];
+  function mb(n) { return Math.round(n / 1048576) + 'MB'; }
+  function paint(tag, assets, note) {
+    var v = document.getElementById('ver-label');
+    if (v) v.textContent = note || tag;
+    var f = document.getElementById('ver-foot');
+    if (f) f.textContent = tag;
+    SLOTS.forEach(function (s) {
+      var a = assets && assets.filter(function (x) { return s.match.test(x.name); })[0];
+      var btn = document.getElementById(s.btn), sz = document.getElementById(s.size);
+      if (a && btn) btn.href = a.browser_download_url;
+      if (a && sz) sz.textContent = a.name + ' · 약 ' + mb(a.size);
+    });
+  }
+  fetch('https://api.github.com/repos/choijinyi/Ezer/releases/latest', {
+    headers: { Accept: 'application/vnd.github+json' }
+  })
+    .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+    .then(function (d) { paint(d.tag_name, d.assets); })
+    .catch(function () { paint(FALLBACK.tag, null, FALLBACK.label); });
+})();
+</script>
+</body>
+</html>
