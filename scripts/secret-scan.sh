@@ -32,7 +32,9 @@ skip_re='\.(lock|png|jpe?g|gif|ico|svg|woff2?|ttf|wasm|pdf|zip|dmg|msi|exe)$|(^|
 # 더미 username(제네릭화된 테스트 픽스처) — 그 외 /Users/<name>은 개인경로로 차단
 dummy_user_re='/Users/(user|x|youruser|USERNAME|runner|home)(/|"|$)'
 # 이메일 허용(공개 연락처가 의도적으로 박힌 배포 문서만 — SECURITY.md 취약점 신고 연락처 포함)
-email_allow_re='^(README\.md|README\.en\.md|SECURITY\.md)$'
+# docs/guide/index.html = 공개 사용 안내 페이지(ezer-guide.vercel.app)의 원본. 문의 연락처를
+# 독자에게 보여 주는 것이 목적이라 README 와 같은 성격이다(2026-10-17 저장소 편입 시 추가).
+email_allow_re='^(README\.md|README\.en\.md|SECURITY\.md|docs/guide/index\.html)$'
 email_fp_re='example\.(com|org|net)|noreply|@types/|@google/|@tauri|@scope|user@host|you@'
 # 개인 계정 핸들 denylist(맨몸) — /Users·.claude- 접두 없이 계정키·설정값으로 박힌 개인 핸들도 차단한다.
 # 넓은 패턴 대신 '알려진 개인 핸들'만 명시 등재해 제네릭 영어단어 오탐을 배제한다(deny-by-default 유지).
